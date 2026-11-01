@@ -164,6 +164,8 @@ DEFAULT_SETTINGS = {
     # Which macOS translation layer runs Roblox: "darling" (default) or "rosemary".
     "runtime_backend": "darling",
     "rosemary_program": "",
+    # Which Rosemary Quadra installs: "quadra" (its own build, adds VR) or "upstream" (the regular one).
+    "rosemary_source": "quadra",
     "rosemary_prefix": "",
     "rosemary_engine": "auto",
     "rosemary_force_opengl": False,

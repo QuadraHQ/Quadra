@@ -18,10 +18,13 @@ from pathlib import Path
 
 from .paths import user_directory
 
-# Where Rosemary comes from, in order: Quadra's own fork (the VR and
-# injection work, once it publishes a release) and then upstream. A source
-# with no usable release is skipped. The suffix keeps their folders apart.
-SOURCES = (("QuadraHQ/rosemary-fork", "quadra"), ("microlift/rosemary", ""))
+# Where Rosemary comes from. "quadra" is Quadra's build (QuadraHQ/rosemary-fork, adds what VR needs);
+# "upstream" is the regular Rosemary (microlift/rosemary). The suffix keeps their folders apart.
+SOURCES = {"quadra": ("QuadraHQ/rosemary-fork", "quadra"), "upstream": ("microlift/rosemary", "")}
+# Quadra's build falls back to the regular one only while it has no usable release.
+SOURCE_ORDER = {"quadra": ("quadra", "upstream"), "upstream": ("upstream",)}
+DEFAULT_SOURCE = "quadra"
+SOURCE_NAMES = {"quadra": "Quadra's Rosemary", "upstream": "Regular Rosemary"}
 ALLOWED_HOSTS = ("api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 APPIMAGE = re.compile(r"^Rosemary-([0-9][0-9A-Za-z.\-]*)-x86_64\.AppImage$")
 VERSION_OK = re.compile(r"^[0-9][0-9A-Za-z.\-]*$")
@@ -69,11 +72,26 @@ def expected_hash(sums_text, name):
     raise InstallError(f"SHA256SUMS has no entry for {name}.")
 
 
-def find_release(opener=urllib.request.urlopen, sources=SOURCES):
-    """(version, folder name, appimage name, appimage url, sums url) of the
-    newest release of the first source that has one."""
+def normalize_source(value):
+    return value if value in SOURCES else DEFAULT_SOURCE
+
+
+def folder_name(version, suffix):
+    """Where a release is unpacked: its version, plus the source's suffix unless the version has it."""
+    return version if not suffix or suffix in version else f"{version}-{suffix}"
+
+
+def runner_kind(folder):
+    """Which source a runner folder came from."""
+    return "quadra" if "quadra" in str(folder) else "upstream"
+
+
+def find_release(opener=urllib.request.urlopen, source=DEFAULT_SOURCE):
+    """(version, folder name, appimage name, appimage url, sums url, source used)
+    of the newest release of the first source in the order that has one."""
     failures = []
-    for repo, suffix in sources:
+    for kind in SOURCE_ORDER[normalize_source(source)]:
+        repo, suffix = SOURCES[kind]
         try:
             data = json.loads(_get(f"https://api.github.com/repos/{repo}/releases/latest", opener))
             version, name, url, sums_url = parse_release(data)
@@ -83,23 +101,25 @@ def find_release(opener=urllib.request.urlopen, sources=SOURCES):
         if not VERSION_OK.match(version):
             failures.append(f"{repo}: unexpected version {version!r}")
             continue
-        return version, (f"{version}-{suffix}" if suffix else version), name, url, sums_url
+        return version, folder_name(version, suffix), name, url, sums_url, kind
     raise InstallError("Could not find a Rosemary release to install.\n" + "\n".join(failures))
 
 
-def latest_version(opener=urllib.request.urlopen):
+def latest_version(opener=urllib.request.urlopen, source=DEFAULT_SOURCE):
     """The folder name the newest release would install into, or None offline."""
     try:
-        return find_release(opener)[1]
+        return find_release(opener, source)[1]
     except InstallError:
         return None
 
 
-def install_latest(progress, opener=urllib.request.urlopen):
-    """Install the newest release. progress(fraction, text). Returns the
-    executable path. Blocking: call off the GTK thread."""
+def install_latest(progress, opener=urllib.request.urlopen, source=DEFAULT_SOURCE):
+    """Install the newest release of `source` ("quadra" or "upstream"). progress(fraction,
+    text). Returns the executable path. Blocking: call off the GTK thread."""
     progress(0.0, "Finding the latest Rosemary")
-    version, folder, name, url, sums_url = find_release(opener)
+    version, folder, name, url, sums_url, used = find_release(opener, source)
+    if used != normalize_source(source):
+        progress(0.0, f"{SOURCE_NAMES[normalize_source(source)]} has no release yet; using {SOURCE_NAMES[used].lower()}")
     target = runner_root() / folder
     program = target / "squashfs-root" / "bin" / "rosemary"
     if program.is_file() and os.access(program, os.X_OK):

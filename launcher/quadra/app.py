@@ -1877,6 +1877,14 @@ class RosemaryPage(Adw.PreferencesPage):
         self.add(runtime_group)
 
         program = Adw.PreferencesGroup(title=_("Rosemary"))
+        self._sources = ["quadra", "upstream"]
+        self.source_row = ComboRow(
+            title=_("Rosemary build"),
+            subtitle=_("Quadra's build adds what VR needs; the regular one is microlift's. Quadra installs the one you pick."),
+            model=Gtk.StringList.new([_("Quadra's Rosemary (adds VR)"), _("Regular Rosemary")]))
+        self.source_row.set_selected(self._sources.index(rosemary_install.normalize_source(settings.get("rosemary_source"))))
+        self.source_row.connect("notify::selected", self._source_selected)
+        program.add(self.source_row)
         self.program_row = Adw.ActionRow(title=_("Rosemary program"))
         self.install_button = Gtk.Button(label=_("Install"), valign=Gtk.Align.CENTER, css_classes=["suggested-action"])
         self.install_button.connect("clicked", lambda *_args: self._install_rosemary())
@@ -2001,19 +2009,38 @@ class RosemaryPage(Adw.PreferencesPage):
         if window.rosemary_selected() and not window.rosemary_ready() and not window.busy:
             self._install_client()
 
+    def _source(self):
+        return rosemary_install.normalize_source(self.window.settings.get("rosemary_source"))
+
+    def _source_selected(self, row, _pspec):
+        window = self.window
+        kind = self._sources[row.get_selected()]
+        window.set_setting("rosemary_source", kind)
+        self.refresh()
+        # Quadra installs the build you picked when it is not there yet.
+        if not rosemary_runtime.quadra_runners(kind) and not (window.settings.get("rosemary_program") or "").strip() \
+                and not window.busy:
+            self._install_rosemary()
+
     def _check_runner_update(self):
-        newest = rosemary_install.latest_version()
-        installed = [name for name, _path in rosemary_runtime.quadra_runners()]
-        if newest and installed and newest not in {n.replace("Rosemary ", "") for n in installed}:
+        kind = self._source()
+        newest = rosemary_install.latest_version(source=kind)
+        have = {name.removeprefix("Rosemary ") for name, _path in rosemary_runtime.quadra_runners(kind)}
+        # Quadra's build falls back to the regular one while it has no release: not an update.
+        if newest and have and newest not in have and rosemary_install.runner_kind(newest) == kind:
             GLib.idle_add(self.install_button.set_label, _("Update to {version}", version=newest))
         return False
 
     def refresh(self):
+        kind = self._source()
         try:
             found = rosemary_runtime.find_rosemary(self.window.settings)
-            self.program_row.set_subtitle(str(found))
-            self.install_button.set_label(_("Update"))
-            threading.Thread(target=self._check_runner_update, daemon=True).start()
+            self.program_row.set_subtitle(rosemary_runtime.describe(found))
+            has_chosen = bool(rosemary_runtime.quadra_runners(kind))
+            custom = bool((self.window.settings.get("rosemary_program") or "").strip())
+            self.install_button.set_label(_("Update") if (has_chosen or custom) else _("Install"))
+            if has_chosen:
+                threading.Thread(target=self._check_runner_update, daemon=True).start()
         except rosemary_runtime.RosemaryError as error:
             self.program_row.set_subtitle(str(error).splitlines()[0])
             self.install_button.set_label(_("Install"))
@@ -2021,7 +2048,7 @@ class RosemaryPage(Adw.PreferencesPage):
         try:
             program = rosemary_runtime.find_rosemary(settings)
             self.vr_row.set_subtitle(_("Ready: turn on VR in the VR tab") if rosemary_xr.supports_vr(program)
-                                     else _("This Rosemary cannot load VR. It needs Quadra's build (QuadraHQ/rosemary-fork)."))
+                                     else _("This Rosemary cannot load VR. Choose Quadra's Rosemary under \"Rosemary build\"."))
         except rosemary_runtime.RosemaryError:
             self.vr_row.set_subtitle(_("Install Rosemary first"))
         self.client_row.set_subtitle(rosemary_runtime.installed_version(settings) or _("Not installed"))
@@ -2077,7 +2104,8 @@ class RosemaryPage(Adw.PreferencesPage):
         return False
 
     def _install_rosemary(self):
-        self._run(lambda progress: rosemary_install.install_latest(progress))
+        source = self._source()
+        self._run(lambda progress: rosemary_install.install_latest(progress, source=source))
 
     def _install_client(self):
         self._run(lambda progress: rosemary_runtime.ensure_ready(self.window.settings, progress))

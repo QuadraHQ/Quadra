@@ -278,6 +278,45 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaises(installer.InstallError):
             installer.find_release(lambda *a, **k: (_ for _ in ()).throw(OSError("offline")))
 
+    def test_choosing_the_regular_build_never_touches_the_fork(self):
+        import json as _json
+        seen = []
+        def release(version):
+            base = f"https://github.com/x/y/releases/download/v{version}/"
+            return {"assets": [{"name": "SHA256SUMS", "browser_download_url": base + "SHA256SUMS"},
+                               {"name": f"Rosemary-{version}-x86_64.AppImage",
+                                "browser_download_url": base + f"Rosemary-{version}-x86_64.AppImage"}]}
+        class R:
+            def __init__(self, body): self.body = body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self, n=-1): return self.body
+        def opener(request, timeout=0):
+            seen.append(request.full_url)
+            return R(_json.dumps(release("0.5.0-quadra.1" if "rosemary-fork" in request.full_url else "0.5.0")).encode())
+        version, folder, _n, _u, _s, used = installer.find_release(opener, "upstream")
+        self.assertEqual((folder, used), ("0.5.0", "upstream"))
+        self.assertFalse(any("rosemary-fork" in url for url in seen))
+        version, folder, _n, _u, _s, used = installer.find_release(opener, "quadra")
+        self.assertEqual((folder, used), ("0.5.0-quadra.1", "quadra"))       # the suffix is not doubled
+        self.assertEqual(installer.normalize_source("nonsense"), "quadra")
+        self.assertEqual((installer.runner_kind("0.5.0-quadra.1"), installer.runner_kind("0.5.0")), ("quadra", "upstream"))
+
+    def test_quadras_build_falling_back_says_so(self):
+        import json as _json
+        notes = []
+        def opener(request, timeout=0):
+            if "rosemary-fork" in request.full_url:
+                raise OSError("HTTP 404")
+            raise installer.InstallError("stop here")       # past the lookup, which is what is tested
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(installer, "runner_root", lambda: Path(tmp)):
+            real = installer.find_release
+            with mock.patch.object(installer, "find_release",
+                                   lambda o=None, source="quadra": ("0.5.0", "0.5.0", "n", "https://github.com/a/b/n", "https://github.com/a/b/s", "upstream")):
+                with self.assertRaises(Exception):
+                    installer.install_latest(lambda f, t: notes.append(t), opener, source="quadra")
+        self.assertTrue(any("has no release yet" in text for text in notes))
+
     def test_hash_mismatch_installs_nothing(self):
         class R:
             def __init__(self, body): self.body = body; self.headers = {"Content-Length": str(len(body))}; self.done = False

@@ -281,6 +281,52 @@ class OverrideTests(unittest.TestCase):
                     runtime.find_rosemary({})
 
 
+class RunnerChoiceTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name) / "quadrahq" / "rosemary-runner"
+        for name in ("0.5.0", "0.5.0-quadra.1", "0.5.0-quadra.10", "0.5.0-quadra.2", "0.4.1"):
+            program = root / name / "squashfs-root" / "bin" / "rosemary"
+            program.parent.mkdir(parents=True)
+            program.write_text("#!/bin/sh\n")
+            program.chmod(0o755)
+        (root / ".installing-0.9.9").mkdir()
+        patch = mock.patch.dict(os.environ, {"XDG_DATA_HOME": self.tmp.name, "QUADRA_ROSEMARY": ""})
+        patch.start()
+        self.addCleanup(patch.stop)
+        # user_directory is cached for the whole process: the folder above must be the one it answers with.
+        from quadra import paths
+        paths.user_directory.cache_clear()
+        self.addCleanup(paths.user_directory.cache_clear)
+
+    def names(self, source=None):
+        return [name for name, _p in runtime.quadra_runners(source)]
+
+    def test_kinds_are_told_apart_and_ordered_by_version(self):
+        self.assertEqual(self.names("quadra"), ["Rosemary 0.5.0-quadra.10", "Rosemary 0.5.0-quadra.2", "Rosemary 0.5.0-quadra.1"])
+        self.assertEqual(self.names("upstream"), ["Rosemary 0.5.0", "Rosemary 0.4.1"])
+        self.assertEqual(self.names()[0], "Rosemary 0.5.0-quadra.10")        # newest of all, unfinished installs ignored
+        self.assertNotIn("Rosemary .installing-0.9.9", self.names())
+
+    def test_the_chosen_build_is_the_one_that_runs(self):
+        self.assertIn("quadra.10", str(runtime.find_rosemary({"rosemary_source": "quadra"})))
+        self.assertIn("/0.5.0/", str(runtime.find_rosemary({"rosemary_source": "upstream"})))
+        self.assertIn("quadra.10", str(runtime.find_rosemary({})))          # default is Quadra's
+
+    def test_another_installed_build_still_runs_when_the_chosen_one_is_missing(self):
+        for path in list((Path(self.tmp.name) / "quadrahq" / "rosemary-runner").glob("*quadra*")):
+            import shutil
+            shutil.rmtree(path)
+        self.assertIn("/0.5.0/", str(runtime.find_rosemary({"rosemary_source": "quadra"})))
+
+    def test_describe_names_the_build(self):
+        program = runtime.find_rosemary({"rosemary_source": "upstream"})
+        self.assertEqual(runtime.describe(program), "Regular Rosemary 0.5.0")
+        self.assertEqual(runtime.describe(runtime.find_rosemary({})), "Quadra's Rosemary 0.5.0-quadra.10")
+        self.assertEqual(runtime.describe("/usr/bin/rosemary"), "/usr/bin/rosemary")
+
+
 class MiscTests(unittest.TestCase):
     def test_sign_out_removes_only_the_cookie_store(self):
         with tempfile.TemporaryDirectory() as tmp:

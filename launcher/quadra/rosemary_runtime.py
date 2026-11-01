@@ -13,6 +13,7 @@ Copyright frolleks), nutmeg/rosemary.py and nutmeg/butter.py. Not covered
 here: Butter bottles (their prefix settings), nutmeg's wrapper command."""
 
 import logging
+import re
 import os
 import shutil
 import signal
@@ -90,23 +91,38 @@ def runners():
     return [(name, program) for name, program, _custom, _tag in found]
 
 
-def quadra_runners():
-    """[(name, executable)] of Rosemary builds unpacked under Quadra's own
-    runner folder (rosemary-runner/<version>/squashfs-root/bin/rosemary, from a
-    release AppImage extracted with --appimage-extract, or <version>/bin/rosemary)."""
+def quadra_runners(source=None):
+    """[(name, executable)] of Rosemary builds unpacked under Quadra's own runner folder
+    (rosemary-runner/<version>/squashfs-root/bin/rosemary, from a release AppImage extracted
+    with --appimage-extract, or <version>/bin/rosemary), newest first. With `source`
+    ("quadra" or "upstream") only that kind: Quadra's build has "quadra" in its folder name."""
+    from . import rosemary_install
     root = user_directory("DATA") / "rosemary-runner"
-    found = []
     try:
-        versions = sorted((d for d in root.iterdir() if d.is_dir()), reverse=True)
+        versions = sorted((d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")),
+                          key=lambda d: tuple(int(n) for n in re.findall(r"\d+", d.name)), reverse=True)
     except OSError:
         return []
+    found = []
     for directory in versions:
+        if source and rosemary_install.runner_kind(directory.name) != source:
+            continue
         for relative in ("squashfs-root/bin/rosemary", "bin/rosemary"):
             program = directory / relative
             if program.is_file() and os.access(program, os.X_OK):
                 found.append((f"Rosemary {directory.name}", program))
                 break
     return found
+
+
+def describe(program):
+    """A short name for a Rosemary program: which build and version, for the settings page."""
+    from . import rosemary_install
+    parts = Path(program).parts
+    if "rosemary-runner" in parts:
+        folder = parts[parts.index("rosemary-runner") + 1]
+        return f"{rosemary_install.SOURCE_NAMES[rosemary_install.runner_kind(folder)]} {folder}"
+    return str(program)
 
 
 def find_rosemary(settings):
@@ -126,7 +142,10 @@ def find_rosemary(settings):
         if not path.is_file() or not os.access(path, os.X_OK):
             raise RosemaryError(f"QUADRA_ROSEMARY points to {path}, which is not an executable file.")
         return path
-    available = quadra_runners() or runners()
+    from . import rosemary_install
+    # The build chosen in settings first; any other installed one still runs the game.
+    chosen_kind = rosemary_install.normalize_source(settings.get("rosemary_source"))
+    available = quadra_runners(chosen_kind) or quadra_runners() or runners()
     if available:
         return available[0][1]
     found = shutil.which("rosemary")
@@ -319,7 +338,8 @@ def ensure_ready(settings, progress, cancel=None, ignore_pin=False):
             raise
         from . import rosemary_install
         try:
-            rosemary_install.install_latest(lambda fraction, text: progress(fraction * 0.4, text))
+            rosemary_install.install_latest(lambda fraction, text: progress(fraction * 0.4, text),
+                                            source=rosemary_install.normalize_source(settings.get("rosemary_source")))
         except rosemary_install.InstallError as error:
             raise RosemaryError(str(error)) from error
         progress(0.4, "")
