@@ -29,7 +29,7 @@ if artifacts:
 scratch = Path(tempfile.mkdtemp(prefix='quadra-dns-test-', dir=artifacts or '/tmp'))
 scratch.chmod(0o700)
 sysroot = Path(os.environ.get('DARLING_SYSROOT', '/usr/libexec/darling'))
-source = (project / 'libQuadraShims.m').read_text()
+source = (project / 'darling' / 'shim' / 'libQuadraShims.m').read_text()
 start = source.index('// Trace the exact resolver requests made by Roblox.')
 last = 'DYLD_INTERPOSE(quadra_getaddrinfo, getaddrinfo)'
 end = source.index(last, start) + len(last)
@@ -64,7 +64,7 @@ interposer_source.write_text(adaptation + '\n'.join(macros) + '\n' + source[star
 compiler = ['clang', '-target', 'x86_64-apple-darwin', '-fuse-ld=lld',
             '-isysroot', str(sysroot), '-mmacosx-version-min=11.0',
             '-O2', '-Wall', '-Wextra', '-Wno-unused-function',
-            '-Werror=incompatible-function-pointer-types', '-I', str(project)]
+            '-Werror=incompatible-function-pointer-types', '-I', str(project / 'darling' / 'shim')]
 library = scratch / 'dns_fixture.dylib'
 binary = scratch / 'dns_fixture'
 subprocess.run(compiler + ['-dynamiclib', '-Wl,-undefined,dynamic_lookup',

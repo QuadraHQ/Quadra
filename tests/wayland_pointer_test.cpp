@@ -11,7 +11,7 @@ static void warp_pointer(SDL_Window *,int x,int y){warp_count++;warp_x=x;warp_y=
 #define SDL_SetRelativeMouseMode set_relative
 #define SDL_GetWindowSize window_size
 #define SDL_WarpMouseInWindow warp_pointer
-#include "../wayland_host.cpp"
+#include "../darling/shim/wayland_host.cpp"
 
 static void command(unsigned id,int operation,double x=0,double y=0) {
     action(id,operation,x,y,nullptr);

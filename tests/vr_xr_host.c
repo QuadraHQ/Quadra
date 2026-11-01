@@ -2,7 +2,7 @@
  * pattern, outside Darling and Roblox. Needs a running runtime (WiVRn,
  * Monado, ...) and a connected headset; not part of tests/run.sh.
  *
- *   clang -O2 -Wall -Wextra tests/vr_xr_host.c vr_xr.c -lEGL -lm -ldl -o vr-xr-host
+ *   clang -O2 -Wall -Wextra tests/vr_xr_host.c vr/vr_xr.c -lEGL -lm -ldl -o vr-xr-host
  *   ./vr-xr-host [seconds]
  */
 #include <EGL/egl.h>
@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "../vr_xr.h"
+#include "../vr/vr_xr.h"
 
 static void *host_open(const char *library) { return dlopen(library, RTLD_NOW); }
 static void *host_symbol(void *library, const char *name) { return dlsym(library, name); }

@@ -1,4 +1,4 @@
-/* clang -O2 tests/shader_compat_test.c shader_compat.c -o /tmp/shader-test */
+/* clang -O2 tests/shader_compat_test.c darling/shim/shader_compat.c -o /tmp/shader-test */
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

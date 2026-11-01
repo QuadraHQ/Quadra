@@ -11,7 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from quadra import backends, core, mods, rosemary_client as client, rosemary_runtime as runtime
+from quadra import backends, core, mods
+from quadra.rosemary import client, runtime
 
 from test_rosemary import FAKE, make_zip
 
@@ -233,7 +234,7 @@ class EnsureReadyTests(unittest.TestCase):
             calls.append("rosemary"); progress(1.0, "rosemary done")
         def fake_latest(settings, progress, cancel=None, ignore_pin=False):
             calls.append("client"); progress(0.0, "client start"); progress(1.0, "client done"); return Path("/app")
-        from quadra import rosemary_install
+        from quadra.rosemary import install as rosemary_install
         with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("missing")), \
                 mock.patch.object(rosemary_install, "install_latest", fake_install), \
                 mock.patch.object(runtime, "ensure_latest", fake_latest):
@@ -243,7 +244,7 @@ class EnsureReadyTests(unittest.TestCase):
         self.assertAlmostEqual(seen[-1][0], 1.0)
 
     def test_a_program_chosen_by_hand_is_never_replaced(self):
-        from quadra import rosemary_install
+        from quadra.rosemary import install as rosemary_install
         with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("bad path")), \
                 mock.patch.object(rosemary_install, "install_latest") as install:
             with self.assertRaises(runtime.RosemaryError):
@@ -251,14 +252,14 @@ class EnsureReadyTests(unittest.TestCase):
             install.assert_not_called()
 
     def test_install_failure_is_a_clear_error(self):
-        from quadra import rosemary_install
+        from quadra.rosemary import install as rosemary_install
         with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("missing")), \
                 mock.patch.object(rosemary_install, "install_latest", side_effect=rosemary_install.InstallError("offline")):
             with self.assertRaisesRegex(runtime.RosemaryError, "offline"):
                 runtime.ensure_ready({}, lambda f, t: None)
 
     def test_skips_the_install_when_it_is_already_there(self):
-        from quadra import rosemary_install
+        from quadra.rosemary import install as rosemary_install
         with mock.patch.object(runtime, "find_rosemary", return_value=Path("/r")), \
                 mock.patch.object(rosemary_install, "install_latest") as install, \
                 mock.patch.object(runtime, "ensure_latest", return_value=Path("/app")):

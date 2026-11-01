@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from quadra import core, darling_patches
+from quadra import core
+from quadra.darling import patches as darling_patches
 from darling_patches_test import image_fixture, release_for
 
 

@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../mouse_motion.h"
+#include "../darling/shim/mouse_motion.h"
 int main(void) {
     unsigned button;
     const unsigned left=1u<<1, right=1u<<3, middle=1u<<2;

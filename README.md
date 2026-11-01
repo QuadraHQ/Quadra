@@ -7,7 +7,7 @@
 </h1>
 
  <p align="center">
-    <a href="https://discord.gg/jCjHYYNq48">
+    <a href="https://discord.gg/W8jXfngc8z">
       <img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord" width="140">
    </a>
  </p>
@@ -22,7 +22,7 @@
 A.I. Disclaimer, do not use Quadra if against the usage of A.I.
 </h1>
 
-###   Quadra uses **Generative A.I.** for the maintaining and addition of features for Quadra. Please do NOT complain in the QuadraHQ [Discord server](https://discord.gg/jCjHYYNq48) if you are aginst the usage of Generative A.I.
+###   Quadra uses **Generative A.I.** for the maintaining and addition of features for Quadra. Please do NOT complain in the QuadraHQ [Discord server](https://discord.gg/W8jXfngc8z) if you are aginst the usage of Generative A.I.
 
 <h1 align="center">
   Description
@@ -265,7 +265,7 @@ Grapejuice and Quadra are inherently similar because Grapejuice used Wine to run
 You sign in inside the Roblox client itself, the launcher and we at QuadraHQ **NEVER** see your password since the
 session is stored locally, only on your computer, and not on a server. The cookie is located in
 `~/.darling/Users/$USER/Library/QuadraHQ`. Do not share that folder, it works
-like a fancy keycard to your account. We at QuadraHQ will never ask for this folder, and anyone asking for this is a phishing attempt and should be reported, not only to the service you're on, but also ping (Don't DM) anyone with the "Cool and awesome" role in the [Discord](https://discord.gg/jCjHYYNq48) and above, so we can "take care (ban)" them from the server, or make a PSA in the [Discord](https://discord.gg/jCjHYYNq48) to make sure they don't get another persons account.
+like a fancy keycard to your account. We at QuadraHQ will never ask for this folder, and anyone asking for this is a phishing attempt and should be reported, not only to the service you're on, but also ping (Don't DM) anyone with the "Cool and awesome" role in the [Discord](https://discord.gg/W8jXfngc8z) and above, so we can "take care (ban)" them from the server, or make a PSA in the [Discord](https://discord.gg/W8jXfngc8z) to make sure they don't get another persons account.
 **Sign out** in the settings to delete it.
 
 Quadra is ***NOT*** affiliated nor endorsed by the Roblox Corporation, nor any siblings of Roblox. We are not liable for any suspensions of your account by using Quadra.
@@ -275,7 +275,7 @@ Quadra is ***NOT*** affiliated nor endorsed by the Roblox Corporation, nor any s
 <summary>Hey.. Something doesn't work! </summary>
 
 In the rare, and *scary* event Roblox does not start, the launcher shows the error with a **Copy**
-button. Send it to the [Discord](https://discord.gg/jCjHYYNq48). The last
+button. Send it to the [Discord](https://discord.gg/W8jXfngc8z). The last
 error is also saved in `~/.cache/quadrahq/last-error.txt`.
 You can also send things like bug reports (i.e. Camera issues, and rendering bugs [like artifacting].)
 </details>
@@ -332,7 +332,7 @@ login, home and Write a Letter have been verified on an RTX 3060 Ti.
 Native packages include the prebuilt bridge and its Vulkan/LLVM runtime dependencies; the first launch upgrades the shader cache. Building from source
 requires Rust 1.98+, clang/lld, libLLVM 15+ and a hardware Vulkan driver. Flatpak
 does not include the bridge yet. VR requires OpenGL or Zink; X11 and other GPUs still
-need testing. See the [Metal prototype notes](prototype/metal-vulkan/README.md)
+need testing. See the [Metal prototype notes](darling/metal-vulkan/README.md)
 for build commands and validation details.
 
 **Shader preloading** in the same Game settings learns successful Metal pipelines locally

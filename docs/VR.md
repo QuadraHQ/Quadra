@@ -6,9 +6,9 @@ render path, the VR home menu and the client's VR emulator
 (`DebugDeviceVR`). Only the device that talks to a headset is missing: the
 Windows and Quest builds attach an OpenXR device, the Mac build none.
 
-Quadra attaches one. The shim (`vr_device.c`) creates the client's own
+Quadra attaches one. The shim (`vr/vr_device.c`) creates the client's own
 `DebugDeviceVR`, swaps in a copy of its vtable whose methods talk to the
-host's OpenXR runtime (`vr_xr.c`), and puts it where `DeviceGL` keeps its VR
+host's OpenXR runtime (`vr/vr_xr.c`), and puts it where `DeviceGL` keeps its VR
 device. Everything else is Roblox's code.
 
 ## Where the device goes
@@ -122,7 +122,7 @@ Development modes: `QUADRA_VR=1` attaches the emulator with its own head
 (eyes mirrored into the window), `debug` also turns on the client's emulator
 mirror, and `-lag0` submits the views a frame opened with.
 
-`tests/vr_xr_host.c` drives `vr_xr.c` natively against the runtime with a test
+`tests/vr_xr_host.c` drives `vr/vr_xr.c` natively against the runtime with a test
 pattern and prints head, hands and inputs (triggers vibrate, A recenters);
-`tests/vr_openxr_abi_test.c` checks the vendored `vr_openxr.h` against the
+`tests/vr_openxr_abi_test.c` checks the vendored `vr/vr_openxr.h` against the
 Khronos headers.

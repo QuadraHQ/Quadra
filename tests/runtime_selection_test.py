@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from quadra import core, runtime
+from quadra import core
+from quadra.darling import runtime
 
 
 class RuntimeSelectionTests(unittest.TestCase):
@@ -281,7 +282,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         pin = runtime.pinned_ciderdarling()
         self.assertRegex(pin["revision"], r"^[0-9a-f]{40}$")
         self.assertRegex(pin["manifest"], r"^[0-9a-f]{64}$")
-        source = (Path(runtime.__file__).resolve().parents[2] / "install.sh").read_text()
+        source = (Path(runtime.__file__).resolve().parents[3] / "install.sh").read_text()
         self.assertIn(f"CIDER_DARLING_REVISION={pin['revision']}\n", source)
         installer = self.base / "install.sh"
         for text in ("", "CIDER_DARLING_REVISION=$(cat pin)\nCIDER_DARLING_MANIFEST=" + "0" * 64,

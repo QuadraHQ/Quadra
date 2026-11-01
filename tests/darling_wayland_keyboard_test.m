@@ -1,6 +1,6 @@
 /* Real Darling AppKit regression; use the test-only SDL helper, a disposable
  * prefix and a private compositor. No Roblox, account or desktop input. */
-#include "../wayland_bridge.h"
+#include "../darling/shim/wayland_bridge.h"
 extern int printf(const char *,...),puts(const char *),fflush(void *);
 extern unsigned alarm(unsigned);
 extern void *dlsym(void *,const char *);

@@ -16,7 +16,9 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from . import __version__, activity, author, core, discord, dns, tray, backends, fflag_allowlist, game_meta, gpus, rosemary_client, rosemary_install, rosemary_runtime, rosemary_xr, history, i18n, logevents, modguard, mods, region, runtime, runtime_install, runtime_updates, studio, terminal, theme, uri as uri_handoff  # noqa: E402
+from . import __version__, activity, author, core, discord, dns, tray, backends, fflag_allowlist, game_meta, gpus, history, i18n, logevents, modguard, mods, region, studio, terminal, theme, uri as uri_handoff  # noqa: E402
+from .rosemary import client as rosemary_client, install as rosemary_install, runtime as rosemary_runtime, xr as rosemary_xr  # noqa: E402
+from .darling import runtime, runtime_install, runtime_updates  # noqa: E402
 from .i18n import _  # noqa: E402
 from .setup import SetupWizard  # noqa: E402
 
@@ -149,6 +151,36 @@ def _error_dialog(window, heading, details):
     def response(_dialog, result):
         if result == "copy":
             window.get_clipboard().set(f"Quadra {__version__}\n{heading}\n\n{details}")
+
+    dialog.connect("response", response)
+    dialog.present(window)
+
+
+def _vr_warning_dialog(window, accepted):
+    """The warning before VR is turned on. VR attaches its device by changing the running client's memory,
+    which is what a Roblox cheat does too, so Roblox's anti-cheat could flag it. `accepted` runs when the
+    user goes ahead; only then is "Don't show this again" kept, so cancelling never counts as agreeing."""
+    dialog = Adw.AlertDialog(
+        heading=_("Turn on VR?"),
+        body=_("VR mode patches the Roblox client's memory while the game runs, the same way a Roblox cheat "
+               "does. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not "
+               "known how low.\n\nTurn it on only if you accept that risk."))
+    hide = Adw.SwitchRow(title=_("Don't show this again"))
+    group = Adw.PreferencesGroup()
+    group.add(hide)
+    dialog.set_extra_child(group)
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("enable", _("Turn on VR"))
+    dialog.set_response_appearance("enable", Adw.ResponseAppearance.DESTRUCTIVE)
+    dialog.set_default_response("cancel")
+    dialog.set_close_response("cancel")
+
+    def response(_dialog, choice):
+        if choice != "enable":
+            return
+        if hide.get_active():
+            window.set_setting("vr_warning_hidden", True)
+        accepted()
 
     dialog.connect("response", response)
     dialog.present(window)
@@ -1865,10 +1897,10 @@ class RosemaryPage(Adw.PreferencesPage):
 
         runtime_group = Adw.PreferencesGroup(
             title=_("Runtime"),
-            description=_("Which layer runs the macOS Roblox client. Darling is Quadra's default and has the "
-                          "most features (Quadra M2VK, web sign-in). Rosemary (microlift/rosemary) is newer and "
-                          "runs an unpatched client. Quadra installs Rosemary and Roblox for it when you "
-                          "press Play; nothing else is needed."))
+            description=_("Which layer runs the macOS Roblox client. Rosemary (microlift/rosemary) is Quadra's "
+                          "default: it runs an unpatched client, and Quadra installs Rosemary and Roblox for it "
+                          "when you press Play. Darling is outdated, but still has the most features (Quadra "
+                          "M2VK, web sign-in)."))
         self.backend_row = ComboRow(title=_("Run Roblox with"),
                                     model=Gtk.StringList.new(["Darling", "Rosemary"]))
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
@@ -2385,8 +2417,25 @@ class SettingsPage(Adw.Bin):
             vr_scale.set_sensitive(row.get_active())
             vr_mirror.set_sensitive(row.get_active())
 
-        vr_switch.connect("notify::active", lambda row, _pspec: window.set_setting("vr", row.get_active()))
-        vr_switch.connect("notify::active", vr_toggled)
+        confirmed = [False]
+
+        def vr_changed(row, _pspec=None):
+            # Turning VR on asks first (unless "Don't show this again" was kept): the switch goes back to off
+            # and only the dialog's go-ahead turns it on, so VR is never saved as on without the warning.
+            if row.get_active() and not confirmed[0] and not window.settings.get("vr_warning_hidden", False):
+                row.set_active(False)
+
+                def accepted():
+                    confirmed[0] = True
+                    row.set_active(True)
+                    confirmed[0] = False
+
+                _vr_warning_dialog(window, accepted)
+                return
+            window.set_setting("vr", row.get_active())
+            vr_toggled(row)
+
+        vr_switch.connect("notify::active", vr_changed)
         vr_toggled(vr_switch)
         for row in (vr_switch, vr_scale, vr_mirror):
             vr_group.add(row)
@@ -4238,7 +4287,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             self._apply_runtime_entry(entry)
 
     def rosemary_selected(self):
-        return self.settings.get("runtime_backend", "darling") == "rosemary"
+        return self.settings.get("runtime_backend", core.DEFAULT_SETTINGS["runtime_backend"]) == "rosemary"
 
     def client_installed(self):
         """Whether there is a Roblox client to start with the chosen runtime."""
@@ -5016,7 +5065,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         """The browser window for Roblox's embedded pages (sign-in with a
         password, purchases), or None when WebKitGTK is not installed."""
         try:
-            from . import web
+            from .darling import web
             return web.WebBridge(self)
         except Exception as error:  # a missing WebKit, a socket that cannot be made
             print("Embedded web pages are not available:", error)

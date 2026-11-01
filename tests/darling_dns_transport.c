@@ -2,7 +2,7 @@
  * Test-only local transport behind the exact production DNS interposer.
  * Synthetic documentation addresses only: no socket or DNS server is used.
  */
-#include "../dns_concurrency.h"
+#include "../darling/shim/dns_concurrency.h"
 extern void *dlsym(void *, const char *);
 extern int strcmp(const char *, const char *);
 static unsigned int active_queries, maximum_queries, query_count, destroy_count;

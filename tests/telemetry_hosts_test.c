@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../telemetry_hosts.h"
+#include "../darling/shim/telemetry_hosts.h"
 int main(void) {
     const char *blocked[] = {"gold.roblox.com", "silver.roblox.com", "PULSAR.ROBLOX.COM.",
                             "us.silver.roblox.com", "a.pulsar.roblox.com", "lms-us.roblox.com"};

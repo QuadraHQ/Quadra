@@ -7,16 +7,16 @@ rustPlatform.buildRustPackage {
   pname = "quadrahq-metal-host";
   version = "0.1.0";
   src = lib.fileset.toSource {
-    root = ../../prototype/metal-vulkan/host;
+    root = ../../darling/metal-vulkan/host;
     fileset = lib.fileset.unions [
-      ../../prototype/metal-vulkan/host/Cargo.toml
-      ../../prototype/metal-vulkan/host/Cargo.lock
-      ../../prototype/metal-vulkan/host/src
-      ../../prototype/metal-vulkan/host/examples
+      ../../darling/metal-vulkan/host/Cargo.toml
+      ../../darling/metal-vulkan/host/Cargo.lock
+      ../../darling/metal-vulkan/host/src
+      ../../darling/metal-vulkan/host/examples
     ];
   };
   cargoLock = {
-    lockFile = ../../prototype/metal-vulkan/host/Cargo.lock;
+    lockFile = ../../darling/metal-vulkan/host/Cargo.lock;
     outputHashes."metal2vulkan-0.2.0" = "sha256-QlXc6HmuFFLqKUxdHNybe5s4BxHLur2Rh/37s/br/0A=";
   };
   # importCargoLock puts each git workspace crate in a versioned directory.

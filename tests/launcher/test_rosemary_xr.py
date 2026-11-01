@@ -12,7 +12,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from quadra import core, rosemary_client as client, rosemary_runtime as runtime, rosemary_xr as xr, vr
+from quadra import core, vr
+from quadra.rosemary import client, runtime, xr
 
 from test_rosemary import make_zip
 
@@ -74,10 +75,11 @@ class BuildTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
-        (root / "project" / "rosemary_vr").mkdir(parents=True)
+        (root / "project" / "rosemary" / "vr").mkdir(parents=True)
+        (root / "project" / "vr").mkdir()
         for name in xr.SOURCES:
             (root / "project" / name).write_text("// source")
-        (root / "project" / "rosemary_vr" / "build_rosemary_vr.sh").write_text("#!/bin/sh\n")
+        (root / "project" / "rosemary" / "vr" / "build_rosemary_vr.sh").write_text("#!/bin/sh\n")
         self.core = SimpleNamespace(PROJECT=root / "project", CACHE_DIR=root / "cache")
         self.addCleanup(self.tmp.cleanup)
 
@@ -97,7 +99,7 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         # a source edited after the build makes it stale
         future = time.time() + 100
-        os.utime(self.core.PROJECT / "vr_xr.c", (future, future))
+        os.utime(self.core.PROJECT / "vr" / "vr_xr.c", (future, future))
         xr.ensure_dylib(self.core, self.runner_that_builds(calls))
         self.assertEqual(len(calls), 2)
 
@@ -108,7 +110,7 @@ class BuildTests(unittest.TestCase):
             xr.ensure_dylib(self.core, failing)
 
     def test_missing_script_is_a_clear_error(self):
-        (self.core.PROJECT / "rosemary_vr" / "build_rosemary_vr.sh").unlink()
+        (self.core.PROJECT / "rosemary" / "vr" / "build_rosemary_vr.sh").unlink()
         with self.assertRaisesRegex(xr.VrUnavailable, "build script"):
             xr.ensure_dylib(self.core, lambda *a, **k: None)
 

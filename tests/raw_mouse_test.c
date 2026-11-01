@@ -10,7 +10,7 @@
 #endif
 #define dlsym mock_dlsym
 #define write mock_write
-#include "../raw_mouse.c"
+#include "../darling/shim/raw_mouse.c"
 #undef dlsym
 #undef write
 

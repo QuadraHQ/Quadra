@@ -35,7 +35,7 @@ unsigned long CFGetTypeID(const void *v) { return v == &matching_dictionary ? 7 
 unsigned long CFDictionaryGetTypeID(void) { return 7; }
 unsigned char CFEqual(const void *a, const void *b) { return !strcmp(a, b); }
 void CFRelease(const void *v) { if (v == &matching_dictionary) released_matching++; }
-#include "../hid_compat.c"
+#include "../darling/shim/hid_compat.c"
 
 int main(void) {
     unsigned iterator = 123;

@@ -14,7 +14,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'launcher'))
-from quadra import runtime_updates
+from quadra.darling import runtime_updates
 
 
 def download(url, target, digest):

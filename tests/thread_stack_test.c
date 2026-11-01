@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-#include "../thread_stack.h"
+#include "../darling/shim/thread_stack.h"
 
 static int fail_setter;
 int pthread_attr_getstackaddr(const darwin_pthread_attr_t *attr, void **address) {

@@ -8,7 +8,7 @@
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/extensions/Xfixes.h>
-#include "../cursor_selection.h"
+#include "../darling/shim/cursor_selection.h"
 
 static int opaque_pixels(Display *display) {
     XFixesCursorImage *image = XFixesGetCursorImage(display);

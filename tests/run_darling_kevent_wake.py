@@ -14,7 +14,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'launcher'))
-from quadra import runtime
+from quadra.darling import runtime
 
 
 def run(client, binary, shim, cap):

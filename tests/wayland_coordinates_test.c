@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
-#include "../wayland_coordinates.h"
+#include "../darling/shim/wayland_coordinates.h"
 int main(void) {
     const QuadraWaylandRect windows[] = {
         {{0,0},{954,1032}}, {{200,300},{640,480}},

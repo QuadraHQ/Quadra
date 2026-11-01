@@ -4,7 +4,7 @@ project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 runtime_fields=$(python3 - "$project_dir/launcher" <<'PY'
 import sys
 sys.path.insert(0, sys.argv[1])
-from quadra.runtime import resolve_runtime, guest_variables
+from quadra.darling.runtime import resolve_runtime, guest_variables
 runtime = resolve_runtime()
 print('\n'.join(runtime[key] for key in ('executable', 'sysroot', 'prefix')))
 print('1' if guest_variables(runtime['metadata']) else '')

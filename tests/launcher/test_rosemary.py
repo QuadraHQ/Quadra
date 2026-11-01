@@ -12,9 +12,9 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from quadra import rosemary_client as client
-from quadra import rosemary_install as installer
-from quadra import rosemary_runtime as runtime
+from quadra.rosemary import client
+from quadra.rosemary import install as installer
+from quadra.rosemary import runtime
 
 PLIST = b"""<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>RobloxPlayer</string>

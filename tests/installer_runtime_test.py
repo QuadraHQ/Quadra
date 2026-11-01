@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from quadra import runtime
+from quadra.darling import runtime
 from runtime_update_fixture import release_fixture
 
 

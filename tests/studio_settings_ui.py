@@ -54,7 +54,7 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
 
     # The section sits next to Settings, with tabs of its own.
     names = [window.stack.get_pages().get_item(i).get_name() for i in range(window.stack.get_pages().get_n_items())]
-    assert names == ["play", "settings", "studio", "mods", "info"], names
+    assert names == ["play", "settings", "studio", "servers", "mods", "info"], names
     page = window.studio_page
     assert tabs(page) == ["general", "graphics", "updates", "flags"], tabs(page)
     assert window.stack.get_page(page).get_title() == "Studio"
@@ -207,7 +207,7 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
     with patch.object(app.os.path, "exists", side_effect=lambda path: path == "/.flatpak-info" or real(path)):
         flatpak = make_window()
         names = [flatpak.stack.get_pages().get_item(i).get_name() for i in range(flatpak.stack.get_pages().get_n_items())]
-        assert names == ["play", "settings", "mods", "info"], names
+        assert names == ["play", "settings", "servers", "mods", "info"], names
         assert not hasattr(flatpak, "studio_page")
         assert flatpak._studio_views() == [flatpak.play_page]
         flatpak.destroy()

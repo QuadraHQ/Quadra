@@ -1,7 +1,7 @@
 /* Authored C ABI regressions: checked host transfers, exact dispatch, sticky failures,
  * and X11 WSI lifetime/cancellation. Run with a timeout and a private Xvfb display. */
 #define _GNU_SOURCE
-#include "../prototype/metal-vulkan/quadra_metal.h"
+#include "../darling/metal-vulkan/quadra_metal.h"
 #include <X11/Xlib.h>
 #include <dlfcn.h>
 #include <pthread.h>

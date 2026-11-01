@@ -18,7 +18,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "launcher"))
-from quadra import display, graphics, runtime
+from quadra import display, graphics
+from quadra.darling import runtime
 
 
 def parent_resize_evidence(text):

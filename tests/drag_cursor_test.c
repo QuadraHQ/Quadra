@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../drag_cursor.h"
+#include "../darling/shim/drag_cursor.h"
 int main(void) {
     QuadraDragCursor state={0};
     quadra_drag_cursor_buttons(&state,QUADRA_RIGHT_BUTTON);

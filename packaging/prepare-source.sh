@@ -34,7 +34,7 @@ from pathlib import Path
 root, output, version = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
 paths = {Path(name.decode()) for name in subprocess.check_output(
     ['git', '-C', str(root), 'ls-files', '-z']).split(b'\0') if name}
-directories = ('launcher', 'branding', 'packaging', 'frameworks', 'flatpak', 'docs', 'experimental', 'prototype', 'LICENSES',
+directories = ('launcher', 'branding', 'packaging', 'darling', 'rosemary', 'vr', 'flatpak', 'docs', 'LICENSES',
                'studio_layer')
 new_files = subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z',
                                     '--others', '--exclude-standard', '--', *directories])
@@ -44,7 +44,7 @@ public_names = {'.SRCINFO', 'PKGBUILD', 'quadrahq-launcher', 'ciderhq-launcher',
 paths.update(path for name in new_files.split(b'\0') if name
              for path in [Path(name.decode())]
              if path.suffix in public_extensions or path.name in public_names)
-for pattern in ('*.c', '*.m', '*.h', '*.cpp', '*.S', '*.sh'):
+for pattern in ('*.sh',):
     paths.update(path.relative_to(root) for path in root.glob(pattern))
 paths = {path for path in paths if path.parts[0] in directories or len(path.parts) == 1}
 paths = {path for path in paths if path.suffix not in ('.pyc', '.log')

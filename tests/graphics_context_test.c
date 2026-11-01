@@ -1,10 +1,10 @@
-/* clang -O2 -Wall -Wextra -pthread tests/graphics_context_test.c graphics_context.c -o /tmp/graphics-context-test */
+/* clang -O2 -Wall -Wextra -pthread tests/graphics_context_test.c darling/shim/graphics_context.c -o /tmp/graphics-context-test */
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../graphics_context.h"
+#include "../darling/shim/graphics_context.h"
 
 static __thread void *cgl_current;
 static __thread void *egl_current;

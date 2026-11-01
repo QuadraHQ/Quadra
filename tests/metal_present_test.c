@@ -1,7 +1,7 @@
 /* GPL-3.0-only. Authored native Wayland presentation/occlusion/resize qualification.
  * No client, game assets, shaders, account data or settings are used. */
 #define _GNU_SOURCE
-#include "../prototype/metal-vulkan/quadra_metal.h"
+#include "../darling/metal-vulkan/quadra_metal.h"
 #include "xdg-shell-client-protocol.h"
 #include <wayland-client.h>
 #include <dlfcn.h>

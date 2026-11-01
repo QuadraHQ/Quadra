@@ -4,9 +4,9 @@
 set -euo pipefail
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 build_dir=${QUADRA_BUILD_DIR:-$project_dir/build}
-bash "$project_dir/prototype/metal-vulkan/build.sh" framework
+bash "$project_dir/darling/metal-vulkan/build.sh" framework
 if [[ -n ${QUADRA_METAL_HOST_LIBRARY:-} ]]; then
   install -m755 -- "$QUADRA_METAL_HOST_LIBRARY" "$build_dir/metal/libquadra_metal_host.so"
 else
-  bash "$project_dir/prototype/metal-vulkan/build.sh" host
+  bash "$project_dir/darling/metal-vulkan/build.sh" host
 fi

@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../ulock_compat.h"
+#include "../darling/shim/ulock_compat.h"
 static int error_value, error_reads, result_value, original_error, calls;
 static unsigned int seen_operation, seen_timeout;
 static void *seen_address;

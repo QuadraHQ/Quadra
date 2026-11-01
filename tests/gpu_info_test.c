@@ -8,7 +8,7 @@
 #include <string.h>
 #define DYLD_INTERPOSE(replacement, replacee) \
     static const void *test_reference_##replacee __attribute__((used)) = (const void *)(unsigned long)&replacement;
-#include "../gpu_info.c"
+#include "../darling/shim/gpu_info.c"
 
 static int service_calls, property_calls, dictionary_calls, parent_calls, release_calls, releases;
 static int dictionary_failure, number_failure, key_failure;

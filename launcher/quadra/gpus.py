@@ -100,6 +100,49 @@ def enumerate_gpus():
     return [adapters[address] for address in sorted(adapters)]
 
 
+_AMDGPU_MEMORY = (
+    ("vram_total_bytes", "mem_info_vram_total"), ("vram_used_bytes", "mem_info_vram_used"),
+    ("visible_vram_total_bytes", "mem_info_vis_vram_total"),
+    ("visible_vram_used_bytes", "mem_info_vis_vram_used"),
+    ("gtt_total_bytes", "mem_info_gtt_total"), ("gtt_used_bytes", "mem_info_gtt_used"),
+)
+_AMDGPU_PARAMETERS = (
+    ("amdgpu_gttsize_mib", "amdgpu/parameters/gttsize"),
+    ("ttm_pages_limit", "ttm/parameters/pages_limit"),
+)
+
+
+def _integer(path):
+    text = _read(path, 64)
+    return int(text) if re.fullmatch(r"-?\d{1,20}", text) else None
+
+
+def memory_info(device, module_root="/sys/module"):
+    """What the amdgpu driver reports for one adapter's memory, at the moment of the call.
+
+    On an integrated GPU the graphics-translation layer's real ceiling is GTT (system RAM the GPU may
+    map), not the small BIOS-reserved VRAM, so the counters and the module settings that size it are
+    recorded together. `amdgpu_gttsize_mib` is -1 when the driver chooses the size. Empty for other
+    drivers or when sysfs is unreadable.
+    """
+    if not device:
+        return {}
+    device = Path(device)
+    info = {key: value for key, name in _AMDGPU_MEMORY
+            if (value := _integer(device / name)) is not None}
+    if not info:
+        return {}
+    info.update({key: value for key, name in _AMDGPU_PARAMETERS
+                 if (value := _integer(Path(module_root) / name)) is not None})
+    return info
+
+
+def with_memory(adapters):
+    """The adapters, each with its `memory` counters where the driver exposes them."""
+    return [dict(adapter, memory=memory) if (memory := memory_info(adapter.get("device"))) else adapter
+            for adapter in adapters]
+
+
 def selected_gpu(selection, adapters=None):
     if selection == "auto":
         return None

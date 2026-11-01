@@ -1,7 +1,59 @@
 # Changelog
 
-## Unreleased
+## 0.42 — 2026-11-01
 
+- The source tree is sorted by runtime. Darling's native code moved to `darling/` (`shim/` for the injected shim and its
+  helpers, `frameworks/` for the stub frameworks, `metal-vulkan/` for Quadra M2VK, which was `prototype/metal-vulkan/`),
+  Rosemary's VR build to `rosemary/vr/`, and the OpenXR device both runtimes compile to `vr/`. In the launcher, the
+  modules only Darling uses are in `quadra/darling/` and the ones only Rosemary uses in `quadra/rosemary/`. Nothing
+  changes for players. `install.sh`, `build_debug_shim.sh` and `run_debug.sh` stay at the top. The shim built from the new
+  layout is the same as the old build except for the linker's UUID; the Nix package, Flatpak, the release workflow and
+  the distro recipes were updated by reading and have not been built. The first launch after updating rebuilds the shim.
+  The first Metal-to-Vulkan experiment (`experimental/metal/`, offscreen only) and the AIR upgrade prototype script are
+  removed.
+- Rosemary is now the default runtime for a new install, and Darling is marked outdated. `install.sh` asks which to use
+  (`--backend rosemary` or `--backend darling`; `--darling ...` still means Darling). Choosing Rosemary installs only the
+  launcher and its tools: no Darling, no shim build, and the launcher downloads Rosemary and Roblox on the first Play.
+  Updates keep the saved choice, and an install whose settings were saved before the choice existed stays on Darling,
+  as do the Flatpak and Nix packages, which carry Darling. `--uninstall --purge` now also removes Rosemary's files
+  (`~/.local/share/quadrahq`). Checked with stubbed installs and the launcher's tests; a real install with Rosemary
+  has not been run from the installer.
+- Turning on VR now asks first. VR works by changing the running client's memory, which is also what a Roblox cheat
+  does, so Roblox's anti-cheat could flag it; the chance is thought to be low but is not known. The warning has a
+  "Don't show this again" switch, kept only when you go ahead. Installs with VR already on are not asked.
+- `QUADRA_REFRESH_RATE=<hz>` makes the client see that refresh rate (`-[NSScreen maximumFramesPerSecond]` and the
+  refresh intervals, which Darling's NSScreen does not define), for testing high-refresh and variable-refresh displays.
+  Unset, nothing changes. Checked in Darling that the screen reports it; not checked what the client does with it.
+- `MACOBLOX_METAL_PRESENT_MODE=fifo_relaxed` selects relaxed FIFO where the surface offers it, plain FIFO otherwise.
+- `tools/check_imports.py` lists the symbols a Roblox client imports that Darling, the shim and the injected frameworks
+  do not export. On 0.744 it finds 38, among them `CVPixelBufferGetDataSize`, `CVPixelBufferRetain` and
+  `SMAppService`; static, so it does not say which are ever called.
+- Controllers now work. Darling's GameController framework is stubs and its IOHID has no Linux devices, so
+  `[GCController controllers]` could never return a pad. The shim now reads the kernel's evdev gamepads itself (raw
+  Linux system calls, since Darling does not translate evdev ioctls) and implements `GCController` with the extended
+  gamepad profile: sticks, triggers, d-pad, face and shoulder buttons, menu/options/home, stick clicks, connect and
+  disconnect notifications for hotplug, value and pause handlers, and `physicalInputProfile`. Xbox, DualSense and Switch
+  Pro layouts follow the Linux gamepad convention. Steam Input's virtual "X-Box 360 pad" (a Steam Deck in desktop mode,
+  with Quadra added to Steam as a non-Steam game) is recognised and uses the Xbox X/Y layout. No rumble, motion, light or battery yet. `QUADRA_GAMEPAD=0` turns it
+  off. The `GCInput*` button keys the client looks controls up by (`GCInputButtonA` and the rest) are defined now;
+  Darling's framework has none, so the lookups returned nil. Tested against a virtual pad on `/dev/uinput` in real Darling and natively; not yet tried with real controllers
+  or in the Roblox client.
+- Metal on an integrated AMD GPU no longer fills the GPU's GTT (the system RAM it may map) until the driver fails a
+  submission and Vulkan loses the device (#38). The 0.35 and 0.36 budget caps only changed the figure the game is told;
+  a 0.37.p4 log on a Renoir laptop with a 135 MiB budget still grew live graphics memory from 0.5 to 3.2 GiB in twelve
+  seconds, nearly all of it outside device-local memory, and was lost. The host now reads the adapter's own GTT counters and refuses a host-visible buffer of 1 MiB or
+  more that would leave less than a sixteenth of the GTT (at least 128 MiB) free, after waiting up to 250 ms for work in
+  flight to give memory back. The game receives plain memory in its place and a draw that uses it sees no buffer. The
+  recommended working set also follows the GTT that is still free. Other GPUs are not checked, and
+  `MACOBLOX_METAL_GTT_GUARD=0` turns the check off. Not yet confirmed on the affected hardware.
+- Fix the segmentation fault after a lost Vulkan device. The game was handed `nil` buffers and wrote through their NULL
+  `contents`. The device cannot be recovered, so the host now logs the graphics memory at that moment, writes the
+  performance trace's last sample and closes the game with status 87.
+- The hardware report records, for AMD adapters, the driver's VRAM, visible VRAM and GTT totals and use, with the
+  `amdgpu.gttsize` and `ttm.pages_limit` settings, so a report shows which ceiling an integrated GPU had.
+- The Metal performance trace records the GTT in use, how many buffers and textures the game made, released and holds,
+  what the new check refused or delayed, and whether the device was lost. Memory that keeps growing can now be traced
+  to the game or to the runtime.
 
 ## 0.41.p2 — 2026-11-01
 

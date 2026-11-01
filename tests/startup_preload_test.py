@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from quadra import startup_preload
+from quadra.darling import startup_preload
 
 
 def library(payload=b"authored"):

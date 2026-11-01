@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "../cursor_selection.h"
-#include "../shim_lock.h"
+#include "../darling/shim/cursor_selection.h"
+#include "../darling/shim/shim_lock.h"
 
 static unsigned long child_ids[] = {11, 12};
 static unsigned long cleared[2];

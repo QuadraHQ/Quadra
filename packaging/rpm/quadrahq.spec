@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.41.p2
+%global upstream_version 0.42
 Name:           quadrahq
-Version:        0.41.p2
+Version:        0.42
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,13 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42-1
+- Rosemary is the default runtime for a new install and Darling is marked outdated; install.sh asks which to use.
+- Ask before turning VR on: it changes the running client's memory, as a Roblox cheat does.
+- Controllers work with Darling (Linux gamepads as GCController).
+- Quadra M2VK keeps clear of an integrated AMD GPU's GTT limit (not yet confirmed on an affected laptop) and closes cleanly after a lost Vulkan device.
+- The source tree is sorted by runtime: darling/, rosemary/ and vr/.
+
 * Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.41.p2-1
 - Fix VR being refused with Quadra's own Rosemary installed from its release.
 

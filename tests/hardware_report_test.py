@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from quadra import core, graphics, hardware_report
+from quadra import core, gpus, graphics, hardware_report
 
 
 class HardwareReportTests(unittest.TestCase):
@@ -112,6 +112,74 @@ class MetalReportTests(unittest.TestCase):
                 report = json.loads(hardware_report.collect(directory, graphics=True).read_bytes())
             self.assertEqual(report['coverage']['m2vk'], 'pass')
             self.assertEqual(report['m2vk']['identity']['name'], 'Test GPU')
+
+
+class GpuMemoryTests(unittest.TestCase):
+    """The amdgpu counters that show whether an integrated GPU hit its GTT ceiling."""
+
+    MIB = 1 << 20
+
+    def card(self, root, files):
+        device = Path(root) / 'card0/device'
+        device.mkdir(parents=True)
+        for name, text in files.items():
+            (device / name).write_text(text)
+        return device
+
+    def test_an_integrated_amd_gpu_reports_gtt_next_to_the_carve_out_and_the_module_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = self.card(directory, {
+                'mem_info_vram_total': '536870912\n', 'mem_info_vram_used': '201326592\n',
+                'mem_info_vis_vram_total': '536870912\n', 'mem_info_vis_vram_used': '100663296\n',
+                'mem_info_gtt_total': f'{3248 * self.MIB}\n', 'mem_info_gtt_used': f'{1200 * self.MIB}\n'})
+            modules = Path(directory) / 'module'
+            (modules / 'amdgpu/parameters').mkdir(parents=True)
+            (modules / 'amdgpu/parameters/gttsize').write_text('-1\n')
+            (modules / 'ttm/parameters').mkdir(parents=True)
+            (modules / 'ttm/parameters/pages_limit').write_text('1507328\n')
+            info = gpus.memory_info(device, modules)
+        self.assertEqual(info['gtt_total_bytes'], 3248 * self.MIB)
+        self.assertEqual(info['gtt_used_bytes'], 1200 * self.MIB)
+        self.assertEqual(info['vram_total_bytes'], 512 * self.MIB)
+        self.assertEqual(info['visible_vram_used_bytes'], 96 * self.MIB)
+        self.assertEqual(info['amdgpu_gttsize_mib'], -1)
+        self.assertEqual(info['ttm_pages_limit'], 1507328)
+
+    def test_a_user_set_gttsize_is_recorded_as_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = self.card(directory, {'mem_info_gtt_total': str(8192 * self.MIB)})
+            modules = Path(directory) / 'module'
+            (modules / 'amdgpu/parameters').mkdir(parents=True)
+            (modules / 'amdgpu/parameters/gttsize').write_text('8192\n')
+            info = gpus.memory_info(device, modules)
+        self.assertEqual(info, {'gtt_total_bytes': 8192 * self.MIB, 'amdgpu_gttsize_mib': 8192})
+
+    def test_other_drivers_unreadable_files_and_junk_report_nothing_rather_than_guesses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            nvidia = self.card(directory, {'vendor': '0x10de\n'})
+            self.assertEqual(gpus.memory_info(nvidia, Path(directory) / 'module'), {})
+            junk = Path(directory) / 'card1/device'
+            junk.mkdir(parents=True)
+            for name, text in (('mem_info_gtt_total', 'many'), ('mem_info_gtt_used', ''),
+                               ('mem_info_vram_total', '-'), ('mem_info_vram_used', '1' * 40)):
+                (junk / name).write_text(text)
+            self.assertEqual(gpus.memory_info(junk, Path(directory) / 'module'), {})
+        for missing in (None, '', '/nonexistent/card9/device'):
+            self.assertEqual(gpus.memory_info(missing), {})
+
+    def test_the_report_adds_memory_only_to_adapters_that_expose_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = self.card(directory, {'mem_info_gtt_total': '4294967296', 'mem_info_gtt_used': '1073741824'})
+            adapters = [{'pci': '0000:04:00.0', 'device': str(device)}, {'pci': '0000:01:00.0'}]
+            result = gpus.with_memory(adapters)
+            self.assertEqual(result[0]['memory']['gtt_total_bytes'], 4 << 30)
+            self.assertNotIn('memory', result[1])
+            self.assertNotIn('memory', adapters[0], 'the input adapters are not changed')
+            with patch.object(core, 'DARLING_SYSROOT', Path(directory) / 'runtime/libexec/darling'), \
+                    patch.object(hardware_report.gpus, 'enumerate_gpus', return_value=adapters):
+                report = json.loads(hardware_report.collect(directory).read_bytes())
+        self.assertEqual(report['gpus'][0]['memory']['gtt_used_bytes'], 1 << 30)
+        self.assertNotIn('memory', report['gpus'][1])
 
 
 if __name__ == '__main__':

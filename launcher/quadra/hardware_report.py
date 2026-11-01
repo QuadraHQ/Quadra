@@ -68,7 +68,7 @@ def collect(output_dir=None, *, graphics=False, gameplay=None):
     report = {'schema_version': 1, 'cider_version': __version__,
               'timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
               'architecture': platform.machine(), 'kernel': platform.release(),
-              'allowed_cpus': len(os.sched_getaffinity(0)), 'gpus': gpus.enumerate_gpus(),
+              'allowed_cpus': len(os.sched_getaffinity(0)), 'gpus': gpus.with_memory(gpus.enumerate_gpus()),
               'runtime': core.DARLING_RUNTIME.get('metadata') or {'name': core.DARLING_RUNTIME['runtime']},
               'desktop': _desktop(os.environ), 'input': _input(core),
               'coverage': {'host_graphics': 'not_run', 'gameplay': {stage: 'not_tested' for stage in STAGES}}}

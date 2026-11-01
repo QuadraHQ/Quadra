@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../layer_image.c"
+#include "../darling/shim/layer_image.c"
 
 static unsigned long width = 2, height = 2, stride = 12;
 static unsigned int info = 2 | 0x2000;

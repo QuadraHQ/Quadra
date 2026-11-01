@@ -1,6 +1,6 @@
 /* Authored pipeline preload, live allocation and GPU-retention regressions. */
 #define _POSIX_C_SOURCE 200809L
-#include "../prototype/metal-vulkan/quadra_metal.h"
+#include "../darling/metal-vulkan/quadra_metal.h"
 #include <dlfcn.h>
 #include <stddef.h>
 #include <stdio.h>

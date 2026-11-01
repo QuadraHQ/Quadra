@@ -3,7 +3,7 @@
  * clang -O2 -Wall -Wextra tests/metal_host_test.c -ldl -o /tmp/metal-host-test
  * /tmp/metal-host-test build/metal/libquadra_metal_host.so
  */
-#include "../prototype/metal-vulkan/quadra_metal.h"
+#include "../darling/metal-vulkan/quadra_metal.h"
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>

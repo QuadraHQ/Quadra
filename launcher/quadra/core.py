@@ -28,9 +28,9 @@ from pathlib import Path
 from . import __version__
 from .gpus import GPU_ENVIRONMENT
 from .i18n import _
-from .rootless_scope import rootless_process_in_prefix
+from .darling.rootless_scope import rootless_process_in_prefix
 from .paths import migrate_directories, user_directory
-from .runtime import resolve_runtime, guest_variables
+from .darling.runtime import resolve_runtime, guest_variables, is_bundled
 from .transport_monitor import TransportMonitor
 from .roblox_downloads import open_public
 
@@ -44,15 +44,15 @@ BUILD_DIR = DATA_DIR / "build"
 PREBUILT_SHIM = os.environ.get("QUADRA_PREBUILT_SHIM")
 SHIM_DIR = Path(PREBUILT_SHIM) if PREBUILT_SHIM else BUILD_DIR
 SHIM = SHIM_DIR / "libQuadraShims.dylib"
-# Frameworks RobloxPlayer links that Darling lacks; stubs from frameworks/.
+# Frameworks RobloxPlayer links that Darling lacks; stubs from darling/frameworks/.
 FRAMEWORKS = ["CoreML", "CoreHaptics", "DeviceCheck"]
 FRAMEWORKS_BUILD = SHIM_DIR / "frameworks"
 # Quadra M2VK (renderer "metal"): Metal.framework and the host library,
-# built by prototype/metal-vulkan/build.sh the first time the renderer is used.
+# built by darling/metal-vulkan/build.sh the first time the renderer is used.
 METAL_DIR = SHIM_DIR / "metal"
 METAL_HOST_LIBRARY = METAL_DIR / "libquadra_metal_host.so"
 METAL_FRAMEWORK = METAL_DIR / "Metal.framework" / "Versions" / "A" / "Metal"
-METAL_BUILD_SCRIPT = PROJECT / "prototype" / "metal-vulkan" / "build.sh"
+METAL_BUILD_SCRIPT = PROJECT / "darling" / "metal-vulkan" / "build.sh"
 # Keep the selected client, build root and guest prefix together even when
 # regular Darling and CiderDarling are both installed.
 DARLING_RUNTIME = resolve_runtime()
@@ -128,6 +128,8 @@ DEFAULT_SETTINGS = {
     "vr": False,
     "vr_render_scale": 70,
     "vr_mirror": True,
+    # Set from the warning shown before VR is first turned on ("Don't show this again").
+    "vr_warning_hidden": False,
     "hide_menu_bar": False,
     "dns": "system",
     "dns_custom": "",
@@ -161,8 +163,9 @@ DEFAULT_SETTINGS = {
     # sees the place id and the region.
     # Limit Roblox to this many CPU cores (0 = no limit). Experimental.
     "roblox_cpu_limit": 0,
-    # Which macOS translation layer runs Roblox: "darling" (default) or "rosemary".
-    "runtime_backend": "darling",
+    # Which macOS translation layer runs Roblox: "rosemary" (the default for a new install) or "darling"
+    # (outdated). load_settings keeps an install that predates the choice, and a bundled one, on Darling.
+    "runtime_backend": "rosemary",
     "rosemary_program": "",
     # Which Rosemary Quadra installs: "quadra" (its own build, adds VR) or "upstream" (the regular one).
     "rosemary_source": "quadra",
@@ -252,7 +255,11 @@ def load_settings():
     except (OSError, ValueError):
         stored = {}
     if not isinstance(stored, dict):
-        return settings
+        stored = {}
+    # Rosemary is the default for a new install only. A settings file with no runtime in it was saved by an
+    # install that ran Darling, and a Flatpak or Nix package carries Darling inside it; neither is moved.
+    if "runtime_backend" not in stored and (stored or is_bundled()):
+        settings["runtime_backend"] = "darling"
     for key, value in stored.items():
         if key == "launcher_appearance":
             settings[key] = value if isinstance(value, str) and value in ("grid", "gnome", "monochrome") else "grid"
@@ -773,7 +780,7 @@ def ensure_raknet_transport():
 
         binary = APP_BUNDLE / "Contents" / "MacOS" / "RobloxPlayer"
         if binary.is_file():
-            from .transport_patches import apply_transport_patch
+            from .darling.transport_patches import apply_transport_patch
             status = apply_transport_patch(binary)
             if status.startswith("unsupported"):
                 data = binary.read_bytes()
@@ -794,7 +801,7 @@ def ensure_shader_compatibility():
     if not pack.is_file():
         return "shader pack not installed"
     try:
-        from .shader_patches import apply_shader_patch
+        from .darling.shader_patches import apply_shader_patch
         status = apply_shader_patch(pack)
         if status.startswith("unsupported"):
             data = pack.read_bytes()
@@ -1540,8 +1547,8 @@ def _shim_sources_hash():
     digest = hashlib.sha256(__version__.encode())
     digest.update(str(DARLING_SYSROOT).encode())
     digest.update(str(DARLING_RUNTIME["metadata"].get("source_revision", "")).encode())
-    for path in sorted([*PROJECT.glob("*.c"), *PROJECT.glob("*.cpp"), *PROJECT.glob("*.m"), *PROJECT.glob("*.h"),
-                        *(PROJECT / "frameworks").glob("*"), BUILD_SCRIPT]):
+    for path in sorted([*(PROJECT / "darling" / "shim").glob("*"), *(PROJECT / "vr").glob("*"),
+                        *(PROJECT / "darling" / "frameworks").glob("*"), BUILD_SCRIPT]):
         try:
             digest.update(path.name.encode() + b"\0" + path.read_bytes())
         except OSError:
@@ -1581,7 +1588,7 @@ def shim_built():
 def _metal_sources_hash():
     digest = hashlib.sha256(__version__.encode())
     digest.update(str(DARLING_SYSROOT).encode())
-    root = PROJECT / "prototype" / "metal-vulkan"
+    root = PROJECT / "darling" / "metal-vulkan"
     sources = [root / "quadra_metal.h", METAL_BUILD_SCRIPT, *(root / "framework").glob("*"),
                root / "host" / "Cargo.toml", root / "host" / "Cargo.lock", *(root / "host" / "src").rglob("*.rs")]
     # Cargo.toml and Cargo.lock pin the immutable Quadra M2VK dependency.
@@ -1605,7 +1612,7 @@ def metal_built():
 
 
 def build_metal():
-    """prototype/metal-vulkan/build.sh: the framework needs clang and lld, the host library
+    """darling/metal-vulkan/build.sh: the framework needs clang and lld, the host library
     Rust 1.98 or newer (its first build downloads its crates)."""
     if PREBUILT_SHIM:
         return metal_built(), _("Quadra M2VK is not part of this package")
@@ -1704,7 +1711,7 @@ def _install_prefix_files(env, frameworks, bridges, kqueue_libraries):
         restart_darling()
     for name in frameworks:
         _install_framework(name)
-    from . import darling_patches
+    from .darling import patches as darling_patches
     stamps = {}
     for relative, path in [*bridges, *kqueue_libraries]:
         target = DARLING_PREFIX / relative
@@ -1855,7 +1862,7 @@ def _patched_kqueue_runtime():
     """Stage the known library repair for this prefix from the selected
     runtime's own file, again when that changed; preserve custom overrides.
     Returns (macOS path, staged file) pairs; None restores the runtime's file."""
-    from . import darling_patches
+    from .darling import patches as darling_patches
     libraries = []
     stamps, current = _prefix_stamps(), {}
     # Darling builds contain independent copies of libkqueue. Its active
@@ -2769,7 +2776,7 @@ class RobloxSession:
                 raise RuntimeError(_("Quadra M2VK needs: {items}. Install them or select another renderer.",
                                      items=", ".join(missing)))
             if not metal_built():
-                self.notes.append("Building Quadra M2VK (prototype/metal-vulkan/build.sh)")
+                self.notes.append("Building Quadra M2VK (darling/metal-vulkan/build.sh)")
                 ok, output = build_metal()
                 if not ok:
                     raise RuntimeError(_("Could not build Quadra M2VK:\n{output}", output=output))
@@ -2801,7 +2808,7 @@ class RobloxSession:
             restart_darling()
             self.notes.append("Restarted Darling: its server came from another runtime installation")
         if self.settings.get("renderer", "opengl") == "metal":
-            from . import metal_preload
+            from .darling import metal_preload
             try:
                 result = metal_preload.run(METAL_HOST_LIBRARY, env,
                                           progress=self.shader_preload_progress,

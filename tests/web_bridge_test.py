@@ -14,7 +14,7 @@ for name in ("Adw", "Gdk", "Gio", "GLib", "Gtk"):
 repository.GLib.Error = RuntimeError
 with patch.dict(sys.modules, {"gi": gi, "gi.repository": repository}):
     spec = importlib.util.spec_from_file_location(
-        "quadra._web_protocol_test", Path(__file__).parents[1] / "launcher/quadra/web.py")
+        "quadra.darling._web_protocol_test", Path(__file__).parents[1] / "launcher/quadra/darling/web.py")
     web = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(web)
 

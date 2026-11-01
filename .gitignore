@@ -10,6 +10,9 @@
 *.dylib
 __pycache__/
 
+# The launcher's per-game cache, written to the data folder (the checkout when run from source)
+/game_cache.json
+
 # Local experiments and history
 /work/
 /frameworks_backup/

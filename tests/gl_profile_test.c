@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../gl_profile.c"
+#include "../darling/shim/gl_profile.c"
 
 static void *mock_context = (void *)1;
 static void *mock_display = (void *)2;

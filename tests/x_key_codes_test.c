@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../x_key_codes.h"
+#include "../darling/shim/x_key_codes.h"
 
 int main(void) {
     /* Keys Darling's table lacks map to what a Mac sends for the same key. */

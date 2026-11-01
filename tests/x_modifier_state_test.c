@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../x_modifier_state.h"
+#include "../darling/shim/x_modifier_state.h"
 
 int main(void) {
     unsigned char masks[256] = {0}, down[256] = {0};

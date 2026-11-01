@@ -1,6 +1,6 @@
 /* vr_openxr.h must match the Khronos OpenXR headers it was copied from. */
 #include <stdio.h>
-#include "../vr_openxr.h"
+#include "../vr/vr_openxr.h"
 #include "vr_openxr_fields.h"
 
 extern const unsigned long khronos_sizes[], khronos_offsets[];

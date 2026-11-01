@@ -172,6 +172,11 @@ RU = {
     "Experimental. Plays in Roblox's own VR mode on a headset connected through an OpenXR runtime such as WiVRn (Meta Quest) or Monado. Applies on next launch.":
         "Экспериментально. Запускает собственный VR-режим Roblox на шлеме, подключённом через среду OpenXR, например WiVRn (Meta Quest) или Monado. Применяется при следующем запуске.",
     "VR headset (OpenXR)": "VR-шлем (OpenXR)",
+    "Turn on VR?": "Включить VR?",
+    "VR mode patches the Roblox client's memory while the game runs, the same way a Roblox cheat does. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.":
+        "Режим VR изменяет память клиента Roblox, пока идёт игра, так же, как это делает чит для Roblox. Античит Roblox может пометить вас за это. Вероятность невелика, но насколько именно, неизвестно.\n\nВключайте его, только если принимаете этот риск.",
+    "Don't show this again": "Больше не показывать",
+    "Turn on VR": "Включить VR",
     "VR render resolution": "Разрешение рендеринга VR",
     "Percent of the headset's recommended size per eye. Lower is smoother.":
         "Процент от рекомендуемого шлемом размера на каждый глаз. Меньше — плавнее.",
@@ -808,6 +813,11 @@ ZH_CN = {
     "VR headset": "VR 头显",
     "Experimental. Plays in Roblox's own VR mode on a headset connected through an OpenXR runtime such as WiVRn (Meta Quest) or Monado. Applies on next launch.": "实验性。通过 OpenXR 运行时（如 WiVRn (Meta Quest) 或 Monado）连接的头显，以 Roblox 自带的 VR 模式运行。下次启动时生效。",
     "VR headset (OpenXR)": "VR 头显 (OpenXR)",
+    "Turn on VR?": "开启 VR 模式？",
+    "VR mode patches the Roblox client's memory while the game runs, the same way a Roblox cheat does. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.":
+        "VR 模式会在游戏运行时修改 Roblox 客户端的内存，其方式与 Roblox 外挂相同。你可能因此被 Roblox 的反作弊系统标记。这种可能性很低，但具体有多低尚不清楚。\n\n仅在你接受此风险时才开启。",
+    "Don't show this again": "不再显示",
+    "Turn on VR": "开启 VR",
     "VR render resolution": "VR 渲染分辨率",
     "Percent of the headset's recommended size per eye. Lower is smoother.": "每只眼睛占头显推荐尺寸的百分比。越低越流畅。",
     "Show the headset view in the game window": "在游戏窗口中显示头显视图",

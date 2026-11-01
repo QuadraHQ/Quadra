@@ -1,7 +1,7 @@
 /* Host keyboard regression: synthetic SDL events only, no display or input
  * injection. Compile with the same SDL/Wayland libraries as wayland_host.cpp. */
 #include <cassert>
-#include "../wayland_host.cpp"
+#include "../darling/shim/wayland_host.cpp"
 
 static SDL_Event key(unsigned id, SDL_Scancode scan, SDL_Keycode symbol,
                      SDL_Keymod mods, bool down=true, bool repeat=false) {

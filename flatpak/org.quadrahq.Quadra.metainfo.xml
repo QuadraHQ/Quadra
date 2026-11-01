@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.42" date="2026-11-01">
+      <description>
+        <p>Rosemary is the default runtime for a new install (Darling is outdated), and the installer asks which to use. Turning on VR asks first. Controllers work with Darling. Quadra M2VK guards an integrated AMD GPU's memory limit (not yet confirmed on an affected laptop). The source tree is sorted by runtime.</p>
+      </description>
+    </release>
     <release version="0.41.p2" date="2026-11-01">
       <description>
         <p>Fixes VR being refused with Quadra's own Rosemary installed from its release. Nothing else changes from 0.41.p1.</p>

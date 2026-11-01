@@ -1,5 +1,5 @@
 /* Optional real-driver regression, against an X11 EGL display:
- * clang -O2 tests/shader_driver_test.c shader_compat.c -lEGL -lGL -o /tmp/shader-driver-test
+ * clang -O2 tests/shader_driver_test.c darling/shim/shader_compat.c -lEGL -lGL -o /tmp/shader-driver-test
  * EGL_PLATFORM=x11 /tmp/shader-driver-test [optional shader files...]
  */
 #include <assert.h>

@@ -16,7 +16,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'launcher'))
-from quadra import diagnostics, runtime, stallwatch
+from quadra import diagnostics
+from quadra.darling import runtime, stallwatch
 
 
 def fixture_pid(name):

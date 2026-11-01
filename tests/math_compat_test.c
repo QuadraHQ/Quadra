@@ -18,7 +18,7 @@ extern float __exp10f(float);
 #define PAIR_SINE __sinval
 #define PAIR_COSINE __cosval
 #else
-#include "../math_compat.h"
+#include "../darling/shim/math_compat.h"
 #define EXP10 quadra_exp10
 #define EXP10F quadra_exp10f
 #define SINCOSF quadra_sincosf

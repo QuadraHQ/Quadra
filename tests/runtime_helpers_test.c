@@ -1,4 +1,4 @@
-/* clang -O2 -pthread tests/runtime_helpers_test.c worker_wake.c -o /tmp/runtime-test */
+/* clang -O2 -pthread tests/runtime_helpers_test.c darling/shim/worker_wake.c -o /tmp/runtime-test */
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
-#include "../shim_lock.h"
-#include "../worker_wake.h"
+#include "../darling/shim/shim_lock.h"
+#include "../darling/shim/worker_wake.h"
 
 static volatile unsigned int lock;
 static unsigned long count;

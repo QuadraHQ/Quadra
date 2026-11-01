@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from quadra import core, shader_patches as shaders
+from quadra import core
+from quadra.darling import shader_patches as shaders
 
 
 def fixture():

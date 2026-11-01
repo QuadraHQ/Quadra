@@ -11,7 +11,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from quadra.runtime_install import Installation
+from quadra.darling.runtime_install import Installation
 
 
 class RuntimeInstallationTests(unittest.TestCase):

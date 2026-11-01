@@ -1,5 +1,5 @@
 /* Test-only helper exports. Never linked into the installed helper. */
-#include "../wayland_host.cpp"
+#include "../darling/shim/wayland_host.cpp"
 extern "C" void quadra_wayland_keyboard_fixture(unsigned id,int scenario) {
     sync([=]{
         auto key=[=](SDL_Scancode scan,SDL_Keycode symbol,SDL_Keymod mods,bool down=true,bool repeat=false) {

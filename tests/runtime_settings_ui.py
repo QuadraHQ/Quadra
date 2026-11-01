@@ -20,7 +20,8 @@ for key in ("DPREFIX", "FLATPAK_ID", "QUADRA_PAGE", "QUADRA_BUNDLED_DARLING"):
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Do not run startup update checks, author avatars or other unrelated workers.
 threading.Thread.start = lambda self: None
-from quadra import app, core, runtime, runtime_install
+from quadra import app, core
+from quadra.darling import runtime, runtime_install
 from runtime_update_fixture import release_fixture
 from gi.repository import Adw, Gio
 

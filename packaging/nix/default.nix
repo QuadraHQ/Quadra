@@ -32,15 +32,8 @@ let
     src = lib.fileset.toSource {
       root = ../..;
       fileset = lib.fileset.unions [
-        (lib.fileset.unions (
-          map (name: ../../. + "/${name}") (
-            builtins.attrNames (
-              lib.filterAttrs (
-                name: type: type == "regular" && builtins.match ".*\\.(c|cpp|m|h|S)" name != null
-              ) (builtins.readDir ../..)
-            )
-          )
-        ))
+        ../../darling
+        ../../vr
         ../../build_debug_shim.sh
         ../../patch_startup_throttle.py
         ../../install.sh
@@ -48,12 +41,10 @@ let
         ../../LICENSE
         ../../LICENSES
         (lib.fileset.fileFilter (file: !file.hasExt "pyc") ../../launcher)
-        ../../frameworks
         ../../branding
         (lib.fileset.fileFilter (file: !file.hasExt "pyc") ../../packaging)
         ../../flatpak/darling-noroot.c
         ../../flatpak/launchd_pid1.c
-        ../../prototype/metal-vulkan
       ];
     };
     nativeBuildInputs = [
@@ -78,7 +69,7 @@ let
     # Mach-O files are cross compiled against Darling's SDK. The host clang
     # wrapper injects Linux flags, so use unwrapped clang for Darwin only.
     postPatch = ''
-      substituteInPlace build_debug_shim.sh prototype/metal-vulkan/build.sh \
+      substituteInPlace build_debug_shim.sh darling/metal-vulkan/build.sh \
         --replace-fail 'clang -target' '${llvmPackages.clang-unwrapped}/bin/clang -target'
     '';
     buildPhase = ''

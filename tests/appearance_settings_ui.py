@@ -53,9 +53,10 @@ def capture(window, name):
 
 
 with ExitStack() as context:
+    # This fixture drives Darling's "stopped"/"running" state, so it pins Darling; Rosemary is the default.
     context.enter_context(patch.object(core, "load_settings", return_value=dict(
         core.DEFAULT_SETTINGS, setup_complete=True, show_playtime=True, playtime_seconds=7440,
-        auto_check_ciderdarling_updates=False, auto_check_roblox_updates=False)))
+        auto_check_ciderdarling_updates=False, auto_check_roblox_updates=False, runtime_backend="darling")))
     context.enter_context(patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))))
     context.enter_context(patch.object(core, "installed_version", return_value="0.744.0.7441080"))
     darling = context.enter_context(patch.object(core, "darlingserver_running", return_value=False))

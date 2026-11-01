@@ -3,8 +3,8 @@
 - "vulkan": Roblox keeps its macOS OpenGL renderer; Mesa Zink runs it on
   Vulkan.
 - "metal": Roblox runs its Metal renderer. Quadra's Metal.framework
-  (prototype/metal-vulkan/framework) replaces Darling's and runs each call on the host's
-  Vulkan driver through metal2vulkan (prototype/metal-vulkan/host). Roblox's macOS client has
+  (darling/metal-vulkan/framework) replaces Darling's and runs each call on the host's
+  Vulkan driver through metal2vulkan (darling/metal-vulkan/host). Roblox's macOS client has
   no Vulkan backend of its own (its device factory makes OpenGL and Metal
   devices only), so this is the native Vulkan route.
 """
@@ -226,7 +226,7 @@ def metal_vram_cap(settings, measured):
 def metal_environment(metal_dir, shader_cache, *, preload=True, preload_key="unscoped",
                       diagnostics=False, diagnostics_file=None, tuning=None):
     """Host and guest variables of the Metal renderer. metal_dir holds
-    Metal.framework and libquadra_metal_host.so (prototype/metal-vulkan/build.sh)."""
+    Metal.framework and libquadra_metal_host.so (darling/metal-vulkan/build.sh)."""
     metal_dir = Path(metal_dir)
     environment = {
         "MACOBLOX_METAL": "1",

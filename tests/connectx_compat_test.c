@@ -11,7 +11,7 @@
 #define sendmsg test_sendmsg
 #define connectx test_connectx
 #define __error test_error
-#include "../connectx_compat.c"
+#include "../darling/shim/connectx_compat.c"
 
 static int error_value, connect_error, bind_error, send_error;
 static int connect_calls, send_calls;

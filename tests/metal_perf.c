@@ -1,7 +1,7 @@
 /* Same authored workload against the old ABI 1 bridge or the ABI 2 fork. Release builds only.
  * Timings report host-observed lavapipe costs, not a hardware GPU frame rate. */
 #define _POSIX_C_SOURCE 200809L
-#include "../prototype/metal-vulkan/quadra_metal.h"
+#include "../darling/metal-vulkan/quadra_metal.h"
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>

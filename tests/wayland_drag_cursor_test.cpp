@@ -4,7 +4,7 @@
  *   $(pkg-config --cflags --libs sdl2 wayland-client wayland-egl wayland-cursor) -o /tmp/wayland-drag-cursor
  */
 #include <cassert>
-#include "../wayland_host.cpp"
+#include "../darling/shim/wayland_host.cpp"
 static SDL_Event button(unsigned id,unsigned number,bool down) {
     SDL_Event event{};event.type=down?SDL_MOUSEBUTTONDOWN:SDL_MOUSEBUTTONUP;
     event.button.windowID=id;event.button.button=number;event.button.clicks=1;return event;

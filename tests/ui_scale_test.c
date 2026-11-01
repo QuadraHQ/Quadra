@@ -26,7 +26,7 @@ static double input_factor = 1;
 static int quadra_input_scale_allowed(void) { return input_allowed; }
 static void quadra_input_scale_set(double scale) { input_factor = scale; }
 static int quadra_install_input_scale_hooks(void) { return input_hooks; }
-#include "../ui_scale_hook.h"
+#include "../darling/shim/ui_scale_hook.h"
 
 static const char *encoding = "{Settings=^vfiiiB^vBII}16@0:8";
 static double requested = 2;

@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import Mock
 import urllib.error
 
-from quadra import runtime_install, runtime_updates
+from quadra.darling import runtime_install, runtime_updates
 from runtime_update_fixture import release_fixture
 
 

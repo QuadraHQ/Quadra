@@ -171,7 +171,7 @@ cookies); the old build fails the new tests, while the new one passes them all.
 - Embedded Roblox web pages (password login with CAPTCHA, purchases, links):
   `web_bridge.m` replaces WKWebView with placeholders that use a Unix socket
   (`QUADRA_WEB_SOCKET`, JSON line-by-line) to the launcher window running
-  WebKitGTK 6.0 (`launcher/quadra/web.py`). Cookies are passed back and forth, so
+  WebKitGTK 6.0 (`launcher/quadra/darling/web.py`). Cookies are passed back and forth, so
   the client remains logged in after signing in on the page. The protocol and some of the code are from the
   spidercraft port (Roblox Mac Linux Port), with their permission. The replacement is applied only
   when the launcher is listening on the socket; without WebKitGTK, everything works as before. Site data is stored in
@@ -591,7 +591,7 @@ counted 1,882 close callbacks taking 1,815.6 ms in the first three reporting
 buckets. This identifies a cost in the initial menu-binding delay; the later
 frameless phase is measured separately.
 
-`launcher/quadra/darling_patches.py` prepares app-prefix copies of these
+`launcher/quadra/darling/patches.py` prepares app-prefix copies of these
 known x86_64 implementations:
 
 | Library | Complete original SHA-256 | Complete repaired SHA-256 |
@@ -679,14 +679,16 @@ for normal play.
 
 The playable Vulkan option still uses Zink. The macOS client has Metal and
 OpenGL backends; turning on a Vulkan preference did not create a native
-Vulkan renderer. A separate [Metal-to-Vulkan prototype](../experimental/metal/README.md)
-now translates two current client shaders, validates their SPIR-V and
-descriptor bindings, builds a Vulkan pipeline on RTX 3060 Ti, draws to an
-image and verifies all 256 red pixels by readback. This draw uses Vulkan
-without OpenGL/Zink. Reproducible source, content pins and the licensed Indium
-patch are included; generated client shader assets are not. Missing Metal
-methods, resource/compute cases and window presentation keep it experimental
-and prevent using it for normal gameplay.
+Vulkan renderer. A separate offscreen Metal-to-Vulkan prototype (Darling's
+Metal framework with Indium, shaders translated offline by metal2vulkan 0.1)
+translated two current client shaders, validated their SPIR-V and
+descriptor bindings, built a Vulkan pipeline on RTX 3060 Ti, drew to an
+image and verified all 256 red pixels by readback. That draw used Vulkan
+without OpenGL/Zink. Missing Metal methods, resource/compute cases and window
+presentation kept it from normal gameplay, and it never got further. It was
+removed from the tree (last present in commit `8ffd384`, as
+`experimental/metal/`); [`darling/metal-vulkan`](../darling/metal-vulkan/README.md)
+is the Metal-on-Vulkan renderer Quadra ships.
 
 ### Validation
 

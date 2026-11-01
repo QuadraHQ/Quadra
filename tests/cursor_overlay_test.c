@@ -7,7 +7,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/shape.h>
-#include "../cursor_overlay.c"
+#include "../darling/shim/cursor_overlay.c"
 _Static_assert(sizeof(CursorVisual) == sizeof(XVisualInfo), "visual ABI");
 _Static_assert(sizeof(CursorAttributes) == sizeof(XSetWindowAttributes), "attributes ABI");
 _Static_assert(sizeof(CursorImage) == sizeof(XFixesCursorImage), "cursor ABI");

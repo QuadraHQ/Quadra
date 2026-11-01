@@ -40,10 +40,10 @@ if [[ -f $build_dir/libquadra-studio-layer.so ]]; then
   install -m755 "$build_dir/libquadra-studio-layer.so" "$shim/"
 fi
 cp -r --no-preserve=ownership "$build_dir/frameworks" "$shim/"
-install -d "$shim/metal" "$share/prototype/metal-vulkan"
+install -d "$shim/metal" "$share/darling/metal-vulkan"
 install -m755 "$build_dir/metal/libquadra_metal_host.so" "$shim/metal/"
 cp -r --no-preserve=ownership "$build_dir/metal/Metal.framework" "$shim/metal/"
-install -m644 "$source_root/prototype/metal-vulkan/README.md" "$share/prototype/metal-vulkan/"
+install -m644 "$source_root/darling/metal-vulkan/README.md" "$share/darling/metal-vulkan/"
 cat > "$destdir/usr/bin/quadrahq" <<WRAPPER
 #!/bin/sh
 export QUADRA_PREBUILT_SHIM=$libdir/quadrahq/shim

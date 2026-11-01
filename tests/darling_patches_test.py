@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from quadra import darling_patches as darling
+from quadra.darling import patches as darling
 
 
 def digest(data):
@@ -179,7 +179,7 @@ class DarlingPatchTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)/"map.o"
-            subprocess.run([clang, "-target", "x86_64-apple-darwin", "-c", str(root/"darling_sparse_map.S"), "-o", str(output)], check=True)
+            subprocess.run([clang, "-target", "x86_64-apple-darwin", "-c", str(root/"darling"/"shim"/"darling_sparse_map.S"), "-o", str(output)], check=True)
             data = output.read_bytes()
         count, = struct.unpack_from("<I", data, 16)
         position = 32
