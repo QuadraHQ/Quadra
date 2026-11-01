@@ -39,6 +39,30 @@ class CapabilityTests(unittest.TestCase):
             self.assertFalse(xr.supports_vr(plain))
             self.assertFalse(xr.supports_vr(Path(tmp) / "missing"))
 
+    def test_a_release_bundle_is_checked_in_its_real_runtime(self):
+        # squashfs-root/bin/rosemary only launches libexec/rosemary, which holds the code.
+        with tempfile.TemporaryDirectory() as tmp:
+            for kind, has_it in (("quadra", True), ("regular", False)):
+                bundle = Path(tmp) / kind / "squashfs-root"
+                (bundle / "bin").mkdir(parents=True)
+                (bundle / "libexec").mkdir()
+                (bundle / "bin" / "rosemary").write_bytes(b"\x7fELF launcher only")
+                (bundle / "libexec" / "rosemary").write_bytes(
+                    b"\x7fELF" + b"x" * 5000 + (b"ROSEMARY_DYLD_INSERT_FORCE" if has_it else b"ROSEMARY_DYLD_INSERT_LIBRARIES"))
+                self.assertEqual(xr.supports_vr(bundle / "bin" / "rosemary"), has_it, kind)
+
+    def test_a_missing_program_and_a_symlinked_launcher(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "squashfs-root"
+            (bundle / "bin").mkdir(parents=True)
+            (bundle / "libexec").mkdir()
+            (bundle / "bin" / "rosemary").write_bytes(b"launcher")
+            (bundle / "libexec" / "rosemary").write_bytes(b"..ROSEMARY_DYLD_INSERT_FORCE..")
+            link = Path(tmp) / "link"
+            link.symlink_to(bundle / "bin" / "rosemary")
+            self.assertTrue(xr.supports_vr(link))
+            self.assertFalse(xr.supports_vr(Path(tmp) / "nothing"))
+
     def test_the_name_split_across_a_read_boundary_is_found(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "edge"

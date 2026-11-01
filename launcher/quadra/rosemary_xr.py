@@ -31,27 +31,45 @@ class VrUnavailable(Exception):
     """VR cannot start for a reason worded for the user."""
 
 
-def supports_vr(program):
-    """Whether this Rosemary has the force-insert override (Quadra's fork)."""
+def _binaries(program):
+    """The files that hold Rosemary's code: the program itself, and for a release bundle
+    (an unpacked AppImage) the real runtime in libexec/, which bin/rosemary only launches."""
+    program = Path(program)
+    found = [program]
     try:
-        status = os.stat(program)
+        found.append(program.resolve().parent.parent / "libexec" / "rosemary")
     except OSError:
-        return False
-    key = (str(program), status.st_mtime_ns, status.st_size)
-    if key not in _support_cache:
-        found = False
+        pass
+    return [path for path in found if path.is_file()]
+
+
+def _has_override(path):
+    try:
+        with open(path, "rb") as handle:
+            tail = b""
+            while chunk := handle.read(8 << 20):
+                if FORCE_VARIABLE in tail + chunk:
+                    return True
+                tail = chunk[-len(FORCE_VARIABLE):]
+    except OSError:
+        pass
+    return False
+
+
+def supports_vr(program):
+    """Whether this Rosemary has the force-insert override (Quadra's build)."""
+    files = _binaries(program)
+    keys = []
+    for path in files:
         try:
-            with open(program, "rb") as handle:
-                tail = b""
-                while chunk := handle.read(8 << 20):
-                    if FORCE_VARIABLE in tail + chunk:
-                        found = True
-                        break
-                    tail = chunk[-len(FORCE_VARIABLE):]
+            status = os.stat(path)
         except OSError:
-            found = False
-        _support_cache[key] = found
-    return _support_cache[key]
+            return False
+        keys.append((str(path), status.st_mtime_ns, status.st_size))
+    key = tuple(keys)
+    if key not in _support_cache:
+        _support_cache[key] = any(_has_override(path) for path in files)
+    return bool(files) and _support_cache[key]
 
 
 def build_directory(core):
