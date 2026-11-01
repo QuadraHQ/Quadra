@@ -119,6 +119,13 @@ def find_rosemary(settings):
             raise RosemaryError(f"{path} is not an executable file. Choose another Rosemary program in "
                                 "Settings → Rosemary.", settings=True)
         return path
+    override = os.environ.get("QUADRA_ROSEMARY", "").strip()
+    if override:
+        # For one run, e.g. a build from the fork: nothing in the settings changes.
+        path = Path(override).expanduser()
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise RosemaryError(f"QUADRA_ROSEMARY points to {path}, which is not an executable file.")
+        return path
     available = quadra_runners() or runners()
     if available:
         return available[0][1]

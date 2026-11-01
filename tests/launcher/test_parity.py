@@ -266,6 +266,21 @@ class EnsureReadyTests(unittest.TestCase):
             install.assert_not_called()
 
 
+class OverrideTests(unittest.TestCase):
+    def test_env_override_beats_automatic_but_not_the_setting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mine, chosen = Path(tmp) / "mine", Path(tmp) / "chosen"
+            for path in (mine, chosen):
+                path.write_text("#!/bin/sh\n")
+                path.chmod(0o755)
+            with mock.patch.dict(os.environ, {"QUADRA_ROSEMARY": str(mine)}):
+                self.assertEqual(runtime.find_rosemary({}), mine)
+                self.assertEqual(runtime.find_rosemary({"rosemary_program": str(chosen)}), chosen)
+            with mock.patch.dict(os.environ, {"QUADRA_ROSEMARY": str(Path(tmp) / "nope")}):
+                with self.assertRaises(runtime.RosemaryError):
+                    runtime.find_rosemary({})
+
+
 class MiscTests(unittest.TestCase):
     def test_sign_out_removes_only_the_cookie_store(self):
         with tempfile.TemporaryDirectory() as tmp:
