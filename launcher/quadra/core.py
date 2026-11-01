@@ -131,7 +131,11 @@ DEFAULT_SETTINGS = {
     "hide_menu_bar": False,
     "dns": "system",
     "dns_custom": "",
-    "show_launcher_after_exit": True,
+    "show_launcher_after_exit": True,  # legacy: replaced by open_settings_after_exit
+    # Quadra starts Roblox directly behind a small splash; the settings window
+    # opens from the tray icon, the shortcut's "Settings" action or --settings.
+    "open_settings_after_exit": False,
+    "tray_icon": True,
     "diagnostic_signals": False,
     "trace_udp": False,
     "trace_lock": False,
@@ -147,6 +151,29 @@ DEFAULT_SETTINGS = {
     # Sends the game server's IP address to RoValra, so it is opt-in. (The
     # former show_server_location key was saved as true for everyone.)
     "server_location_lookup": False,
+    # A desktop notification with the server's location when you join one.
+    # Only fires while the lookup above is on.
+    "server_location_notify": True,
+    # Answer Roblox's telemetry hosts with NXDOMAIN. Needs a DNS provider
+    # other than "system" (the forwarder is what answers).
+    "block_telemetry": False,
+    # Join servers in a chosen region (RoValra's server list). Opt-in: RoValra
+    # sees the place id and the region.
+    # Limit Roblox to this many CPU cores (0 = no limit). Experimental.
+    "roblox_cpu_limit": 0,
+    # Which macOS translation layer runs Roblox: "darling" (default) or "rosemary".
+    "runtime_backend": "darling",
+    "rosemary_program": "",
+    "rosemary_prefix": "",
+    "rosemary_engine": "auto",
+    "rosemary_force_opengl": False,
+    "rosemary_video_driver": "",
+    "rosemary_swap_interval": "",
+    "rosemary_process_server": True,
+    "region_join": False,
+    "region_preferred": "",
+    # A toast when the game you joined was updated in the last day.
+    "game_update_notice": True,
     "playtime_seconds": 0,
     "discord_rpc": True,
     "discord_rpc_game": True,
@@ -780,6 +807,23 @@ def roblox_pids(names=("RobloxPlayer", "RobloxCrashHandler")):
     namespaces = _prefix_namespaces()
     return [pid for pid, argv in _user_commands()
             if argv and Path(argv[0]).name in names and _process_in_prefix(pid, namespaces)]
+
+
+def limit_roblox_cpus(count):
+    """Restrict the game's processes to `count` of the cores they may use.
+    Returns how many processes were restricted (0 when off or none found)."""
+    if not isinstance(count, int) or count <= 0:
+        return 0
+    limited = 0
+    for pid in roblox_pids(("RobloxPlayer",)):
+        try:
+            allowed = sorted(os.sched_getaffinity(pid))
+            if count < len(allowed):
+                os.sched_setaffinity(pid, set(allowed[:count]))
+            limited += 1
+        except (OSError, ValueError):
+            continue
+    return limited
 
 
 def _darlingservers():
@@ -2743,6 +2787,9 @@ class RobloxSession:
         try:
             from . import mods
             mods.apply_mods(self.settings)
+            if self.settings.get("enable_custom_mods", True):
+                from . import modguard
+                modguard.begin_session(CONFIG_DIR, mods.MODS_DIR)
         except Exception as e:
             logging.getLogger("quadra").warning("Failed to apply mods: %s", e)
         apply_throttle_patch()
@@ -2751,7 +2798,9 @@ class RobloxSession:
         provider = self.settings.get("dns", "system")
         if provider != "system" and (provider != "custom" or self.settings.get("dns_custom")):
             from .dns import DnsForwarder
-            self.dns = DnsForwarder(provider, self.settings.get("dns_custom", ""))
+            from .dns import TELEMETRY_DOMAINS
+            blocked = TELEMETRY_DOMAINS if self.settings.get("block_telemetry", False) else ()
+            self.dns = DnsForwarder(provider, self.settings.get("dns_custom", ""), blocked)
         self.audio = HostAudio.start()
         clear_stale_darling()
         if rotate_dserver_log():

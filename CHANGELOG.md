@@ -3,6 +3,34 @@
 ## Unreleased
 
 
+## 0.40 — 2026-11-01
+
+- Quadra starts Roblox straight away. `quadrahq` shows a small splash (logo, progress, Cancel), updates Roblox when a
+  newer version is out, and starts the game; the settings window opens from the tray icon, `quadrahq --settings` (also
+  in a running Quadra) or the shortcut's right-click Settings action (reinstall for an existing shortcut). It still
+  opens by itself for first-time setup, a missing client and errors. "Open settings after Roblox exits" replaces "Show
+  the launcher after Roblox exits", and Quadra now closes with the game unless it is on.
+- New sidebar: Home (Roblox/Studio choice, status cards, recent games), Servers and Mods; a ROBLOX group (Roblox, Game,
+  Fast flags, Quadra M2VK, Rosemary, VR, CiderDarling); Configuration (Appearance, Integrations, Network, Environment,
+  Diagnostics). The Environment page was split into those pages; no setting was removed.
+- Servers page: history of joined servers with Rejoin, optional join by region through RoValra's server list (RoValra
+  sees the game id and the region), join by id or roblox.com link. A desktop notification names the server's location
+  when "Show server location" is on. Rejoin and region joining hand Roblox a `roblox://experiences/start` link and are
+  not yet tried in a game.
+- Rosemary (microlift/rosemary) can run Roblox instead of Darling: Settings → Rosemary installs Rosemary from its
+  release (checksum checked) and the macOS client, which stay apart from the Darling client. Adapted from nutmeg
+  (GPL-3.0). Tried in a live game on one machine. No mods, Discord status or web sign-in window with it; MangoHud is
+  switched on through `MANGOHUD=1`, because wrapping Rosemary in the `mangohud` program crashed it.
+- Fast flags Roblox's own allowlist (`DFStringAllowedPublicFlags`) does not include get a warning icon.
+- Mod crash guard: when Roblox crashes within five minutes of a start with new top-level entries in `modifications/`,
+  they are renamed `.disabled` (listed on the Mods page, one click to re-enable). Nothing is set aside without an
+  earlier good session to compare with.
+- "Block Roblox telemetry" answers Roblox's telemetry and crash-upload hosts with NXDOMAIN through the DNS forwarder
+  (needs a DNS server other than the system's). A toast says when the game you joined was updated in the last day.
+  Experimental CPU core limit. A dedicated VR icon.
+- Tray icon (StatusNotifierItem with a menu: Open settings, Stop Roblox, Quit); checked against a fake panel, not a
+  real one. `launcher/quadra` has 41 unit tests in `tests/launcher`.
+
 ## 0.37.p4 — 2026-10-26
 
 - Fix VR controllers never vibrating. Roblox only passes vibration to the controllers while the headset reports a

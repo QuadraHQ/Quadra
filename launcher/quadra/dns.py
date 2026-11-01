@@ -84,6 +84,48 @@ def _question_end(message):
     return position + 4 if position is not None and position + 4 <= len(message) else None
 
 
+# Roblox's telemetry and crash-upload hosts (the list Voidstrap blocks). Only
+# used when the user turns on "Block telemetry"; answered with NXDOMAIN.
+TELEMETRY_DOMAINS = (
+    "client-telemetry.roblox.com",
+    "ephemeralcounters.api.roblox.com",
+    "metrics.roblox.com",
+    "tracing.roblox.com",
+    "ncs.roblox.com",
+    "gold.roblox.com",
+    "abtesting.roblox.com",
+    "upload.crashes.roblox.com",
+    "upload.crashes.rbxinfra.com",
+)
+
+
+def query_name(query):
+    """The lower-case name asked in a single-question query, or None."""
+    end = _question_end(query)
+    if end is None:
+        return None
+    labels, position = [], 12
+    while position < end - 4:
+        length = query[position]
+        if length == 0:
+            break
+        labels.append(query[position + 1:position + 1 + length].decode("ascii", "replace").lower())
+        position += length + 1
+    return ".".join(labels)
+
+
+def is_blocked(name, blocked):
+    """True if `name` is one of the blocked domains or below one."""
+    return bool(name) and any(name == domain or name.endswith("." + domain) for domain in blocked)
+
+
+def _nxdomain(query):
+    """An NXDOMAIN answer to `query` (same shape as _servfail, RCODE 3)."""
+    reply = bytearray(_servfail(query))
+    reply[3] = (reply[3] & 0xF0) | 3
+    return bytes(reply)
+
+
 def _servfail(query):
     """A SERVFAIL answer to `query`: its ID, opcode, RD bit and question."""
     flags = struct.unpack(">H", query[2:4])[0]
@@ -187,7 +229,8 @@ def _close_connection(connection):
 
 
 class DnsForwarder:
-    def __init__(self, provider, custom=""):
+    def __init__(self, provider, custom="", blocked=()):
+        self.blocked = tuple(d.lower() for d in blocked)
         if provider in PROVIDERS:
             self.server, self.tls_name = PROVIDERS[provider]
             self.port = 853
@@ -275,6 +318,9 @@ class DnsForwarder:
             return
         if time.monotonic() >= deadline:
             self._reply(_servfail(query), client)
+            return
+        if self.blocked and is_blocked(query_name(query), self.blocked):
+            self._reply(_nxdomain(query), client)
             return
         key = query[2:]
         now = time.monotonic()

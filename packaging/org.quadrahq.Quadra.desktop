@@ -11,3 +11,10 @@ Terminal=false
 Categories=Game;
 Keywords=roblox;darling;
 StartupNotify=true
+Actions=settings;
+
+[Desktop Action settings]
+Name=Settings
+Name[ru]=Настройки
+Exec=quadrahq --settings
+Icon=quadrahq

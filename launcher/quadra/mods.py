@@ -15,6 +15,8 @@ from typing import Any
 
 from . import core
 
+from . import modguard  # noqa: E402
+
 log = logging.getLogger("quadra.mods")
 
 MODS_DIR = core.DATA_DIR / "modifications"
@@ -216,7 +218,12 @@ def apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
     # 5. User custom modifications folder (overlay)
     if settings.get("enable_custom_mods", True) and MODS_DIR.is_dir():
         for root, _dirs, files in os.walk(MODS_DIR):
+            # Units set aside by the crash guard (modguard) are skipped.
+            top = Path(root).relative_to(MODS_DIR).parts[:1]
+            _dirs[:] = [d for d in _dirs if top or not modguard.is_disabled(d)]
             for file_name in files:
+                if not top and modguard.is_disabled(file_name):
+                    continue
                 if file_name in ("README.txt", ".DS_Store"):
                     continue
                 src_file = Path(root) / file_name

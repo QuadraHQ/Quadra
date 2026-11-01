@@ -538,6 +538,20 @@ _LAUNCHER_CSS = """
 .play-quick-action { padding: 13px 16px; background-color: alpha(%(surface)s, 0.94); border-color: %(line_lo)s; }
 .play-quick-action label { font-size: 12px; }
 .play-quick-action:hover { border-color: %(accent)s; }
+.boot-splash { background: linear-gradient(160deg, alpha(%(accent)s, 0.22), %(night)s 72%%); border: 1px solid %(line_lo)s; }
+.boot-status { font-size: 15px; font-weight: 600; }
+.boot-splash progressbar trough { min-height: 6px; }
+.boot-splash progressbar progress { min-height: 6px; }
+.home-title { font-size: 26px; font-weight: 700; }
+.target-toggle button { padding: 6px 18px; }
+.status-card { padding: 12px 16px; background-color: alpha(%(surface)s, 0.94); border: 1px solid %(line_lo)s; }
+.status-card-title { font-family: %(mono)s; font-size: 10px; letter-spacing: 0.4px; color: %(dim)s; }
+.status-card-value { font-size: 13px; font-weight: 600; }
+.game-tile { padding: 10px; background-color: alpha(%(surface)s, 0.94); border: 1px solid %(line_lo)s; }
+.game-tile:hover { border-color: %(accent)s; }
+.game-tile-name { font-size: 12px; font-weight: 600; }
+.game-tile-sub { font-size: 10px; color: %(dim)s; }
+.sidebar-section { font-family: %(mono)s; font-size: 10px; letter-spacing: 1px; color: %(dim)s; margin: 14px 12px 4px 12px; }
 .play-hero actionbar { background: none; }
 .play-hero actionbar > revealer > box { padding: 14px 18px; border-top: 1px solid %(line_lo)s; background: none; box-shadow: none; }
 .play-hero actionbar button { min-height: 32px; min-width: 0; padding-left: 16px; padding-right: 16px; }

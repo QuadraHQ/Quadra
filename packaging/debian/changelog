@@ -1,3 +1,10 @@
+quadrahq (0.40-1) unstable; urgency=medium
+
+  * Roblox starts straight away behind a small splash. Settings open from the tray icon, `quadrahq --settings` or the shortcut's Settings action.
+  * New sidebar with a Servers page (history, region joining), Rosemary as an optional runtime, a mod crash guard and Fast flag allowlist warnings.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Sun, 01 Nov 2026 11:30:00 -0600
+
 quadrahq (0.37.p4-1) unstable; urgency=medium
 
   * Fix VR controllers never vibrating: Roblox only passes vibration to the controllers while the headset reports a focused session with controllers able to vibrate, and Quadra reported neither. VRService.VRSessionState now follows the headset.

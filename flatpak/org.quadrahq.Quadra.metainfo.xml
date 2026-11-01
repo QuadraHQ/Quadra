@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.40" date="2026-11-01">
+      <description>
+        <p>Quadra now starts Roblox straight away behind a small splash window; settings open from the tray icon or the shortcut's Settings action. Adds a Servers page with history and region joining, Rosemary as an optional runtime, a mod crash guard, Fast flag allowlist warnings and a server location notification.</p>
+      </description>
+    </release>
     <release version="0.37.p4" date="2026-10-26">
       <description>
         <p>Fixes VR controllers, which never vibrated: Roblox only sends vibration while the headset reports a focused session with controllers that can vibrate, and Quadra reported neither. VRService.VRSessionState now follows the headset. Nothing else changes from 0.37.p3.</p>
