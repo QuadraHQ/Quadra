@@ -76,10 +76,26 @@ curl -fsSL https://quadrahq.org/install.sh | bash
 ```
 
 The installer welcomes you and explains the packages, destination and setup
-steps before you begin. It prepares Darling and adds **Quadra** to the
-app menu. Open it for a first-time guide that downloads Roblox, prepares its
-app environment, and explains how to sign in. Existing Roblox installations
-open the launcher directly; **Setup guide** in its menu reopens the guide.
+steps before you begin. It asks which runtime plays Roblox, prepares the
+system tools and adds **Quadra** to the app menu. Open it for a first-time
+guide that downloads Roblox, prepares its app environment, and explains how to
+sign in. Existing Roblox installations open the launcher directly; **Setup
+guide** in its menu reopens the guide.
+
+Setup offers two runtimes. **Rosemary** is the default for a new install:
+there is nothing to build, and Quadra downloads Rosemary and Roblox the first
+time you press Play. **Darling** is outdated and kept for people who still need
+it. Some settings, such as the renderer and DNS, only apply to Darling. Updates
+keep your choice, and an install from before Rosemary stays on Darling. You can
+also choose explicitly, and switch later with **Run Roblox with** in **Settings → Rosemary**:
+
+```bash
+curl -fsSL https://quadrahq.org/install.sh | bash -s -- --backend rosemary
+curl -fsSL https://quadrahq.org/install.sh | bash -s -- --backend darling
+```
+
+Uninstalling keeps Rosemary's files in `~/.local/share/quadrahq` unless you add
+`--purge`.
 
 **Settings → Environment → Interface → Launcher appearance** switches
 immediately between **Grid** (square controls and a subtle grid background),
@@ -87,9 +103,10 @@ immediately between **Grid** (square controls and a subtle grid background),
 aubree.lat** (pure black, grey outlines, Archivo/JetBrains Mono and a topology
 backdrop). The choice is saved and can be changed while Roblox is running.
 
-Setup offers **Regular Darling** (the default on first install) or
+With Darling, setup offers **Regular Darling** (the default Darling) or
 **QuadraHQ's CiderDarling**, our Darling variant with threading, CPU detection
-and OpenGL fixes. Updates keep your choice. You can also choose explicitly:
+and OpenGL fixes. Updates keep your choice. You can also choose explicitly
+(`--darling` implies `--backend darling`):
 
 ```bash
 curl -fsSL https://quadrahq.org/install.sh | bash -s -- --darling ciderdarling

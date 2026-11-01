@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Quadra installer: Darling, the tools the launcher needs, and the
-# launcher itself with its app menu entry. Run it again to update, or to
-# uninstall.
+# Quadra installer: the launcher with its app menu entry, the tools it needs,
+# and the runtime that plays Roblox: Rosemary (the default) or Darling
+# (outdated). Run it again to update, or to uninstall.
 #
 #   curl -fsSL https://quadrahq.org/install.sh | bash
 #
@@ -52,6 +52,9 @@ DARLING_RUNTIME=''
 DARLING_CHOICE_EXPLICIT=''
 DARLING_EXECUTABLE=''
 DARLING_SELECTION=()
+# Which runtime plays Roblox: rosemary or darling. See select_backend.
+BACKEND=''
+BACKEND_EXPLICIT=''
 
 # Colours unless NO_COLOR is set or the output is no terminal; arrows and
 # dots only where the locale is UTF-8.
@@ -78,6 +81,90 @@ darling_runtime_name() {
   else
     printf '%s' 'Regular Darling'
   fi
+}
+
+backend_name() {
+  if [[ $BACKEND == darling ]]; then
+    printf '%s' 'Darling (outdated)'
+  else
+    printf '%s' 'Rosemary'
+  fi
+}
+
+# The runtime the launcher has saved in settings.json: rosemary or darling,
+# nothing when there is no usable file. A settings file with no runtime in it
+# was saved before Rosemary existed, so it belongs to a Darling install; the
+# launcher reads it the same way.
+saved_backend() {
+  local file=$CONFIG_HOME/quadrahq/settings.json
+  [[ -f $file ]] || return 0
+  command -v python3 >/dev/null || return 0
+  python3 - "$file" <<'PY' || true
+import json
+import sys
+try:
+    with open(sys.argv[1]) as stream:
+        data = json.load(stream)
+except (OSError, ValueError):
+    sys.exit(0)
+if isinstance(data, dict) and data:
+    value = data.get('runtime_backend')
+    print(value if value == 'rosemary' else 'darling')
+PY
+}
+
+# Rosemary for a new install. An update keeps what the launcher has saved,
+# and an older install that only has a Darling selection stays on Darling.
+# --backend decides outright; --darling alone means Darling.
+select_backend() {
+  [[ -z $BACKEND ]] || return 0
+  if [[ -n $DARLING_CHOICE_EXPLICIT ]]; then
+    BACKEND=darling
+    return 0
+  fi
+  BACKEND=$(saved_backend)
+  if [[ -z $BACKEND && -f $CONFIG_HOME/quadrahq/runtime.json ]]; then
+    BACKEND=darling
+  fi
+  BACKEND=${BACKEND:-rosemary}
+}
+
+# Tells the launcher which runtime to start with. Nothing else in
+# settings.json changes, and a file that cannot be read is left alone.
+save_backend_setting() {
+  command -v python3 >/dev/null || return 0
+  python3 - "$CONFIG_HOME/quadrahq/settings.json" "$BACKEND" <<'PY' ||
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+path, backend = Path(sys.argv[1]), sys.argv[2]
+data = {}
+if path.exists():
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        sys.exit('settings.json cannot be read, so it is left alone')
+    if not isinstance(data, dict):
+        sys.exit('settings.json is not a settings file, so it is left alone')
+if data.get('runtime_backend') == backend:
+    sys.exit(0)
+data['runtime_backend'] = backend
+path.parent.mkdir(parents=True, exist_ok=True)
+temporary = None
+try:
+    with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, prefix='.settings-', delete=False) as stream:
+        temporary = Path(stream.name)
+        json.dump(data, stream, indent=2, ensure_ascii=False)
+        stream.write('\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, path)
+finally:
+    if temporary is not None: temporary.unlink(missing_ok=True)
+PY
+    say "Could not save the runtime choice. Pick $(backend_name) in Quadra's settings."
 }
 
 migrate_user_directories() {
@@ -329,15 +416,25 @@ setup_plan() {
   dependencies=$(detect_package_manager)
   [[ $dependencies != pacman ]] || dependencies='pacman and the AUR'
   printf '  %sSetup plan%s\n\n' "$BOLD" "$RESET"
-  printf '    1. Prepare Darling and the system tools (%s).\n' "$dependencies"
-  printf '    2. %s the Quadra launcher.\n' "$operation"
-  printf '    3. Build its compatibility libraries.\n'
+  if [[ $BACKEND == rosemary ]]; then
+    printf '    1. Prepare the system tools (%s).\n' "$dependencies"
+    printf '    2. %s the Quadra launcher.\n' "$operation"
+    printf '    3. Nothing to build: the launcher downloads Rosemary and Roblox.\n'
+  else
+    printf '    1. Prepare Darling and the system tools (%s).\n' "$dependencies"
+    printf '    2. %s the Quadra launcher.\n' "$operation"
+    printf '    3. Build its compatibility libraries.\n'
+  fi
   printf '    4. Add the app menu entry and quadrahq command.\n\n'
   printf '  Computer    %s (%s)\n' "$(distribution_name)" "$(uname -m)"
   printf '  Destination %s\n' "${DIR/#$HOME/\~}"
-  printf '  Runtime     %s\n' "$(darling_runtime_name)"
-  printf '  Prefix      %s\n' "${PREFIX/#$HOME/\~}"
-  if [[ $DARLING_RUNTIME == ciderdarling ]]; then
+  printf '  Runtime     %s\n' "$(backend_name)"
+  if [[ $BACKEND == darling ]]; then
+    printf '  Darling     %s\n' "$(darling_runtime_name)"
+    printf '  Prefix      %s\n' "${PREFIX/#$HOME/\~}"
+    printf '  %sDarling is outdated; Rosemary is the default. Choose it with --backend rosemary.%s\n' "$DIM" "$RESET"
+  fi
+  if [[ $BACKEND == darling && $DARLING_RUNTIME == ciderdarling ]]; then
     printf '  %sCiderDarling builds from source into its own versioned directory.%s\n' "$DIM" "$RESET"
     printf '  %sIts separate prefix needs sign-in on first use; regular Darling data stays available.%s\n' "$DIM" "$RESET"
   fi
@@ -401,7 +498,10 @@ setup_success() {
   printf '  Quadra%s is ready in your app menu.\n' "${version:+ $version}"
   printf '\n  %sNext steps%s\n' "$BOLD" "$RESET"
   printf '    1. Open Quadra from the app menu, or run quadrahq.\n'
-  if [[ -d $DIR/RobloxPlayer.app ]]; then
+  if [[ $BACKEND == rosemary ]]; then
+    printf '    2. Press Play: Quadra downloads Rosemary and Roblox first.\n'
+    printf '    3. Sign in to Roblox and choose a game.\n'
+  elif [[ -d $DIR/RobloxPlayer.app ]]; then
     printf '    2. Launch Roblox from the launcher.\n'
     printf '    3. Sign in if needed, then choose a game.\n'
   else
@@ -1226,8 +1326,12 @@ ensure_darling() {
 }
 
 validate_tools() {
-  local tool
-  for tool in git clang ld.lld unzip python3 pw-cat pkg-config; do
+  # Rosemary needs only the launcher's own tools. The compilers and the
+  # SDL2/Wayland headers build Darling's compatibility libraries (and Quadra's
+  # VR library for Rosemary, when VR is used).
+  local tool tools=(git clang ld.lld unzip python3 pw-cat pkg-config)
+  [[ $BACKEND != rosemary ]] || tools=(git python3)
+  for tool in "${tools[@]}"; do
     command -v "$tool" >/dev/null || {
       if [[ $tool == darling ]]; then
         die "Darling is not installed. Follow https://docs.darlinghq.org/build-instructions.html for your distro (Alpine needs its specific instructions), then rerun this installer."
@@ -1235,7 +1339,7 @@ validate_tools() {
       die "$tool is missing. Install it using your distribution's supported method and rerun this installer."
     }
   done
-  pkg-config --exists sdl2 wayland-client ||
+  [[ $BACKEND == rosemary ]] || pkg-config --exists sdl2 wayland-client ||
     die "SDL2/Wayland development files are missing. Install their development packages and rerun."
   python3 - <<'PYTHON' || die "Python bindings for GTK 4, Adwaita 1 or WebKit 6 are missing. Check your distro packages/Portage USE flags and rerun."
 import gi
@@ -1273,7 +1377,7 @@ migrate_origin_remote() {
 }
 
 do_install() {
-  [[ $(uname -m) == x86_64 ]] || die "Darling runs only on x86_64."
+  [[ $(uname -m) == x86_64 ]] || die "Rosemary and Darling run only on x86_64."
   local legacy=''
   if [[ ! -e $DIR ]] && legacy=$(existing_checkout); then
     say "Migrating the existing ${legacy##*/} checkout to QuadraHQ"
@@ -1285,7 +1389,7 @@ do_install() {
   step 1 "Prepare the system tools"
   install_tools
   validate_tools
-  ensure_darling
+  [[ $BACKEND == rosemary ]] || ensure_darling
 
   step 2 "Prepare Quadra"
   if [[ -d $DIR/.git ]]; then
@@ -1308,22 +1412,28 @@ do_install() {
     configure_launcher_checkout
     git -C "$DIR" reset --hard HEAD
   fi
-  step 3 "Build the compatibility libraries"
-  say "This can take a few minutes."
-  mkdir -p -- "$CACHE_HOME/quadrahq/installer"
-  INSTALL_LOG=$(umask 077; mktemp "$CACHE_HOME/quadrahq/installer/build-$(date -u +%Y%m%d-%H%M%S)-XXXXXX.log")
+  if [[ $BACKEND == rosemary ]]; then
+    step 3 "Rosemary"
+    say "Nothing to build. Quadra downloads Rosemary and Roblox when you first press Play."
+  else
+    step 3 "Build the compatibility libraries"
+    say "This can take a few minutes."
+    mkdir -p -- "$CACHE_HOME/quadrahq/installer"
+    INSTALL_LOG=$(umask 077; mktemp "$CACHE_HOME/quadrahq/installer/build-$(date -u +%Y%m%d-%H%M%S)-XXXXXX.log")
 
-  # IMPROVED: Show build output live with tee
-  if ! DARLING_SYSROOT="$DARLING_SYSROOT" "$DIR/build_debug_shim.sh" 2>&1 | tee "$INSTALL_LOG"; then
-    say "Build output saved to: $INSTALL_LOG"
-    say "Last 40 lines of output:"
-    tail -n 40 -- "$INSTALL_LOG" >&2
-    die "Build failed. See full log above or at: $INSTALL_LOG"
+    # IMPROVED: Show build output live with tee
+    if ! DARLING_SYSROOT="$DARLING_SYSROOT" "$DIR/build_debug_shim.sh" 2>&1 | tee "$INSTALL_LOG"; then
+      say "Build output saved to: $INSTALL_LOG"
+      say "Last 40 lines of output:"
+      tail -n 40 -- "$INSTALL_LOG" >&2
+      die "Build failed. See full log above or at: $INSTALL_LOG"
+    fi
+    say "Compatibility libraries built."
   fi
-  say "Compatibility libraries built."
   step 4 "Add the launcher to your desktop"
   "$DIR/launcher/install.sh"
-  save_darling_selection
+  [[ $BACKEND == rosemary ]] || save_darling_selection
+  save_backend_setting
   setup_success
 }
 
@@ -1447,6 +1557,16 @@ do_uninstall() {
     say "Removing Darling's prefix (${PREFIX/#$HOME/\~}), with your Roblox sign-in"
     rm -rf -- "$PREFIX"
   fi
+  # Rosemary and its Roblox client live in the user data folder, outside the
+  # checkout, like Darling's prefix: kept unless asked.
+  local rosemary_data=$DATA_HOME/quadrahq
+  if [[ -n $purge && -d $rosemary_data ]]; then
+    [[ $rosemary_data == "$HOME"/?* ]] || die "Rosemary's folder $rosemary_data is not in your home folder, so it is left alone."
+    say "Removing Rosemary and its Roblox client (${rosemary_data/#$HOME/\~})"
+    rm -rf -- "$rosemary_data"
+  elif [[ -d $rosemary_data ]]; then
+    say "Rosemary's files stay in ${rosemary_data/#$HOME/\~}; --purge removes them."
+  fi
   say "Quadra is uninstalled."
   if command -v "$DARLING_EXECUTABLE" >/dev/null; then
     printf '    %s%s stays installed.%s\n' "$DIM" "$(darling_runtime_name)" "$RESET"
@@ -1557,7 +1677,8 @@ menu_main() {
   ${DIM}First setup · 1 of 4${RESET}
 
   Play the macOS Roblox client on your Linux desktop.
-  We'll prepare the launcher, Darling and the system tools.
+  We'll prepare the launcher and the system tools, and you'll choose Rosemary
+  or Darling to run Roblox with.
   The launcher will guide you through installing Roblox and signing in."
   fi
   choose "$text" "$first" "Uninstall|Remove Quadra from this computer" "Quit|"
@@ -1566,7 +1687,23 @@ menu_main() {
 menu_install() {
   local operation='Install'
   is_installed && operation='Update'
-  if [[ -z $DARLING_CHOICE_EXPLICIT ]]; then
+  if [[ -z $BACKEND_EXPLICIT && -z $DARLING_CHOICE_EXPLICIT ]]; then
+    local backend_text="  ${BOLD}Choose the runtime · 2 of 4${RESET}
+
+  The runtime is what runs the macOS Roblox client on Linux.
+  Rosemary is the default. Quadra downloads it for you, so there is nothing to build.
+  Darling is outdated. It needs a Darling install, which can mean a long source build,
+  and it is the only runtime with some settings, such as the renderer and DNS.
+  Current selection: $(backend_name)"
+    if [[ $BACKEND == darling ]]; then
+      choose "$backend_text" "Darling (outdated)|Keep the current selection" "Rosemary|Recommended" "Back|"
+      case $CHOICE in 0) BACKEND=darling ;; 1) BACKEND=rosemary ;; *) return 1 ;; esac
+    else
+      choose "$backend_text" "Rosemary|Recommended" "Darling (outdated)|Use the previous runtime" "Back|"
+      case $CHOICE in 0) BACKEND=rosemary ;; 1) BACKEND=darling ;; *) return 1 ;; esac
+    fi
+  fi
+  if [[ $BACKEND == darling && -z $DARLING_CHOICE_EXPLICIT ]]; then
     local text="  ${BOLD}Choose Darling · 2 of 4${RESET}
 
   Regular Darling uses your installed runtime or distro/upstream packages.
@@ -1591,7 +1728,7 @@ $(setup_plan)" "Continue|Confirm this setup plan" "Back|Return to the welcome sc
   ${DIM}Setup · 4 of 4${RESET}
 
   Destination: ${DIR/#$HOME/\~}
-  Setup downloads the launcher and builds the compatibility libraries.
+  Setup downloads the launcher$([[ $BACKEND == darling ]] && printf ' and builds the compatibility libraries').
   You'll see progress for each step. System packages may request sudo.
 
   ${DIM}Begin when you're ready.${RESET}" \
@@ -1613,8 +1750,9 @@ menu_uninstall() {
     ${BULLET} the app menu entries, icons and the quadrahq command
     ${BULLET} settings and cache
 
-  ${DIM}Darling stays installed. Its prefix, $prefix, holds your Roblox sign-in.${RESET}" \
-    "Uninstall|keep $prefix" "Uninstall everything|also delete $prefix" "Back|"
+  ${DIM}Darling stays installed. Its prefix, $prefix, holds your Roblox sign-in.
+  Rosemary's files, ${DATA_HOME/#$HOME/\~}/quadrahq, stay too.${RESET}" \
+    "Uninstall|keep $prefix and Rosemary's files" "Uninstall everything|also delete $prefix and Rosemary's files" "Back|"
   case $CHOICE in
     0)
       PURGE=''
@@ -1623,7 +1761,8 @@ menu_uninstall() {
       choose "  ${BAD}Delete $prefix?${RESET}
 
   It is Darling's macOS home folder: your Roblox sign-in, and anything
-  else installed or saved in Darling, goes with it." \
+  else installed or saved in Darling, goes with it. So do Rosemary's files,
+  including its Roblox client." \
         "No, go back|" "Yes, delete it|"
       [[ $CHOICE == 1 ]] || return 1
       PURGE=1
@@ -1641,8 +1780,14 @@ Quadra installer
   install.sh --update      same as --install
   install.sh --install --yes
                            install or update without setup prompts
+  install.sh --backend rosemary
+                           run Roblox with Rosemary (default on first install);
+                           nothing to build, the launcher downloads Rosemary
+  install.sh --backend darling
+                           run Roblox with Darling (outdated); builds or
+                           installs Darling and Quadra's compatibility libraries
   install.sh --darling regular
-                           choose regular Darling (default on first install)
+                           choose regular Darling (implies --backend darling)
   install.sh --darling ciderdarling
                            choose QuadraHQ's published Darling runtime
                            source builds still ask for terminal confirmation
@@ -1662,12 +1807,14 @@ Quadra installer
   install.sh --uninstall   remove Quadra (asks first, unless --yes)
   install.sh --uninstall --purge
                            also delete the selected Darling prefix (Roblox sign-in)
+                           and Rosemary's files, including its Roblox client
 
 With curl, options go after "bash -s --":
-  curl -fsSL https://quadrahq.org/install.sh | bash -s -- --darling ciderdarling
+  curl -fsSL https://quadrahq.org/install.sh | bash -s -- --backend darling --darling ciderdarling
   curl -fsSL https://quadrahq.org/install.sh | bash -s -- --uninstall
 
-Updates keep your saved runtime choice. DARLING_BUILD_JOBS defaults to auto:
+Updates keep your saved runtime choice, and an install that predates Rosemary
+stays on Darling. DARLING_BUILD_JOBS defaults to auto:
 available CPU threads capped by memory headroom; set a positive count to override.
 USAGE
 }
@@ -1695,6 +1842,12 @@ main() {
         DARLING_CHOICE_EXPLICIT=1
         shift ;;
       --darling=*) DARLING_RUNTIME=${arg#*=}; DARLING_CHOICE_EXPLICIT=1 ;;
+      --backend)
+        (($# >= 2)) || die "--backend needs rosemary or darling."
+        BACKEND=$2
+        BACKEND_EXPLICIT=1
+        shift ;;
+      --backend=*) BACKEND=${arg#*=}; BACKEND_EXPLICIT=1 ;;
       -h | --help)
         usage
         return 0 ;;
@@ -1705,7 +1858,16 @@ main() {
   if [[ -n $DARLING_CHOICE_EXPLICIT && -z $DARLING_RUNTIME ]]; then
     die "--darling needs regular or ciderdarling."
   fi
+  if [[ -n $BACKEND_EXPLICIT ]]; then
+    case $BACKEND in
+      rosemary | darling) ;;
+      *) die "--backend must be rosemary or darling." ;;
+    esac
+    [[ $BACKEND == darling || -z $DARLING_CHOICE_EXPLICIT ]] ||
+      die "--darling chooses a Darling runtime, so it cannot be combined with --backend rosemary."
+  fi
   load_darling_selection
+  select_backend
   [[ -z $CIDER_DARLING_RELEASE_FILE || $DARLING_RUNTIME == ciderdarling ]] ||
     die "--runtime-release requires --darling ciderdarling."
   # Package managers may ask questions; with curl | bash stdin is this script.

@@ -365,8 +365,9 @@ banner() { :; }; do_install_runtime() { printf '%s' "$REPLACE_INCOMPLETE_RUNTIME
 main --install-runtime --darling ciderdarling --replace-incomplete-runtime''').strip(), '1')
 
     def test_menu_can_select_either_runtime_and_cancel(self):
+        # Darling is chosen up front here, so the first menu is the choice between its two variants.
         body = '''
-load_darling_selection
+load_darling_selection; BACKEND=darling; BACKEND_EXPLICIT=1
 is_installed() { return 1; }; setup_plan() { :; }
 choose() { CHOICE=$FAKE_CHOICE; FAKE_CHOICE=0; }
 FAKE_CHOICE='''
@@ -374,6 +375,142 @@ FAKE_CHOICE='''
             output = self.checked(body + str(choice) + '\nmenu_install\nprintf "%s" "$DARLING_RUNTIME"')
             self.assertEqual(output, variant)
         self.assertNotEqual(self.shell(body + '2\nmenu_install').returncode, 0)
+
+    def test_menu_offers_rosemary_first_and_darling_as_outdated(self):
+        body = '''
+load_darling_selection; select_backend
+is_installed() { return 1; }; setup_plan() { :; }
+choose() { printf '%s\\n' "${2%%|*}" >> "$FIXTURE/menu"; CHOICE=$FAKE_CHOICE; FAKE_CHOICE=0; }
+FAKE_CHOICE='''
+        menu = self.base / 'menu'
+        output = self.checked(body + '0\nmenu_install\nprintf "%s" "$BACKEND"')
+        self.assertEqual(output, 'rosemary')
+        # The runtime menu, then the plan and the final screen: Darling's variants are never asked about.
+        self.assertEqual(menu.read_text().splitlines(), ['Rosemary', 'Continue', 'Install Quadra'])
+        menu.unlink()
+        output = self.checked(body + '1\nmenu_install\nprintf "%s|%s" "$BACKEND" "$DARLING_RUNTIME"')
+        self.assertEqual(output, 'darling|regular')
+        self.assertEqual(menu.read_text().splitlines()[:2], ['Rosemary', 'Regular Darling'])
+        menu.unlink()
+        self.assertNotEqual(self.shell(body + '2\nmenu_install').returncode, 0)
+        # An install already on Darling is offered that first, and Darling is called outdated.
+        output = self.checked('''
+BACKEND=darling
+is_installed() { return 1; }; setup_plan() { :; }
+choose() { printf '%s' "$2"; CHOICE=2; }
+menu_install || true''')
+        self.assertTrue(output.startswith('Darling (outdated)|Keep the current selection'), output)
+
+    def test_runtime_defaults_to_rosemary_and_keeps_what_was_saved(self):
+        config = self.base / 'config/quadrahq'
+        config.mkdir(parents=True)
+        # (settings.json, runtime.json saved, --darling given, expected)
+        cases = [
+            (None, False, '', 'rosemary'),
+            ('{}', False, '', 'rosemary'),
+            ('not json', False, '', 'rosemary'),
+            ('{"vr": false}', False, '', 'darling'),
+            ('{"runtime_backend": "rosemary"}', False, '', 'rosemary'),
+            ('{"runtime_backend": "darling"}', False, '', 'darling'),
+            (None, True, '', 'darling'),
+            (None, False, '1', 'darling'),
+            ('{"runtime_backend": "rosemary"}', False, '1', 'darling'),
+        ]
+        for settings, saved_runtime, darling_given, expected in cases:
+            with self.subTest(settings=settings, runtime=saved_runtime, darling=darling_given):
+                for name in ('settings.json', 'runtime.json'):
+                    (config / name).unlink(missing_ok=True)
+                if settings is not None:
+                    (config / 'settings.json').write_text(settings)
+                if saved_runtime:
+                    (config / 'runtime.json').touch()
+                output = self.checked(f'DARLING_CHOICE_EXPLICIT={darling_given!r}\nselect_backend\nprintf "%s" "$BACKEND"')
+                self.assertEqual(output, expected)
+        # An explicit --backend is never overridden by what was saved.
+        (config / 'settings.json').write_text('{"runtime_backend": "darling"}')
+        self.assertEqual(self.checked('BACKEND=rosemary; select_backend; printf "%s" "$BACKEND"'), 'rosemary')
+
+    def test_backend_option_and_its_conflicts(self):
+        body = '''
+banner() { :; }; setup_plan() { :; }
+do_install() { printf '%s' "$BACKEND"; }
+main '''
+        self.assertEqual(self.checked(body + '--yes').lstrip('\n'), 'rosemary')
+        self.assertEqual(self.checked(body + '--yes --backend darling').lstrip('\n'), 'darling')
+        self.assertEqual(self.checked(body + '--yes --backend=rosemary').lstrip('\n'), 'rosemary')
+        self.assertEqual(self.checked(body + '--yes --darling regular').lstrip('\n'), 'darling')
+        self.assertEqual(self.checked(body + '--yes --backend darling --darling ciderdarling').lstrip('\n'), 'darling')
+        for options in ('--backend wrong', '--backend', '--backend=', '--backend rosemary --darling regular'):
+            with self.subTest(options=options):
+                self.assertNotEqual(self.shell(body + options).returncode, 0)
+        self.assertIn('--backend', self.checked('usage'))
+
+    def test_runtime_choice_is_saved_without_touching_other_settings(self):
+        settings = self.base / 'config/quadrahq/settings.json'
+        self.checked('BACKEND=rosemary; save_backend_setting')
+        self.assertEqual(json.loads(settings.read_text()), {'runtime_backend': 'rosemary'})
+        settings.write_text(json.dumps({'vr': True, 'runtime_backend': 'darling', 'dns': 'custom'}))
+        self.checked('BACKEND=rosemary; save_backend_setting')
+        self.assertEqual(json.loads(settings.read_text()),
+                         {'vr': True, 'runtime_backend': 'rosemary', 'dns': 'custom'})
+        # A file that cannot be read is left exactly as it is, and the person is told.
+        settings.write_text('not json')
+        result = self.shell('BACKEND=rosemary; save_backend_setting')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(settings.read_text(), 'not json')
+        self.assertIn('Could not save the runtime choice', result.stdout)
+        self.assertEqual([path.name for path in settings.parent.iterdir()], ['settings.json'])
+
+    def fake_checkout(self):
+        checkout = self.base / 'data/QuadraHQ'
+        (checkout / '.git').mkdir(parents=True)
+        (checkout / 'launcher/quadra').mkdir(parents=True)
+        (checkout / 'launcher/quadra/core.py').touch()
+        (checkout / 'launcher/quadra/__init__.py').write_text('__version__ = "0.42"\n')
+        (checkout / 'launcher/quadrahq-launcher').touch()
+        for name, mark in (('build_debug_shim.sh', 'shim'), ('launcher/install.sh', 'launcher')):
+            path = checkout / name
+            path.write_text(f'#!/usr/bin/env bash\necho {mark} >> "$FIXTURE/log"\n')
+            path.chmod(0o755)
+        return checkout
+
+    INSTALL_STUBS = '''
+git() { :; }; step() { :; }; install_tools() { :; }
+validate_tools() { echo "tools $BACKEND" >> "$FIXTURE/log"; }
+ensure_darling() { echo darling >> "$FIXTURE/log"; export DARLING_SYSROOT=/fixture; }
+save_darling_selection() { echo selection >> "$FIXTURE/log"; }
+'''
+
+    def test_rosemary_install_needs_no_darling_and_builds_nothing(self):
+        self.fake_checkout()
+        result = self.shell(self.INSTALL_STUBS + 'BACKEND=rosemary\ndo_install')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.base / 'log').read_text().splitlines(), ['tools rosemary', 'launcher'])
+        self.assertEqual(json.loads((self.base / 'config/quadrahq/settings.json').read_text()),
+                         {'runtime_backend': 'rosemary'})
+        self.assertIn('Press Play', result.stdout)
+        self.assertFalse((self.base / 'config/quadrahq/runtime.json').exists())
+
+    def test_darling_install_still_installs_darling_and_builds_the_shim(self):
+        self.fake_checkout()
+        result = self.shell(self.INSTALL_STUBS + 'BACKEND=darling\ndo_install')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.base / 'log').read_text().splitlines(),
+                         ['tools darling', 'darling', 'shim', 'launcher', 'selection'])
+        self.assertEqual(json.loads((self.base / 'config/quadrahq/settings.json').read_text()),
+                         {'runtime_backend': 'darling'})
+
+    def test_tool_check_asks_rosemary_only_for_the_launchers_tools(self):
+        empty = self.base / 'bin'
+        empty.mkdir()
+        for tool in ('python3', 'git'):
+            (empty / tool).symlink_to(shutil.which(tool))
+        # clang, lld, pw-cat and the SDL2 headers are missing: fine for Rosemary, fatal for Darling.
+        rosemary = self.shell('BACKEND=rosemary\nPATH="$FIXTURE/bin"\nvalidate_tools')
+        self.assertNotIn('is missing', rosemary.stdout + rosemary.stderr)
+        darling = self.shell('BACKEND=darling\nPATH="$FIXTURE/bin"\nvalidate_tools')
+        self.assertNotEqual(darling.returncode, 0)
+        self.assertIn('is missing', darling.stdout + darling.stderr)
 
     def test_explicit_jobs_and_auto_affinity_cap(self):
         self.assertEqual(self.checked('darling_build_jobs', DARLING_BUILD_JOBS='7'), '7')
