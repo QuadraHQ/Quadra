@@ -3,6 +3,14 @@
 ## Unreleased
 
 
+## 0.41.p1 — 2026-11-01
+
+- Settings → Rosemary has a "Rosemary build" selector: Quadra's Rosemary (QuadraHQ/rosemary-fork, adds what VR needs)
+  or the regular Rosemary (microlift). Quadra installs the one picked, keeps them in separate runner folders, runs
+  the chosen one (the other still runs if it is all that is installed) and names the build in use. Quadra's build
+  falls back to the regular one only while it has no release, and says so. Default: Quadra's.
+- Nothing else changes from 0.41.
+
 ## 0.41 — 2026-11-01
 
 - The old launcher layout is back: the sidebar lists Play, Settings, Studio, Servers, Mods and Info, the Play page is

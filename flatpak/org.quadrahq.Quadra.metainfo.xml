@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.41.p1" date="2026-11-01">
+      <description>
+        <p>Settings, Rosemary tab: choose which Rosemary Quadra installs and runs, Quadra's own build (it adds what VR needs) or the regular one. Nothing else changes from 0.41.</p>
+      </description>
+    </release>
     <release version="0.41" date="2026-11-01">
       <description>
         <p>Brings back the old launcher layout. Rosemary is now an optional runtime that Quadra installs itself, with mods, a CPU limit, Discord status, its own options and, with Quadra's build of Rosemary, VR. Fixes Install Roblox doing nothing when Rosemary was selected.</p>

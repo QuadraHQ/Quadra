@@ -1,3 +1,9 @@
+quadrahq (0.41.p1-1) unstable; urgency=medium
+
+  * Settings → Rosemary has a "Rosemary build" selector: Quadra's Rosemary (adds VR) or the regular one.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Sun, 01 Nov 2026 13:16:02 -0600
+
 quadrahq (0.41-1) unstable; urgency=medium
 
   * The old launcher layout is back (sidebar, Play page, one Environment page with tabs).
