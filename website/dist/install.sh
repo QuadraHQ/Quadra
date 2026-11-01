@@ -429,6 +429,22 @@ install_arch() {
     sudo pacman -S --needed --noconfirm $missing ||
       die "pacman could not install them. Update the system with 'sudo pacman -Syu' and run this again."
   fi
+  update_arch_toolchain
+}
+
+# clang loads libLLVM.so.N at run time, so a clang that is out of step with
+# llvm-libs fails every compile with "cannot open shared object file". Bring
+# only the compiler family up to the repo version (pacman pulls the matching
+# llvm-libs as its dependency) and leave the rest of the system alone.
+update_arch_toolchain() {
+  local flags=(--needed)
+  # A toolchain that cannot start is reinstalled even if versions look current.
+  clang++ --version >/dev/null 2>&1 && ld.lld --version >/dev/null 2>&1 || flags=()
+  say "Checking the compiler toolchain (clang, llvm-libs, lld)"
+  sudo pacman -S "${flags[@]}" --noconfirm clang llvm-libs lld ||
+    die "pacman could not update clang. Run 'sudo pacman -Syu' and run this again."
+  clang++ --version >/dev/null 2>&1 ||
+    die "clang still cannot start after updating. Run 'sudo pacman -Syu' and run this again."
 }
 
 install_debian() {
