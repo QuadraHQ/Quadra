@@ -250,14 +250,6 @@ class GameLogsView(Gtk.Box):
         spacer = Gtk.Box(hexpand=True)
         bar.append(spacer)
 
-        # Rosemary's launch log only holds Rosemary's messages; the client's own
-        # log (joins, errors) is the one to read.
-        self.client_log_btn = Gtk.ToggleButton(label=_("Roblox log"), visible=False, active=True)
-        self.client_log_btn.add_css_class("flat")
-        self.client_log_btn.set_tooltip_text(_("Show the client's own log instead of Rosemary's"))
-        self.client_log_btn.connect("toggled", lambda *_args: self.update())
-        bar.append(self.client_log_btn)
-
         search_btn = Gtk.Button(icon_name="edit-find-symbolic")
         search_btn.add_css_class("flat")
         search_btn.set_tooltip_text(_("Search in logs (Ctrl+F)"))
@@ -615,10 +607,6 @@ class GameLogsView(Gtk.Box):
             log_path = session.log_path
         elif self.window.last_log:
             log_path = self.window.last_log
-        has_client_log = bool(session and hasattr(session, "game_log"))
-        self.client_log_btn.set_visible(has_client_log)
-        if has_client_log and self.client_log_btn.get_active():
-            log_path = session.game_log() or log_path
 
         if not log_path or not log_path.exists():
             self.stop_server_location_polling()
@@ -5617,8 +5605,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         # Roblox's macOS updater cannot reliably replace the host bundle through
         # Darling. It exits with success/a quit sentinel, so this is independent
         # of the frontend exit code and must precede pending-URI auto-retries.
-        # Rosemary's launch log only holds its own messages; the client's log
-        # has the reason.
+        # Rosemary's client log lines are in its launch log.
         game_log = session.game_log() if hasattr(session, "game_log") else None
         reason = core.exit_reason(game_log or self.last_log)
         if reason == "update_required" and hasattr(session, "game_log"):

@@ -373,8 +373,10 @@ class RosemarySession:
         self.transport_monitor = TransportMonitor()
 
     def game_log(self):
-        """The client's own log (FLog lines: joins, teleports), once it exists."""
-        return newest_player_log(self.prefix, self.started_at - 2) if self.prefix else None
+        """The log that holds the client's own lines (joins, errors): the launch
+        log, because the client's output goes to Rosemary's stdout (checked on a
+        real run: it holds every FLog line, including the joins)."""
+        return self.log_path
 
     def start(self):
         found = installed(self.settings)
@@ -473,18 +475,31 @@ class RosemarySession:
                 pass
 
     def stop_game(self):
-        """Ask Rosemary and its children to exit, then insist."""
+        """Ask Rosemary and its children to exit, then insist. Returns once the
+        whole process group is gone (or after about 8 seconds)."""
         process = self.process
-        if process is None or process.poll() is not None:
+        if process is None:
             return
-        for sig, wait in ((signal.SIGTERM, 4.0), (signal.SIGKILL, 2.0)):
+        group = process.pid
+
+        def group_alive():
             try:
-                os.killpg(process.pid, sig)
+                os.killpg(group, 0)
+                return True
+            except (ProcessLookupError, PermissionError):
+                return False
+
+        if not group_alive():
+            return
+        for sig, wait in ((signal.SIGTERM, 4.0), (signal.SIGKILL, 3.0)):
+            try:
+                os.killpg(group, sig)
             except (ProcessLookupError, PermissionError):
                 return
             end = time.monotonic() + wait
             while time.monotonic() < end:
-                if process.poll() is not None:
+                process.poll()   # reap the leader so the group can empty
+                if not group_alive():
                     return
                 time.sleep(0.1)
 

@@ -124,6 +124,27 @@ class SessionTests(unittest.TestCase):
         log = (self.root / "calls.log").read_text()
         self.assertIn(f"Cpus_allowed_list:\t{allowed[0]}\n", log)
 
+    def test_the_client_log_is_the_launch_log(self):
+        self.install()
+        session = self.run_to_end()
+        self.assertEqual(session.game_log(), session.log_path)
+        self.assertIn("game output", session.game_log().read_text())
+
+    def test_finish_leaves_no_process_behind(self):
+        self.install()
+        script = self.root / "slow-rosemary"
+        script.write_text("#!/bin/sh\ncase \"$1\" in prefix) mkdir -p \"$3/.rosemary\"; echo base: > \"$3/.rosemary/state.yaml\";; run) sleep 60 & sleep 60;; esac\n")
+        script.chmod(0o755)
+        session = runtime.RosemarySession({**self.settings, "rosemary_program": str(script)}, logs_dir=self.root / "logs")
+        session.start()
+        time.sleep(0.4)
+        group = session.process.pid
+        started = time.time()
+        session.finish()
+        self.assertLess(time.time() - started, 9)
+        with self.assertRaises(ProcessLookupError):
+            os.killpg(group, 0)
+
     def test_no_limit_by_default(self):
         self.install()
         self.assertFalse(self.run_to_end().cpu_limited)
