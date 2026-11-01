@@ -18,7 +18,10 @@ from pathlib import Path
 
 from .paths import user_directory
 
-RELEASE_URL = "https://api.github.com/repos/microlift/rosemary/releases/latest"
+# Where Rosemary comes from, in order: Quadra's own fork (the VR and
+# injection work, once it publishes a release) and then upstream. A source
+# with no usable release is skipped. The suffix keeps their folders apart.
+SOURCES = (("QuadraHQ/rosemary-fork", "quadra"), ("microlift/rosemary", ""))
 ALLOWED_HOSTS = ("api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 APPIMAGE = re.compile(r"^Rosemary-([0-9][0-9A-Za-z.\-]*)-x86_64\.AppImage$")
 VERSION_OK = re.compile(r"^[0-9][0-9A-Za-z.\-]*$")
@@ -66,20 +69,44 @@ def expected_hash(sums_text, name):
     raise InstallError(f"SHA256SUMS has no entry for {name}.")
 
 
+def find_release(opener=urllib.request.urlopen, sources=SOURCES):
+    """(version, folder name, appimage name, appimage url, sums url) of the
+    newest release of the first source that has one."""
+    failures = []
+    for repo, suffix in sources:
+        try:
+            data = json.loads(_get(f"https://api.github.com/repos/{repo}/releases/latest", opener))
+            version, name, url, sums_url = parse_release(data)
+        except (OSError, ValueError, InstallError) as error:
+            failures.append(f"{repo}: {error}")
+            continue
+        if not VERSION_OK.match(version):
+            failures.append(f"{repo}: unexpected version {version!r}")
+            continue
+        return version, (f"{version}-{suffix}" if suffix else version), name, url, sums_url
+    raise InstallError("Could not find a Rosemary release to install.\n" + "\n".join(failures))
+
+
+def latest_version(opener=urllib.request.urlopen):
+    """The folder name the newest release would install into, or None offline."""
+    try:
+        return find_release(opener)[1]
+    except InstallError:
+        return None
+
+
 def install_latest(progress, opener=urllib.request.urlopen):
     """Install the newest release. progress(fraction, text). Returns the
     executable path. Blocking: call off the GTK thread."""
     progress(0.0, "Finding the latest Rosemary")
-    version, name, url, sums_url = parse_release(json.loads(_get(RELEASE_URL, opener)))
-    if not VERSION_OK.match(version):
-        raise InstallError(f"Unexpected Rosemary version {version!r}")
-    target = runner_root() / version
+    version, folder, name, url, sums_url = find_release(opener)
+    target = runner_root() / folder
     program = target / "squashfs-root" / "bin" / "rosemary"
     if program.is_file() and os.access(program, os.X_OK):
         progress(1.0, f"Rosemary {version} is installed")
         return program
     wanted = expected_hash(_get(sums_url, opener).decode("utf-8", "replace"), name)
-    staging = runner_root() / f".installing-{version}"
+    staging = runner_root() / f".installing-{folder}"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
     try:

@@ -251,6 +251,33 @@ class InstallerTests(unittest.TestCase):
                 installer._check_url(bad)
         installer._check_url("https://objects.githubusercontent.com/x")
 
+    def test_source_order_falls_back_to_upstream_and_keeps_folders_apart(self):
+        import json as _json
+        def release(version):
+            base = f"https://github.com/x/y/releases/download/v{version}/"
+            return {"assets": [{"name": "SHA256SUMS", "browser_download_url": base + "SHA256SUMS"},
+                               {"name": f"Rosemary-{version}-x86_64.AppImage",
+                                "browser_download_url": base + f"Rosemary-{version}-x86_64.AppImage"}]}
+        class R:
+            def __init__(self, body): self.body = body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self, n=-1): return self.body
+        def opener(request, timeout=0):
+            url = request.full_url
+            if "QuadraHQ/rosemary-fork" in url:
+                if self.fork_ok:
+                    return R(_json.dumps(release("0.5.0")).encode())
+                raise OSError("HTTP 404")
+            return R(_json.dumps(release("0.5.0")).encode())
+        self.fork_ok = False
+        self.assertEqual(installer.find_release(opener)[1], "0.5.0")            # upstream: plain folder
+        self.fork_ok = True
+        self.assertEqual(installer.find_release(opener)[1], "0.5.0-quadra")     # the fork wins, own folder
+        self.assertEqual(installer.latest_version(opener), "0.5.0-quadra")
+        with self.assertRaises(installer.InstallError):
+            installer.find_release(lambda *a, **k: (_ for _ in ()).throw(OSError("offline")))
+
     def test_hash_mismatch_installs_nothing(self):
         class R:
             def __init__(self, body): self.body = body; self.headers = {"Content-Length": str(len(body))}; self.done = False

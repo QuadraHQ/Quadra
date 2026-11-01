@@ -219,6 +219,46 @@ class RollbackTests(unittest.TestCase):
         self.assertEqual(runtime.installed({"rosemary_pinned_build": "version-zz-x86_64"})[0].key, "version-a1-x86_64")
 
 
+class EnsureReadyTests(unittest.TestCase):
+    def test_installs_rosemary_then_the_client_and_scales_progress(self):
+        calls, seen = [], []
+        def fake_install(progress, *a, **k):
+            calls.append("rosemary"); progress(1.0, "rosemary done")
+        def fake_latest(settings, progress, cancel=None, ignore_pin=False):
+            calls.append("client"); progress(0.0, "client start"); progress(1.0, "client done"); return Path("/app")
+        from quadra import rosemary_install
+        with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("missing")), \
+                mock.patch.object(rosemary_install, "install_latest", fake_install), \
+                mock.patch.object(runtime, "ensure_latest", fake_latest):
+            self.assertEqual(runtime.ensure_ready({}, lambda f, t: seen.append((round(f, 2), t))), Path("/app"))
+        self.assertEqual(calls, ["rosemary", "client"])
+        self.assertEqual([f for f, _t in seen], sorted(f for f, _t in seen))    # never goes backwards
+        self.assertAlmostEqual(seen[-1][0], 1.0)
+
+    def test_a_program_chosen_by_hand_is_never_replaced(self):
+        from quadra import rosemary_install
+        with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("bad path")), \
+                mock.patch.object(rosemary_install, "install_latest") as install:
+            with self.assertRaises(runtime.RosemaryError):
+                runtime.ensure_ready({"rosemary_program": "/nope"}, lambda f, t: None)
+            install.assert_not_called()
+
+    def test_install_failure_is_a_clear_error(self):
+        from quadra import rosemary_install
+        with mock.patch.object(runtime, "find_rosemary", side_effect=runtime.RosemaryError("missing")), \
+                mock.patch.object(rosemary_install, "install_latest", side_effect=rosemary_install.InstallError("offline")):
+            with self.assertRaisesRegex(runtime.RosemaryError, "offline"):
+                runtime.ensure_ready({}, lambda f, t: None)
+
+    def test_skips_the_install_when_it_is_already_there(self):
+        from quadra import rosemary_install
+        with mock.patch.object(runtime, "find_rosemary", return_value=Path("/r")), \
+                mock.patch.object(rosemary_install, "install_latest") as install, \
+                mock.patch.object(runtime, "ensure_latest", return_value=Path("/app")):
+            runtime.ensure_ready({}, lambda f, t: None)
+            install.assert_not_called()
+
+
 class MiscTests(unittest.TestCase):
     def test_sign_out_removes_only_the_cookie_store(self):
         with tempfile.TemporaryDirectory() as tmp:

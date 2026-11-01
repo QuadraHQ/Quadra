@@ -826,22 +826,6 @@ class PlayPage(Adw.Bin):
 
     def _dashboard(self):
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, css_classes=["play-dashboard"])
-        body.append(Gtk.Label(label=_("Home"), xalign=0, css_classes=["home-title"]))
-
-        # Roblox / Studio: which one the big button starts.
-        self.target = "roblox"
-        self.target_buttons = {}
-        if not os.path.exists("/.flatpak-info"):
-            toggle = Gtk.Box(css_classes=["linked", "target-toggle"], halign=Gtk.Align.START)
-            first = None
-            for key, title in (("roblox", _("Roblox")), ("studio", _("Studio"))):
-                button = Gtk.ToggleButton(label=title, group=first, active=(key == "roblox"))
-                first = first or button
-                button.connect("toggled", lambda b, k=key: b.get_active() and self._set_target(k))
-                self.target_buttons[key] = button
-                toggle.append(button)
-            body.append(toggle)
-
         hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["play-hero"])
         head = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["play-hero-head"])
         identity = Gtk.Box(spacing=14)
@@ -857,37 +841,18 @@ class PlayPage(Adw.Bin):
         hero.append(head)
         hero.append(self.dashboard_actions)
         body.append(hero)
-
         body.append(Gtk.Label(label=_("YOUR ENVIRONMENT"), xalign=0, css_classes=["launcher-section-title"]))
-        cards = Gtk.Box(spacing=10, homogeneous=True)
+        facts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["play-facts"])
         self.dashboard_facts = {}
         for key, title in (("client", _("Roblox version")), ("renderer", _("Renderer")), ("runtime", _("Darling runtime"))):
-            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, css_classes=["status-card"])
-            card.append(Gtk.Label(label=title.upper(), xalign=0, css_classes=["status-card-title"]))
-            value = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END, css_classes=["status-card-value"])
-            value.set_max_width_chars(18)
-            card.append(value)
+            row = Gtk.Box(spacing=12, css_classes=["play-fact"])
+            row.append(Gtk.Label(label=title, xalign=0, hexpand=True, css_classes=["play-fact-title"]))
+            value = Gtk.Label(xalign=1, ellipsize=Pango.EllipsizeMode.MIDDLE, css_classes=["play-fact-value"])
+            value.set_max_width_chars(28)
+            row.append(value)
             self.dashboard_facts[key] = value
-            cards.append(card)
-        body.append(cards)
-
-        heading = Gtk.Box(spacing=8)
-        heading.append(Gtk.Label(label=_("JUMP BACK IN"), xalign=0, hexpand=True,
-                                 css_classes=["launcher-section-title"]))
-        see_all = Gtk.Button(label=_("See all"), css_classes=["flat"])
-        see_all.connect("clicked", lambda *_args: self.window.stack.set_visible_child_name("servers"))
-        heading.append(see_all)
-        body.append(heading)
-        self.recent_tiles = Gtk.Box(spacing=10)
-        self.recent_empty = Gtk.Label(label=_("Games you join will show up here."), xalign=0,
-                                      css_classes=["dim-label"])
-        recents = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        recents.append(self.recent_empty)
-        recents.append(Gtk.ScrolledWindow(child=self.recent_tiles, vscrollbar_policy=Gtk.PolicyType.NEVER,
-                                          hscrollbar_policy=Gtk.PolicyType.AUTOMATIC))
-        body.append(recents)
-        self._tile_widgets = []
-
+            facts.append(row)
+        body.append(facts)
         shortcuts = Gtk.Box(spacing=8, homogeneous=True)
         for title, icon, callback in (
                 (_("Settings"), "emblem-system-symbolic", lambda: self.window.stack.set_visible_child_name("settings")),
@@ -907,68 +872,7 @@ class PlayPage(Adw.Bin):
             links.append(button)
         body.append(links)
         clamp = Adw.Clamp(child=body, maximum_size=760, tightening_threshold=600)
-        self.refresh_recents()
         return Gtk.ScrolledWindow(child=clamp, hscrollbar_policy=Gtk.PolicyType.NEVER)
-
-    def _set_target(self, target):
-        self.target = target
-        self._apply_target()
-
-    def _apply_target(self):
-        """On the dashboard the big button follows the Roblox/Studio toggle."""
-        studio_ok = not os.path.exists("/.flatpak-info")
-        if self._custom_appearance and studio_ok:
-            self.play.set_visible(self.target == "roblox")
-            self.studio.set_visible(self.target == "studio")
-        else:
-            self.play.set_visible(True)
-            self.studio.set_visible(studio_ok)
-
-    def refresh_recents(self):
-        for tile in self._tile_widgets:
-            self.recent_tiles.remove(tile)
-        self._tile_widgets = []
-        games = history.recent_games(core.CONFIG_DIR, 8)
-        self.recent_empty.set_visible(not games)
-        for place_id, game in games:
-            servers = game.get("servers") or [{}]
-            where = servers[0].get("location") or ""
-            tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, css_classes=["game-tile"])
-            tile.set_size_request(120, -1)
-            picture = Gtk.Image(icon_name="applications-games-symbolic", pixel_size=96)
-            tile.append(picture)
-            tile.append(Gtk.Label(label=game.get("name") or _("Place {id}").format(id=place_id), xalign=0,
-                                  ellipsize=Pango.EllipsizeMode.END, max_width_chars=14,
-                                  css_classes=["game-tile-name"]))
-            tile.append(Gtk.Label(label=ServersPage._ago(game.get("last_played")) + (f" · {where}" if where else ""),
-                                  xalign=0, ellipsize=Pango.EllipsizeMode.END, max_width_chars=16,
-                                  css_classes=["game-tile-sub"]))
-            button = Gtk.Button(child=tile, css_classes=["flat"])
-            button.connect("clicked", lambda _b, pid=place_id: self.window.join_place(pid))
-            self.recent_tiles.append(button)
-            self._tile_widgets.append(button)
-            threading.Thread(target=self._load_tile_icon, args=(picture, place_id), daemon=True).start()
-
-    def _load_tile_icon(self, picture, place_id):
-        path = game_meta.icon_path(core.CACHE_DIR, place_id)
-        if not path.is_file():
-            try:
-                info = discord.fetch_game_info(int(place_id))
-            except Exception:
-                return
-            if not info:
-                return
-            path = game_meta.fetch_icon(core.CACHE_DIR, place_id, info.get("icon_url"))
-        if path:
-            GLib.idle_add(self._set_tile_icon, picture, str(path))
-
-    @staticmethod
-    def _set_tile_icon(picture, filename):
-        try:
-            picture.set_from_paintable(Gdk.Texture.new_from_filename(filename))
-        except GLib.Error:
-            pass
-        return False
 
     def _refresh_darling_status(self):
         # The badge names the runtime in use: Darling or Rosemary.
@@ -1016,7 +920,6 @@ class PlayPage(Adw.Bin):
                 self.toolbar_view.add_bottom_bar(self.action_bar)
             self._custom_appearance = custom
         self.appearance_stack.set_visible_child_name("custom" if custom else "gnome")
-        self._apply_target()
         self.logs_view.set_appearance(appearance)
 
     def _on_tab_changed(self, stack, _pspec):
@@ -1116,7 +1019,8 @@ class PlayPage(Adw.Bin):
             self.play.add_css_class("suggested-action")
             self.play.set_sensitive(False)
         else:
-            self.play.set_label(_("Play") if version else _("Install Roblox"))
+            ready = self.window.rosemary_ready() if rosemary else bool(version)
+            self.play.set_label(_("Play") if ready else _("Install Roblox"))
             self.play.remove_css_class("destructive-action")
             self.play.add_css_class("suggested-action")
             self.play.set_sensitive(not busy)
@@ -1962,14 +1866,13 @@ class RosemaryPage(Adw.PreferencesPage):
         runtime_group = Adw.PreferencesGroup(
             title=_("Runtime"),
             description=_("Which layer runs the macOS Roblox client. Darling is Quadra's default and has the "
-                          "most features (Quadra M2VK, mods, web sign-in). Rosemary (microlift/rosemary) is "
-                          "newer and runs an unpatched client; start games from Roblox's website."))
+                          "most features (Quadra M2VK, web sign-in). Rosemary (microlift/rosemary) is newer and "
+                          "runs an unpatched client. Quadra installs Rosemary and Roblox for it when you "
+                          "press Play; nothing else is needed."))
         self.backend_row = ComboRow(title=_("Run Roblox with"),
                                     model=Gtk.StringList.new(["Darling", "Rosemary"]))
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
-        self.backend_row.connect("notify::selected", lambda row, _pspec: (window.set_setting(
-            "runtime_backend", "rosemary" if row.get_selected() == 1 else "darling"), window.apply_runtime_state(),
-            self.refresh()))
+        self.backend_row.connect("notify::selected", self._backend_selected)
         runtime_group.add(self.backend_row)
         self.add(runtime_group)
 
@@ -2080,11 +1983,28 @@ class RosemaryPage(Adw.PreferencesPage):
         self.add(options)
         self.refresh()
 
+    def _backend_selected(self, row, _pspec):
+        window = self.window
+        window.set_setting("runtime_backend", "rosemary" if row.get_selected() == 1 else "darling")
+        window.apply_runtime_state()
+        self.refresh()
+        # Quadra installs Rosemary and the client itself when they are missing.
+        if window.rosemary_selected() and not window.rosemary_ready() and not window.busy:
+            self._install_client()
+
+    def _check_runner_update(self):
+        newest = rosemary_install.latest_version()
+        installed = [name for name, _path in rosemary_runtime.quadra_runners()]
+        if newest and installed and newest not in {n.replace("Rosemary ", "") for n in installed}:
+            GLib.idle_add(self.install_button.set_label, _("Update to {version}", version=newest))
+        return False
+
     def refresh(self):
         try:
             found = rosemary_runtime.find_rosemary(self.window.settings)
             self.program_row.set_subtitle(str(found))
             self.install_button.set_label(_("Update"))
+            threading.Thread(target=self._check_runner_update, daemon=True).start()
         except rosemary_runtime.RosemaryError as error:
             self.program_row.set_subtitle(str(error).splitlines()[0])
             self.install_button.set_label(_("Install"))
@@ -2145,7 +2065,7 @@ class RosemaryPage(Adw.PreferencesPage):
         self._run(lambda progress: rosemary_install.install_latest(progress))
 
     def _install_client(self):
-        self._run(lambda progress: rosemary_runtime.ensure_latest(self.window.settings, progress, ignore_pin=False))
+        self._run(lambda progress: rosemary_runtime.ensure_ready(self.window.settings, progress))
 
 
 class SettingsPage(Adw.Bin):
@@ -2160,11 +2080,6 @@ class SettingsPage(Adw.Bin):
 
         # 1. Environment page (Darling, Interface, Game, DNS, Diagnostics)
         self.env_page = Adw.PreferencesPage()
-        self.appearance_page = Adw.PreferencesPage()
-        self.game_page = Adw.PreferencesPage()
-        self.integrations_page = Adw.PreferencesPage()
-        self.network_page = Adw.PreferencesPage()
-        self.diagnostics_page = Adw.PreferencesPage()
 
         launcher_group = Adw.PreferencesGroup(title="Quadra")
         self.launcher_version_row = Adw.ActionRow(
@@ -2258,7 +2173,7 @@ class SettingsPage(Adw.Bin):
             active=settings.get("tray_icon", True))
         tray_switch.connect("notify::active", lambda row, _pspec: window.set_tray_icon(row.get_active()))
         interface.add(tray_switch)
-        self.appearance_page.add(interface)
+        self.env_page.add(interface)
 
         game = Adw.PreferencesGroup(title=_("Game"))
         # The renderer and graphics card rows also appear on the CiderDarling
@@ -2391,7 +2306,7 @@ class SettingsPage(Adw.Bin):
             "roblox_cpu_limit", int(row.get_value())))
         game.add(cpu_limit)
 
-        self.game_page.add(game)
+        self.env_page.add(game)
 
         # Quadra M2VK has a tab of its own: the renderer and graphics card to choose it with, then its settings.
         self.m2vk_page = Adw.PreferencesPage()
@@ -2478,7 +2393,7 @@ class SettingsPage(Adw.Bin):
             "discord_rpc_time", row.get_active()))
         discord_group.add(self.discord_time)
 
-        self.integrations_page.add(discord_group)
+        self.env_page.add(discord_group)
 
         dns_group = Adw.PreferencesGroup(
             title=_("DNS for Roblox"),
@@ -2523,7 +2438,7 @@ class SettingsPage(Adw.Bin):
         block.connect("notify::active", lambda row, _pspec: window.set_setting(
             "block_telemetry", row.get_active()))
         dns_group.add(block)
-        self.network_page.add(dns_group)
+        self.env_page.add(dns_group)
         window.runtime_only(dns_group, "dns")
 
         diagnostics = Adw.PreferencesGroup(
@@ -2557,15 +2472,9 @@ class SettingsPage(Adw.Bin):
         restart = _button_row(_("Restart Darling"))
         restart.connect("activated", lambda *_args: self.restart_darling())
         diagnostics.add(restart)
-        self.diagnostics_page.add(diagnostics)
+        self.env_page.add(diagnostics)
         window.runtime_only(diagnostics, "diagnostics")
 
-        self.stack.add_titled_with_icon(self.appearance_page, "appearance", _("Appearance"),
-                                        "preferences-desktop-appearance-symbolic")
-        self.stack.add_titled_with_icon(self.game_page, "game", _("Game"), "applications-games-symbolic")
-        self.stack.add_titled_with_icon(self.integrations_page, "integrations", _("Integrations"),
-                                        "application-x-addon-symbolic")
-        self.stack.add_titled_with_icon(self.network_page, "network", _("Network"), "network-wired-symbolic")
         self.stack.add_titled_with_icon(self.env_page, "env", _("Environment"), "preferences-system-symbolic")
         self.stack.add_titled_with_icon(self.m2vk_page, "m2vk", "Quadra M2VK", "video-display-symbolic")
 
@@ -2639,8 +2548,6 @@ class SettingsPage(Adw.Bin):
         self.rosemary_page = RosemaryPage(window)
         self.stack.add_titled_with_icon(self.rosemary_page, "rosemary", "Rosemary", "system-run-symbolic")
         self.stack.add_titled_with_icon(self.vr_page, "vr", "VR", "quadra-vr-symbolic")
-        self.stack.add_titled_with_icon(self.diagnostics_page, "diagnostics", _("Diagnostics"),
-                                        "utilities-terminal-symbolic")
 
         # 3. Fast flags page
         self.flags_page = FlagsPage(window)
@@ -2654,7 +2561,6 @@ class SettingsPage(Adw.Bin):
         self.refresh_ciderdarling()
 
         self.appearance_tabs = _add_tabs(toolbar_view, self.stack)
-        self.appearance_tabs.set_visible(False)  # the sidebar lists every tab
 
         self.set_child(toolbar_view)
 
@@ -3565,112 +3471,6 @@ def _page_sidebar(stack):
     return rows
 
 
-def _grouped_sidebar(window):
-    """The sidebar: pages in sections ("Core", "Configuration"), with the
-    Settings tabs listed as entries of their own. Plain Gtk, so it looks the
-    same on every libadwaita version."""
-    stack = window.stack
-    settings_stack = window.settings_page.stack
-    settings_tabs = set()
-    for index in range(settings_stack.get_pages().get_n_items()):
-        settings_tabs.add(settings_stack.get_pages().get_item(index).get_name())
-    studio = os.path.exists("/.flatpak-info") is False
-    sections = [
-        (_("Core"), [
-            ("play", _("Home"), "user-home-symbolic"),
-            ("servers", _("Servers"), "network-server-symbolic"),
-            ("mods", _("Mods"), "application-x-addon-symbolic"),
-        ] + ([("studio", _("Studio"), "applications-development-symbolic")] if studio else [])),
-        ("Roblox", [
-            ("settings:roblox", "Roblox", "application-x-executable-symbolic"),
-            ("settings:game", _("Game"), "applications-games-symbolic"),
-            ("settings:flags", _("Fast flags"), "preferences-other-symbolic"),
-            ("settings:m2vk", "Quadra M2VK", "video-display-symbolic"),
-            ("settings:rosemary", "Rosemary", "system-run-symbolic"),
-            ("settings:vr", "VR", "quadra-vr-symbolic"),
-            ("settings:ciderdarling", "CiderDarling", "applications-engineering-symbolic"),
-        ]),
-        (_("Configuration"), [
-            ("settings:appearance", _("Appearance"), "preferences-desktop-appearance-symbolic"),
-            ("settings:integrations", _("Integrations"), "application-x-addon-symbolic"),
-            ("settings:network", _("Network"), "network-wired-symbolic"),
-            ("settings:env", _("Environment"), "preferences-system-symbolic"),
-            ("settings:diagnostics", _("Diagnostics"), "utilities-terminal-symbolic"),
-        ]),
-        (None, [("info", _("About"), "help-about-symbolic")]),
-    ]
-    rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.BROWSE)
-    rows.add_css_class("navigation-sidebar")
-    keys = []
-    section_of = {}
-
-    def add(key, title, icon, section):
-        line = Gtk.Box(spacing=12)
-        line.append(Gtk.Image(icon_name=icon))
-        line.append(Gtk.Label(label=title, xalign=0))
-        rows.append(line)
-        keys.append(key)
-        section_of[len(keys) - 1] = section
-
-    for section, entries in sections:
-        for key, title, icon in entries:
-            name, _sep, tab = key.partition(":")
-            if tab and tab not in settings_tabs:
-                continue  # e.g. no VR page on this build
-            add(key, title, icon, section)
-
-    def header(row, before):
-        index = row.get_index()
-        section = section_of.get(index)
-        previous = section_of.get(index - 1) if index else None
-        if index == 0 or section != previous:
-            label = Gtk.Label(label=(section or "").upper(), xalign=0, css_classes=["sidebar-section"])
-            row.set_header(label if section else Gtk.Separator(margin_top=8, margin_bottom=4))
-        else:
-            row.set_header(None)
-
-    rows.set_header_func(header)
-
-    # CiderDarling's page only exists while CiderDarling is installed.
-    cider = getattr(window.settings_page, "cider_stack_page", None)
-    if cider is not None and "settings:ciderdarling" in keys:
-        cider_row = rows.get_row_at_index(keys.index("settings:ciderdarling"))
-        cider.bind_property("visible", cider_row, "visible", GObject.BindingFlags.SYNC_CREATE)
-
-    def current_key():
-        name = stack.get_visible_child_name()
-        if name == "settings":
-            tab = settings_stack.get_visible_child_name()
-            return f"settings:{tab}"
-        return name
-
-    def selected(_rows, row):
-        if row is None:
-            return
-        key = keys[row.get_index()]
-        if key == current_key():
-            return
-        name, _sep, tab = key.partition(":")
-        if tab:
-            window.settings_page.set_tab(tab)
-        stack.set_visible_child_name(name)
-
-    def follow(*_args):
-        key = current_key()
-        if key in keys:
-            row = rows.get_row_at_index(keys.index(key))
-            if rows.get_selected_row() is not row:
-                rows.select_row(row)
-        else:
-            rows.unselect_all()
-
-    rows.connect("row-selected", selected)
-    stack.connect("notify::visible-child-name", follow)
-    settings_stack.connect("notify::visible-child-name", follow)
-    follow()
-    return Gtk.ScrolledWindow(child=rows, hscrollbar_policy=Gtk.PolicyType.NEVER)
-
-
 def _open_uri(window, uri):
     Gtk.UriLauncher.new(uri).launch(window, None, None, None)
 
@@ -4403,14 +4203,13 @@ class LauncherWindow(Adw.ApplicationWindow):
             return rosemary_runtime.installed_version(self.settings) is not None
         return core.installed_version() is not None
 
+    def rosemary_ready(self):
+        return rosemary_runtime.rosemary_ready(self.settings)
+
     def runtime_ready(self):
-        """False when starting needs the user first (no Rosemary program, no
-        Darling client)."""
+        """False when starting needs the user first (no Darling client).
+        Rosemary and its client are installed by Quadra when a start needs them."""
         if self.rosemary_selected():
-            try:
-                rosemary_runtime.find_rosemary(self.settings)
-            except rosemary_runtime.RosemaryError:
-                return False
             return True
         return bool(core.installed_version())
 
@@ -4473,10 +4272,9 @@ class LauncherWindow(Adw.ApplicationWindow):
         def progress(fraction, text):
             GLib.idle_add(self.splash_update, text, fraction)
         try:
-            if (self.settings.get("auto_check_roblox_updates", True)
-                    or rosemary_runtime.installed_version() is None):
+            if (self.settings.get("auto_check_roblox_updates", True) or not self.rosemary_ready()):
                 progress(0.0, _("Checking for updates…"))
-                rosemary_runtime.ensure_latest(self.settings, progress)
+                rosemary_runtime.ensure_ready(self.settings, progress)
         except Exception as error:
             GLib.idle_add(self._autostart_failed, _("Could not install Roblox for Rosemary"), str(error))
             return
@@ -4590,8 +4388,7 @@ class LauncherWindow(Adw.ApplicationWindow):
 
         if page == "ciderdarling":
             self.show_ciderdarling_settings()
-        elif page in ("flags", "env", "m2vk", "roblox", "vr", "rosemary", "appearance", "game", "integrations", "network",
-                      "diagnostics"):
+        elif page in ("flags", "env", "m2vk", "roblox", "vr", "rosemary"):
             self.stack.set_visible_child_name("settings")
             self.settings_page.set_tab(page)
         else:
@@ -4614,7 +4411,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         sidebar_header.pack_end(sidebar_version)
         sidebar_toolbar.add_top_bar(sidebar_header)
 
-        sidebar_toolbar.set_content(_grouped_sidebar(self))
+        sidebar_toolbar.set_content(_page_sidebar(self.stack))
         self.split.set_sidebar(sidebar_toolbar)
 
         # Content area
@@ -4660,8 +4457,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.appearance_layer = theme.AppearanceLayer(self.wallpaper)
         self.set_content(self.appearance_layer)
         self.apply_launcher_appearance()
-        if page == "setup" or (page not in ('settings', 'ciderdarling', 'env', 'roblox', 'flags', 'appearance', 'game',
-                                    'integrations', 'network', 'diagnostics')
+        if page == "setup" or (page not in ('settings', 'ciderdarling', 'env', 'roblox', 'flags', 'rosemary')
                 and not core.installed_version() and not self.settings.get("setup_complete", False)):
             self.show_setup()
         else:
@@ -5067,7 +4863,45 @@ class LauncherWindow(Adw.ApplicationWindow):
 
         threading.Thread(target=run, daemon=True).start()
 
-    def launch(self, launch_uri=None):
+    def _rosemary_install_then_launch(self, launch_uri):
+        """Rosemary or its Roblox client is missing: install them, with the splash
+        showing progress, then start with the same link."""
+        if not self.begin("updating"):
+            return
+        self.show_splash(_("Installing Rosemary and Roblox…"))
+        self.splash_update(indeterminate=True)
+        if self.splash:
+            self.splash.cancel.set_sensitive(False)  # a half unpacked install is worse than waiting
+
+        def progress(fraction, text):
+            GLib.idle_add(self.splash_update, text or None, fraction)
+
+        def work():
+            error = None
+            try:
+                rosemary_runtime.ensure_ready(self.settings, progress)
+            except Exception as failure:
+                error = failure
+            GLib.idle_add(finished, error)
+
+        def finished(error):
+            self.close_splash()
+            self.end(resume_pending=False)
+            if error is not None:
+                self.present_settings()
+                self.settings_page.rosemary_page.refresh()
+                _error_dialog(self, _("Could not install Roblox with Rosemary"), str(error) or repr(error))
+                return False
+            self.settings_page.rosemary_page.refresh()
+            self.launch(launch_uri, _installed=True)   # a second miss is an error, not another install
+            return False
+        threading.Thread(target=work, daemon=True).start()
+
+    def launch(self, launch_uri=None, _installed=False):
+        if (self.rosemary_selected() and not _installed and not self.session and not self.busy
+                and not self.rosemary_ready()):
+            self._rosemary_install_then_launch(launch_uri)
+            return
         if getattr(self, "stopping", False) or not self.begin("starting"):
             return
         self.settings_page.flush()
@@ -5549,9 +5383,6 @@ class LauncherWindow(Adw.ApplicationWindow):
         page = getattr(self, "servers_page", None)
         if page is not None:
             page.refresh()
-        play = getattr(self, "play_page", None)
-        if play is not None and hasattr(play, "refresh_recents"):
-            play.refresh_recents()
         return False
 
     def _settle_mod_guard(self, status):

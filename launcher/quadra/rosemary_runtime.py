@@ -125,8 +125,8 @@ def find_rosemary(settings):
     found = shutil.which("rosemary")
     if found:
         return Path(found)
-    raise RosemaryError("Rosemary is not installed. Press Install in Settings → Rosemary, or install a "
-                        f"runner with Butter ({WEBSITE}), or choose a Rosemary program there.", settings=True)
+    raise RosemaryError("Rosemary is not installed. Quadra installs it for you: press Install in "
+                        "Settings → Rosemary.", settings=True)
 
 
 # -- prefix
@@ -287,6 +287,33 @@ def previous_build(settings=None):
 def installed_version(settings=None):
     found = installed(settings)
     return (found[0].version or found[0].guid) if found else None
+
+
+def rosemary_ready(settings):
+    """Whether Rosemary and a Roblox client are both installed."""
+    try:
+        find_rosemary(settings)
+    except RosemaryError:
+        return False
+    return installed(settings) is not None
+
+
+def ensure_ready(settings, progress, cancel=None, ignore_pin=False):
+    """Install what is missing, then bring Roblox up to date: Rosemary itself
+    (from its release, checked against its SHA256SUMS) and the macOS client.
+    A program chosen by hand in settings is never replaced. progress(fraction, text)."""
+    try:
+        find_rosemary(settings)
+    except RosemaryError:
+        if (settings.get("rosemary_program") or "").strip():
+            raise
+        from . import rosemary_install
+        try:
+            rosemary_install.install_latest(lambda fraction, text: progress(fraction * 0.4, text))
+        except rosemary_install.InstallError as error:
+            raise RosemaryError(str(error)) from error
+        progress(0.4, "")
+    return ensure_latest(settings, lambda fraction, text: progress(0.4 + 0.6 * fraction, text), cancel, ignore_pin)
 
 
 def ensure_latest(settings, progress, cancel=None, ignore_pin=False):
