@@ -3,6 +3,26 @@
 ## Unreleased
 
 
+## 0.41 — 2026-11-01
+
+- The old launcher layout is back: the sidebar lists Play, Settings, Studio, Servers, Mods and Info, the Play page is
+  the old dashboard (its badge names the runtime, Darling or Rosemary) and Settings is one Environment page with a
+  tab bar and a Rosemary tab. 0.40's grouped sidebar and Home page are gone; the direct start, tray icon and Servers
+  page stay, and the new settings live in the old pages.
+- Rosemary is an optional runtime (Settings → Rosemary). Quadra installs Rosemary from its release (checksum checked)
+  and Roblox for it when you press Play or pick it; "Install Roblox" did nothing with Rosemary selected, which is
+  fixed. It gets mods (backups per build), the CPU limit set before it starts, Discord status, rows for its options,
+  "Hide the macOS menu bar", going back to the previous build, update-required relaunch and sign-out.
+- Settings only one runtime reads are greyed out and tagged "Darling only" (backends.py).
+- VR on Rosemary with Quadra's build of Rosemary (QuadraHQ/rosemary-fork, quadra-vr): `libQuadraVR.dylib` (vr_device.c
+  and vr_xr.c, built on first use by rosemary_vr/build_rosemary_vr.sh) is injected into Roblox
+  (`ROSEMARY_DYLD_INSERT_FORCE`) and calls the host's OpenXR through `quadra_host_*`. Roblox runs on OpenGL for it;
+  an option runs that on Vulkan through zink. `QUADRA_ROSEMARY` picks the Rosemary program for one run.
+- Fast flags are kept in Quadra's config (`fastflags.json`), apart from the flags Darling adds (`core.DARLING_FLAGS`),
+  which only go into the Darling client's file.
+- Tests: 82 in `tests/launcher`; `rosemary_vr/test_rosemary_vr.sh` runs the VR path against the headless emulator
+  (`~/.local/share/quadrahq/vr-emulator`).
+
 ## 0.40.p1 — 2026-11-01
 
 - Home says "Rosemary running" or "Rosemary stopped" when Rosemary is the runtime (it always said Darling), and its

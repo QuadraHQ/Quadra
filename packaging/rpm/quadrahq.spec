@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.40.p1
+%global upstream_version 0.41
 Name:           quadrahq
-Version:        0.40.p1
+Version:        0.41
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,9 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.41-1
+- The old launcher layout is back. Rosemary becomes an optional runtime that Quadra installs itself, with mods, a CPU limit, Discord status and its own options, and VR with Quadra's build of Rosemary.
+
 * Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.40.p1-1
 - The Home badge says "Rosemary running/stopped" instead of Darling when Rosemary is the runtime, and the shortcut's right-click menu has a Settings action.
 

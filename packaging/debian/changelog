@@ -1,3 +1,11 @@
+quadrahq (0.41-1) unstable; urgency=medium
+
+  * The old launcher layout is back (sidebar, Play page, one Environment page with tabs).
+  * Rosemary is an optional runtime that Quadra installs itself: mods, CPU limit, Discord status, its own options, VR with Quadra's build of Rosemary.
+  * Fix "Install Roblox" doing nothing when Rosemary was selected.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Sun, 01 Nov 2026 12:56:03 -0600
+
 quadrahq (0.40.p1-1) unstable; urgency=medium
 
   * The Home badge names the runtime in use (Darling or Rosemary), and the shortcut's right-click menu has a Settings action.
