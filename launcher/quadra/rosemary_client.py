@@ -333,11 +333,14 @@ def installed_builds():
     return found
 
 
-def remove_old(keep_key, in_use=()):
-    """Delete installed builds other than `keep_key` (and those in `in_use`)."""
-    for directory in list(versions_dir().glob("version-*")):
-        if directory.name != keep_key and directory.name not in in_use:
-            shutil.rmtree(directory, ignore_errors=True)
+def remove_old(keep_key, in_use=(), keep_previous=1, pinned=None):
+    """Delete installed builds other than `keep_key`, `pinned` and `in_use`,
+    keeping the newest `keep_previous` of them so there is a build to go back to."""
+    others = [d for d in versions_dir().glob("version-*")
+              if d.is_dir() and d.name not in (keep_key, pinned) and d.name not in in_use]
+    others.sort(key=lambda d: d.stat().st_mtime, reverse=True)
+    for directory in others[keep_previous:]:
+        shutil.rmtree(directory, ignore_errors=True)
 
 
 def write_fast_flags(bundle, flags):

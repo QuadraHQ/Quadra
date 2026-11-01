@@ -7,6 +7,7 @@ and user-defined file overlays onto RobloxPlayer.app/Contents/Resources/content.
 from __future__ import annotations
 
 import json
+import contextvars
 import logging
 import os
 import shutil
@@ -18,6 +19,14 @@ from . import core
 from . import modguard  # noqa: E402
 
 log = logging.getLogger("quadra.mods")
+
+# Where the originals of overwritten files are kept. apply_mods(backup_dir=...)
+# sets it for one call, so another client (Rosemary, per build) has its own.
+_BACKUP = contextvars.ContextVar("mods_backup_dir", default=None)
+
+
+def _backup_dir():
+    return _BACKUP.get() or MODS_BACKUP_DIR
 
 MODS_DIR = core.DATA_DIR / "modifications"
 MODS_BACKUP_DIR = core.DATA_DIR / "mods_backup"
@@ -45,7 +54,7 @@ def _backup_if_needed(target: Path, rel_key: str):
     """Back up an original Roblox asset before overwriting it."""
     if not target.exists():
         return
-    backup_path = MODS_BACKUP_DIR / rel_key
+    backup_path = _backup_dir() / rel_key
     if not backup_path.exists():
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -59,12 +68,13 @@ def restore_all_mods(content_dir: Path | None = None):
     """Restore all modified files from the backup directory back to content/."""
     if content_dir is None:
         content_dir = get_content_dir()
-    if not content_dir.is_dir() or not MODS_BACKUP_DIR.is_dir():
+    backups = _backup_dir()
+    if not content_dir.is_dir() or not backups.is_dir():
         return
 
-    for backup_file in MODS_BACKUP_DIR.rglob("*"):
+    for backup_file in backups.rglob("*"):
         if backup_file.is_file():
-            rel = backup_file.relative_to(MODS_BACKUP_DIR)
+            rel = backup_file.relative_to(backups)
             target = content_dir / rel
             try:
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -83,11 +93,21 @@ def restore_all_mods(content_dir: Path | None = None):
                 pass
 
     # Remove backup directory now that everything has been restored cleanly
-    shutil.rmtree(MODS_BACKUP_DIR, ignore_errors=True)
+    shutil.rmtree(backups, ignore_errors=True)
 
 
-def apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
-    """Applies user selected mod presets and custom folder overrides."""
+def apply_mods(settings: dict[str, Any], content_dir: Path | None = None, backup_dir: Path | None = None):
+    """Applies user selected mod presets and custom folder overrides. With
+    `content_dir` and `backup_dir` it works on another client's files (Rosemary)."""
+    token = _BACKUP.set(Path(backup_dir)) if backup_dir is not None else None
+    try:
+        _apply_mods(settings, content_dir)
+    finally:
+        if token is not None:
+            _BACKUP.reset(token)
+
+
+def _apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
     if content_dir is None:
         content_dir = get_content_dir()
     if not content_dir.is_dir():

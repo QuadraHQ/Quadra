@@ -170,6 +170,16 @@ DEFAULT_SETTINGS = {
     "rosemary_video_driver": "",
     "rosemary_swap_interval": "",
     "rosemary_process_server": True,
+    "rosemary_presentation_mode": "",
+    "rosemary_refresh_rate": "",
+    "rosemary_decorations": "",
+    "rosemary_menu": "",
+    "rosemary_command_key": "",
+    "rosemary_confine_pointer": False,
+    "rosemary_control_edit_keys": False,
+    "rosemary_plain_ctrl_click": False,
+    # Key of an installed build to stay on (a rollback); empty follows Roblox's latest.
+    "rosemary_pinned_build": "",
     "region_join": False,
     "region_preferred": "",
     # A toast when the game you joined was updated in the last day.
@@ -282,16 +292,91 @@ def clear_last_error():
 
 # ---------------------------------------------------------------- fast flags
 
-def load_fast_flags():
+# What Darling needs on top of the user's flags: RbxTransport (QUIC) fails under
+# Darling, the Pop-latency probe delays joins, and so on. They go into the
+# Darling client's own file only, never into the user's flags or another
+# client (Rosemary).
+DARLING_FLAGS = {
+    "FFlagUseRbxTransportClient": "False",
+    "FFlagUseRbxTransportClient3": "False",
+    "FFlagUseRbxTransportServer": "False",
+    "FFlagShareRbxTransport": "False",
+    "FFlagRbxTransportRuntime": "False",
+    "DFFlagDebugDisableRbxTransportDummyClient": "True",
+    "FFlagDebugDisableRbxTransportDummyClient": "True",
+    "FStringRbxTransportDummyClientEnabledMinorVersions": "",
+    "FStringRbxTransportDummyClientEnabledMinorVersions_PlaceFilter": "none",
+    "DFIntRbxTransportDummyClientConnectionTimeoutMs": 0,
+    "DFIntRbxTransportQuicHandshakeTimeoutMs": 0,
+    # The Pop-latency STUN probe sends UDP bursts to 24 datacenters
+    # every 0.5 s for ~5 s: it delays the first join (menu appears
+    # late) and blocks the render switch after leaving a game.
+    "DFFlagEnablePopLatencyProbe3": "False",
+    "DFFlagAttachPopUdpProbeToGameJoin2": "False",
+    # While on RakNet, Roblox opens a shadow RbxTransport connection
+    # ("DummyClient will connect") that can never connect under
+    # Darling; closing the session then waits for it, freezing the
+    # return to the menu for seconds.
+    "DFFlagRakNetFallbackToRbxTransportEvent": "False",
+    "DFFlagRakNetFallbackToRbxTransportStatus": "False",
+    "DFFlagConnectDummyServiceClientEarly": "False",
+    "DFIntRbxTransportClientConnectionWaitIntervalMs": 0,
+    # Disable client-side HTTP throttling and retry queues (which freeze
+    # menu return for 5-6 s when batch thumbnails get throttled).
+    "DFFlagHttpLocalThrottle": "False",
+    "FFlagHttpLocalThrottle": "False",
+    "DFIntHttpMaxRetries": 0,
+    "DFIntHttpMaxRetryAfterSec": 0,
+    "DFIntHttpRbxApiMaxThrottledQueueSize": 0,
+    "DFIntHttpRetryAndLocalThrottleJitterMaxPercent": 0,
+    "DFFlagHttpRetryOnExplicitHeader": "False",
+    "DFFlagDebugSlimLoaderDisableHTTPRetry": "True",
+    "FFlagDebugSlimLoaderDisableHTTPRetry": "True",
+    "DFIntBatchThumbnailMaxWaitMs": 0,
+    "DFIntBatchThumbnailMinWaitMs": 0,
+    "DFIntBatchThumbnailExponentialInitialWaitMs": 0,
+    "DFIntBatchThumbnailMaxExponentialRetries": 0,
+    "DFIntBatchThumbnailAllowedExternalTimedOutRetries": 0,
+    "DFIntLuaAppThumbnailsApiRetryTimeMultiplier": 0,
+}
+
+# The user's flags: the source of truth for the editor and for every client.
+FAST_FLAGS_USER = CONFIG_DIR / "fastflags.json"
+
+
+def _read_flags(path):
     try:
-        data = json.loads(FAST_FLAGS.read_text())
+        data = json.loads(path.read_text())
         return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
         return {}
 
 
-def save_fast_flags(flags):
+def load_bundle_flags():
+    """ClientAppSettings.json of the Darling client (the user's flags plus DARLING_FLAGS)."""
+    return _read_flags(FAST_FLAGS)
+
+
+def save_bundle_flags(flags):
     _write_atomically(FAST_FLAGS, json.dumps(flags, indent=2, ensure_ascii=False))
+
+
+def load_fast_flags():
+    """The user's Fast flags. Before the first save they are read from the
+    Darling client's file, without the flags Quadra adds for Darling, so an
+    existing setup carries over."""
+    if FAST_FLAGS_USER.is_file():
+        return _read_flags(FAST_FLAGS_USER)
+    return {name: value for name, value in load_bundle_flags().items()
+            if not (name in DARLING_FLAGS and DARLING_FLAGS[name] == value)}
+
+
+def save_fast_flags(flags):
+    """Keep the user's flags, and give the Darling client its copy (when that
+    client is installed) with Darling's own flags on top."""
+    _write_atomically(FAST_FLAGS_USER, json.dumps(flags, indent=2, ensure_ascii=False))
+    if FAST_FLAGS.parent.is_dir():
+        save_bundle_flags({**flags, **DARLING_FLAGS})
 
 
 def parse_flag_value(text):
@@ -580,7 +665,7 @@ def update_roblox(upload, progress=None, expected_version=None):
                 downloaded = plistlib.load(file).get("CFBundleShortVersionString")
             if downloaded != expected_version:
                 raise RuntimeError(f"Roblox download version mismatch: requested {expected_version}, received {downloaded}. The installed client was kept.")
-        flags = load_fast_flags()
+        flags = load_bundle_flags()
         old_version = installed_version() or "unknown"
         BACKUPS.mkdir(parents=True, exist_ok=True)
         backup = BACKUPS / f"RobloxPlayer-{old_version}.app"
@@ -606,7 +691,7 @@ def update_roblox(upload, progress=None, expected_version=None):
             if old != backup:
                 shutil.rmtree(old, ignore_errors=True)
     if flags:
-        save_fast_flags(flags)
+        save_bundle_flags(flags)
     apply_throttle_patch()
     ensure_raknet_transport()
     ensure_shader_compatibility()
@@ -678,57 +763,9 @@ def ensure_raknet_transport():
     RbxTransport (QUIC) and enforce RakNet. Under Darling, RbxTransport fails socket
     connection, causing an ~11 s freeze before Roblox disconnects with Error 256."""
     try:
-        flags = load_fast_flags()
-        needed = {
-            "FFlagUseRbxTransportClient": "False",
-            "FFlagUseRbxTransportClient3": "False",
-            "FFlagUseRbxTransportServer": "False",
-            "FFlagShareRbxTransport": "False",
-            "FFlagRbxTransportRuntime": "False",
-            "DFFlagDebugDisableRbxTransportDummyClient": "True",
-            "FFlagDebugDisableRbxTransportDummyClient": "True",
-            "FStringRbxTransportDummyClientEnabledMinorVersions": "",
-            "FStringRbxTransportDummyClientEnabledMinorVersions_PlaceFilter": "none",
-            "DFIntRbxTransportDummyClientConnectionTimeoutMs": 0,
-            "DFIntRbxTransportQuicHandshakeTimeoutMs": 0,
-            # The Pop-latency STUN probe sends UDP bursts to 24 datacenters
-            # every 0.5 s for ~5 s: it delays the first join (menu appears
-            # late) and blocks the render switch after leaving a game.
-            "DFFlagEnablePopLatencyProbe3": "False",
-            "DFFlagAttachPopUdpProbeToGameJoin2": "False",
-            # While on RakNet, Roblox opens a shadow RbxTransport connection
-            # ("DummyClient will connect") that can never connect under
-            # Darling; closing the session then waits for it, freezing the
-            # return to the menu for seconds.
-            "DFFlagRakNetFallbackToRbxTransportEvent": "False",
-            "DFFlagRakNetFallbackToRbxTransportStatus": "False",
-            "DFFlagConnectDummyServiceClientEarly": "False",
-            "DFIntRbxTransportClientConnectionWaitIntervalMs": 0,
-            # Disable client-side HTTP throttling and retry queues (which freeze
-            # menu return for 5-6 s when batch thumbnails get throttled).
-            "DFFlagHttpLocalThrottle": "False",
-            "FFlagHttpLocalThrottle": "False",
-            "DFIntHttpMaxRetries": 0,
-            "DFIntHttpMaxRetryAfterSec": 0,
-            "DFIntHttpRbxApiMaxThrottledQueueSize": 0,
-            "DFIntHttpRetryAndLocalThrottleJitterMaxPercent": 0,
-            "DFFlagHttpRetryOnExplicitHeader": "False",
-            "DFFlagDebugSlimLoaderDisableHTTPRetry": "True",
-            "FFlagDebugSlimLoaderDisableHTTPRetry": "True",
-            "DFIntBatchThumbnailMaxWaitMs": 0,
-            "DFIntBatchThumbnailMinWaitMs": 0,
-            "DFIntBatchThumbnailExponentialInitialWaitMs": 0,
-            "DFIntBatchThumbnailMaxExponentialRetries": 0,
-            "DFIntBatchThumbnailAllowedExternalTimedOutRetries": 0,
-            "DFIntLuaAppThumbnailsApiRetryTimeMultiplier": 0,
-        }
-        changed = False
-        for k, v in needed.items():
-            if flags.get(k) != v:
-                flags[k] = v
-                changed = True
-        if changed:
-            save_fast_flags(flags)
+        flags = {**load_fast_flags(), **DARLING_FLAGS}
+        if flags != load_bundle_flags():
+            save_bundle_flags(flags)
 
         binary = APP_BUNDLE / "Contents" / "MacOS" / "RobloxPlayer"
         if binary.is_file():

@@ -30,10 +30,16 @@ log = logging.getLogger("quadra.rosemary")
 # Variables the settings below control: removed from the inherited
 # environment so an exported value cannot silently override the settings.
 MANAGED_ENV = ("ROSEMARY_PREFIX", "ROSEMARY_SWAP_INTERVAL", "ROSEMARY_SERVER", "SDL_VIDEO_DRIVER",
-               "SDL_VIDEODRIVER")
+               "SDL_VIDEODRIVER", "ROSEMARY_METAL_PRESENTATION_MODE", "ROSEMARY_SCREEN_REFRESH_RATE",
+               "ROSEMARY_DECORATIONS", "ROSEMARY_MENU", "ROSEMARY_CONFINE_POINTER",
+               "ROSEMARY_CONTROL_EDIT_KEYS", "ROSEMARY_COMMAND_KEY", "ROSEMARY_PLAIN_CTRL_CLICK")
 ENGINES = ("auto", "native", "emulated")
 SWAP_INTERVALS = ("", "0", "1", "-1")
 VIDEO_DRIVERS = ("", "wayland", "x11")
+PRESENTATION_MODES = ("", "immediate", "fifo", "fifo_relaxed", "mailbox")
+DECORATIONS = ("", "client", "server")
+MENUS = ("", "titlebar", "strip", "none")
+COMMAND_KEYS = ("", "super", "ctrl", "alt")
 WEBSITE = "https://github.com/microlift/butter"
 
 
@@ -155,6 +161,19 @@ def create_prefix(rosemary, prefix, output=lambda line: None, timeout=300):
 
 # -- environment and command line
 
+def refresh_rate(text):
+    """`text` as Rosemary reads ROSEMARY_SCREEN_REFRESH_RATE (hertz above zero), else ""."""
+    import math
+    text = str(text or "").strip()
+    if not text or "_" in text:
+        return ""
+    try:
+        value = float(text)
+    except ValueError:
+        return ""
+    return text if math.isfinite(value) and value > 0 else ""
+
+
 def run_env(settings, base=None):
     env = dict(os.environ if base is None else base)
     for name in MANAGED_ENV:
@@ -168,6 +187,21 @@ def run_env(settings, base=None):
     driver = settings.get("rosemary_video_driver", "")
     if driver in VIDEO_DRIVERS and driver:
         env["SDL_VIDEO_DRIVER"] = driver
+    for key, variable, allowed in (("rosemary_presentation_mode", "ROSEMARY_METAL_PRESENTATION_MODE", PRESENTATION_MODES),
+                                   ("rosemary_decorations", "ROSEMARY_DECORATIONS", DECORATIONS),
+                                   ("rosemary_menu", "ROSEMARY_MENU", MENUS),
+                                   ("rosemary_command_key", "ROSEMARY_COMMAND_KEY", COMMAND_KEYS)):
+        value = settings.get(key, "")
+        if value and value in allowed:
+            env[variable] = value
+    rate = refresh_rate(settings.get("rosemary_refresh_rate", ""))
+    if rate:
+        env["ROSEMARY_SCREEN_REFRESH_RATE"] = rate
+    for key, variable in (("rosemary_confine_pointer", "ROSEMARY_CONFINE_POINTER"),
+                          ("rosemary_control_edit_keys", "ROSEMARY_CONTROL_EDIT_KEYS"),
+                          ("rosemary_plain_ctrl_click", "ROSEMARY_PLAIN_CTRL_CLICK")):
+        if settings.get(key, False):
+            env[variable] = "1"
     if settings.get("mangohud", False):
         # The `mangohud` wrapper preloads host libraries into Rosemary, which
         # carries its own glibc: the first run crashed with "free(): invalid
@@ -228,22 +262,43 @@ def newest_player_log(prefix, since=0.0):
     return best
 
 
-def installed():
-    """(Build, bundle) of the newest intact installed build, or None."""
+def installed(settings=None):
+    """(Build, bundle) of the build to run: the one pinned in settings
+    (`rosemary_pinned_build`, the key of an installed build) if it is there,
+    else the newest intact installed build, or None."""
     builds = rosemary_client.installed_builds()
+    pinned = (settings or {}).get("rosemary_pinned_build") or ""
+    if pinned:
+        for found in builds:
+            if found[0].key == pinned:
+                return found
     return builds[0] if builds else None
 
 
-def installed_version():
-    found = installed()
+def previous_build(settings=None):
+    """The newest installed build other than the one that runs, or None."""
+    current = installed(settings)
+    for found in rosemary_client.installed_builds():
+        if current is None or found[0].key != current[0].key:
+            return found
+    return None
+
+
+def installed_version(settings=None):
+    found = installed(settings)
     return (found[0].version or found[0].guid) if found else None
 
 
-def ensure_latest(settings, progress, cancel=None):
+def ensure_latest(settings, progress, cancel=None, ignore_pin=False):
     """Install the current build when it is not installed. progress(fraction,
-    text). Returns the bundle path. Offline, the installed build is used."""
+    text). Returns the bundle path. Offline, the installed build is used. A
+    build pinned in settings (a rollback) stays unless `ignore_pin`."""
     cancel = cancel or threading.Event()
     arch = choose_arch(settings)
+    if settings.get("rosemary_pinned_build") and not ignore_pin:
+        pinned = installed(settings)
+        if pinned and pinned[0].key == settings["rosemary_pinned_build"]:
+            return pinned[1]
     have = installed()
     try:
         latest = rosemary_client.fetch_latest(arch)
@@ -263,7 +318,7 @@ def ensure_latest(settings, progress, cancel=None):
                                                                                "Installing Roblox"), cancel)
     finally:
         zip_path.unlink(missing_ok=True)
-    rosemary_client.remove_old(latest.key)
+    rosemary_client.remove_old(latest.key, keep_previous=1, pinned=settings.get("rosemary_pinned_build") or None)
     progress(1.0, "Done")
     return latest.bundle()
 
@@ -305,6 +360,7 @@ class RosemarySession:
         self.rosemary = None
         self.prefix = None
         self._finished = False
+        self.cpu_limited = False
         # The surface of core.RobloxSession the window touches.
         self.shader_preload_progress = None
         self.preload_stage_progress = None
@@ -321,10 +377,10 @@ class RosemarySession:
         return newest_player_log(self.prefix, self.started_at - 2) if self.prefix else None
 
     def start(self):
-        found = installed()
+        found = installed(self.settings)
         if found is None:
             raise RosemaryError("Roblox is not installed for Rosemary yet.")
-        _build, bundle = found
+        build, bundle = found
         self.rosemary = find_rosemary(self.settings)
         self.prefix = prefix_path(self.settings)
         if not prefix_created(self.prefix):
@@ -333,10 +389,16 @@ class RosemarySession:
         flags = core.load_fast_flags()
         if flags:
             rosemary_client.write_fast_flags(bundle, flags)
+        self._apply_mods(build, bundle)
         logs = self.logs_dir or core.LOGS
         logs.mkdir(parents=True, exist_ok=True)
         self.log_path = logs / time.strftime("launch-%Y%m%d-%H%M%S-rosemary.log")
         argv = run_argv(self.rosemary, self.settings, bundle, self.launch_uri)
+        cpus = self._cpu_list()
+        taskset = shutil.which("taskset") if cpus else None
+        if taskset:
+            # The limit is in place before Rosemary starts, so no thread escapes it.
+            argv = [taskset, "-c", cpus] + argv
         env = run_env(self.settings)
         root = self.prefix / "root"
         root.mkdir(parents=True, exist_ok=True)
@@ -348,6 +410,45 @@ class RosemarySession:
             self.process = subprocess.Popen(argv, cwd=root, env=env, stdin=subprocess.DEVNULL,
                                             stdout=log_file, stderr=subprocess.STDOUT,
                                             start_new_session=True)
+        self.cpu_limited = bool(taskset) or bool(cpus and self._limit_cpus_after_start(cpus))
+
+    def _apply_mods(self, build, bundle):
+        """The mods folder and presets go into this client's own content, with
+        their backups kept per build so one build's files never restore into
+        another."""
+        if not self.settings.get("enable_custom_mods", True):
+            return
+        try:
+            from . import core, mods, modguard
+            mods.apply_mods(self.settings, bundle / "Contents" / "Resources" / "content",
+                            backup_dir=rosemary_client.data_dir() / "mods_backup" / build.key)
+            modguard.begin_session(core.CONFIG_DIR, mods.MODS_DIR)
+        except Exception as error:  # a broken mod must not stop the game
+            log.warning("Could not apply mods: %s", error)
+
+    def _cpu_list(self):
+        """The first N cores this process may use, as `taskset -c` writes them, or None."""
+        try:
+            count = int(self.settings.get("roblox_cpu_limit", 0) or 0)
+        except (TypeError, ValueError):
+            return None
+        allowed = sorted(os.sched_getaffinity(0))
+        if count <= 0 or count >= len(allowed):
+            return None
+        return ",".join(str(cpu) for cpu in allowed[:count])
+
+    def _limit_cpus_after_start(self, cpus):
+        """Fallback without `taskset`: every thread started so far gets the limit
+        (a thread started later inherits it from its creator)."""
+        wanted = {int(cpu) for cpu in cpus.split(",")}
+        done = False
+        try:
+            for tid in os.listdir(f"/proc/{self.process.pid}/task"):
+                os.sched_setaffinity(int(tid), wanted)
+                done = True
+        except (OSError, ValueError):
+            pass
+        return done
 
     def poll(self):
         if self.process is None:
@@ -386,3 +487,20 @@ class RosemarySession:
                 if process.poll() is not None:
                     return
                 time.sleep(0.1)
+
+
+def cookie_files(prefix):
+    """The sign-in the client keeps in the prefix (its cookie store), per guest user."""
+    return sorted((prefix / "root" / "Users").glob("*/Library/Cookies/com.roblox.*.cookies.tsv"))
+
+
+def sign_out(prefix):
+    """Delete the saved Roblox sign-in. Returns the number of files removed."""
+    removed = 0
+    for path in cookie_files(prefix):
+        try:
+            path.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return removed

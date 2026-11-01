@@ -213,7 +213,9 @@ class GameActivityTracker:
     _READS_PER_TURN = 4
     _LINE_LIMIT = 256 * 1024
 
-    def __init__(self, log_path: Path, on_change, *, autostart=True):
+    def __init__(self, log_path, on_change, *, autostart=True):
+        # A path, or a function returning the current path (None until it
+        # exists): Rosemary's client writes a new log file for every start.
         self.log_path = log_path
         self.on_change = on_change
         self.running = True
@@ -356,7 +358,10 @@ class GameActivityTracker:
 
         while not self._stopped.is_set():
             try:
-                with open(self.log_path, "rb") as f:
+                path = self.log_path() if callable(self.log_path) else self.log_path
+                if path is None:
+                    raise FileNotFoundError
+                with open(path, "rb") as f:
                     status = os.fstat(f.fileno())
                     identity = (status.st_dev, status.st_ino)
                     if file_identity != identity or status.st_size < last_pos:

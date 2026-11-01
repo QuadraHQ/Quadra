@@ -16,7 +16,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from . import __version__, activity, author, core, discord, dns, tray, fflag_allowlist, game_meta, gpus, rosemary_client, rosemary_install, rosemary_runtime, history, i18n, logevents, modguard, mods, region, runtime, runtime_install, runtime_updates, studio, terminal, theme, uri as uri_handoff  # noqa: E402
+from . import __version__, activity, author, core, discord, dns, tray, backends, fflag_allowlist, game_meta, gpus, rosemary_client, rosemary_install, rosemary_runtime, history, i18n, logevents, modguard, mods, region, runtime, runtime_install, runtime_updates, studio, terminal, theme, uri as uri_handoff  # noqa: E402
 from .i18n import _  # noqa: E402
 from .setup import SetupWizard  # noqa: E402
 
@@ -249,6 +249,14 @@ class GameLogsView(Gtk.Box):
 
         spacer = Gtk.Box(hexpand=True)
         bar.append(spacer)
+
+        # Rosemary's launch log only holds Rosemary's messages; the client's own
+        # log (joins, errors) is the one to read.
+        self.client_log_btn = Gtk.ToggleButton(label=_("Roblox log"), visible=False, active=True)
+        self.client_log_btn.add_css_class("flat")
+        self.client_log_btn.set_tooltip_text(_("Show the client's own log instead of Rosemary's"))
+        self.client_log_btn.connect("toggled", lambda *_args: self.update())
+        bar.append(self.client_log_btn)
 
         search_btn = Gtk.Button(icon_name="edit-find-symbolic")
         search_btn.add_css_class("flat")
@@ -602,10 +610,15 @@ class GameLogsView(Gtk.Box):
 
     def update(self):
         log_path = None
-        if self.window.session and self.window.session.log_path:
-            log_path = self.window.session.log_path
+        session = self.window.session
+        if session and session.log_path:
+            log_path = session.log_path
         elif self.window.last_log:
             log_path = self.window.last_log
+        has_client_log = bool(session and hasattr(session, "game_log"))
+        self.client_log_btn.set_visible(has_client_log)
+        if has_client_log and self.client_log_btn.get_active():
+            log_path = session.game_log() or log_path
 
         if not log_path or not log_path.exists():
             self.stop_server_location_polling()
@@ -1088,7 +1101,7 @@ class PlayPage(Adw.Bin):
             self.stack.set_visible_child_name("play")
 
         rosemary = self.window.rosemary_selected()
-        version = rosemary_runtime.installed_version() if rosemary else core.installed_version()
+        version = rosemary_runtime.installed_version(self.window.settings) if rosemary else core.installed_version()
         parts = [_("Roblox {version}", version=version) if version else _("Roblox not found")]
         self._refresh_darling_status()
         runtime_name = "Rosemary" if rosemary else "Darling"
@@ -1177,7 +1190,7 @@ class FlagsPage(Adw.PreferencesPage):
                 self._add_custom_row(name, core.format_flag_value(value))
 
         file_group = Adw.PreferencesGroup()
-        path_row = Adw.ActionRow(title=_("File"), subtitle=str(core.FAST_FLAGS))
+        path_row = Adw.ActionRow(title=_("File"), subtitle=str(core.FAST_FLAGS_USER))
         path_row.set_subtitle_selectable(True)
         file_group.add(path_row)
 
@@ -1966,8 +1979,9 @@ class RosemaryPage(Adw.PreferencesPage):
         self.backend_row = ComboRow(title=_("Run Roblox with"),
                                     model=Gtk.StringList.new(["Darling", "Rosemary"]))
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
-        self.backend_row.connect("notify::selected", lambda row, _pspec: window.set_setting(
-            "runtime_backend", "rosemary" if row.get_selected() == 1 else "darling"))
+        self.backend_row.connect("notify::selected", lambda row, _pspec: (window.set_setting(
+            "runtime_backend", "rosemary" if row.get_selected() == 1 else "darling"), window.apply_runtime_state(),
+            self.refresh()))
         runtime_group.add(self.backend_row)
         self.add(runtime_group)
 
@@ -1996,6 +2010,11 @@ class RosemaryPage(Adw.PreferencesPage):
         self.client_button.connect("clicked", lambda *_args: self._install_client())
         self.client_row.add_suffix(self.client_button)
         client_group.add(self.client_row)
+        self.rollback_row = Adw.ActionRow(title=_("Previous version"))
+        self.rollback_button = Gtk.Button(valign=Gtk.Align.CENTER)
+        self.rollback_button.connect("clicked", lambda *_args: self._toggle_rollback())
+        self.rollback_row.add_suffix(self.rollback_button)
+        client_group.add(self.rollback_row)
         self.progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
         client_group.add(self.progress)
         self.add(client_group)
@@ -2021,6 +2040,51 @@ class RosemaryPage(Adw.PreferencesPage):
         vsync.set_selected(swaps.index(settings.get("rosemary_swap_interval", "")) if settings.get("rosemary_swap_interval", "") in swaps else 0)
         vsync.connect("notify::selected", lambda row, _pspec: window.set_setting("rosemary_swap_interval", swaps[row.get_selected()]))
         options.add(vsync)
+        presentation = list(rosemary_runtime.PRESENTATION_MODES)
+        present = ComboRow(title=_("Presentation mode"), subtitle=_("How frames reach the screen (Vulkan present mode)"),
+                           model=Gtk.StringList.new([_("Default"), _("Immediate"), "FIFO", _("FIFO relaxed"), "Mailbox"]))
+        current = settings.get("rosemary_presentation_mode", "")
+        present.set_selected(presentation.index(current) if current in presentation else 0)
+        present.connect("notify::selected", lambda row, _pspec: window.set_setting(
+            "rosemary_presentation_mode", presentation[row.get_selected()]))
+        options.add(present)
+        rate = Adw.EntryRow(title=_("Refresh rate told to the game (Hz, empty: the display's)"))
+        rate.set_text(settings.get("rosemary_refresh_rate", ""))
+        rate.set_show_apply_button(True)
+
+        def rate_applied(row):
+            text = row.get_text().strip()
+            if text and not rosemary_runtime.refresh_rate(text):
+                row.add_css_class("error")
+                _toast(window.toasts, _("Enter a number of hertz above zero"))
+                return
+            row.remove_css_class("error")
+            window.set_setting("rosemary_refresh_rate", text)
+        rate.connect("apply", rate_applied)
+        options.add(rate)
+        decorations = list(rosemary_runtime.DECORATIONS)
+        title_bar = ComboRow(title=_("Title bar"), subtitle=_("Who draws the window's title bar"),
+                             model=Gtk.StringList.new([_("Default"), _("Rosemary (Mac style)"), _("Window manager")]))
+        current = settings.get("rosemary_decorations", "")
+        title_bar.set_selected(decorations.index(current) if current in decorations else 0)
+        title_bar.connect("notify::selected", lambda row, _pspec: window.set_setting(
+            "rosemary_decorations", decorations[row.get_selected()]))
+        options.add(title_bar)
+        menus = list(rosemary_runtime.MENUS)
+        menu = ComboRow(title=_("Menu placement"), model=Gtk.StringList.new(
+            [_("Default"), _("In the title bar"), _("Strip under it"), _("None")]))
+        current = settings.get("rosemary_menu", "")
+        menu.set_selected(menus.index(current) if current in menus else 0)
+        menu.connect("notify::selected", lambda row, _pspec: window.set_setting("rosemary_menu", menus[row.get_selected()]))
+        options.add(menu)
+        for key, title, subtitle in (
+                ("rosemary_confine_pointer", _("Keep the pointer inside the window"), None),
+                ("rosemary_control_edit_keys", _("Control works as Command in editing shortcuts"), None),
+                ("rosemary_plain_ctrl_click", _("Control-click is a plain left click"),
+                 _("Crouching with Control would otherwise be a right click"))):
+            row = Adw.SwitchRow(title=title, subtitle=subtitle or "", active=settings.get(key, False))
+            row.connect("notify::active", lambda r, _pspec, k=key: window.set_setting(k, r.get_active()))
+            options.add(row)
         server = Adw.SwitchRow(title=_("Process server"), subtitle=_("Stopped with the game; turn off to leave it running"),
                                active=settings.get("rosemary_process_server", True))
         server.connect("notify::active", lambda row, _pspec: window.set_setting("rosemary_process_server", row.get_active()))
@@ -2036,7 +2100,27 @@ class RosemaryPage(Adw.PreferencesPage):
         except rosemary_runtime.RosemaryError as error:
             self.program_row.set_subtitle(str(error).splitlines()[0])
             self.install_button.set_label(_("Install"))
-        self.client_row.set_subtitle(rosemary_runtime.installed_version() or _("Not installed"))
+        settings = self.window.settings
+        self.client_row.set_subtitle(rosemary_runtime.installed_version(settings) or _("Not installed"))
+        previous = rosemary_runtime.previous_build(settings)
+        pinned = bool(settings.get("rosemary_pinned_build"))
+        self.rollback_row.set_visible(pinned or previous is not None)
+        if pinned:
+            self.rollback_row.set_subtitle(_("Staying on this version; updates are paused"))
+            self.rollback_button.set_label(_("Follow latest"))
+        elif previous is not None:
+            self.rollback_row.set_subtitle(previous[0].version or previous[0].guid)
+            self.rollback_button.set_label(_("Go back"))
+
+    def _toggle_rollback(self):
+        settings = self.window.settings
+        if settings.get("rosemary_pinned_build"):
+            self.window.set_setting("rosemary_pinned_build", "")
+        else:
+            previous = rosemary_runtime.previous_build(settings)
+            if previous is not None:
+                self.window.set_setting("rosemary_pinned_build", previous[0].key)
+        self.refresh()
 
     def _busy(self, busy):
         for button in (self.install_button, self.client_button):
@@ -2073,7 +2157,7 @@ class RosemaryPage(Adw.PreferencesPage):
         self._run(lambda progress: rosemary_install.install_latest(progress))
 
     def _install_client(self):
-        self._run(lambda progress: rosemary_runtime.ensure_latest(self.window.settings, progress))
+        self._run(lambda progress: rosemary_runtime.ensure_latest(self.window.settings, progress, ignore_pin=False))
 
 
 class SettingsPage(Adw.Bin):
@@ -2192,7 +2276,9 @@ class SettingsPage(Adw.Bin):
         # The renderer and graphics card rows also appear on the CiderDarling
         # tab; every copy shows and saves the same setting.
         self._renderer_rows = []
-        game.add(self._renderer_row())
+        renderer_row = self._renderer_row()
+        game.add(renderer_row)
+        window.runtime_only(renderer_row, "renderer")
 
         self._build_m2vk_group(settings)
 
@@ -2200,6 +2286,7 @@ class SettingsPage(Adw.Bin):
         self._gpu_rows = []
         self.gpu_row = self._gpu_row()
         game.add(self.gpu_row)
+        window.runtime_only(self.gpu_row, "renderer")
 
         backend_codes = ["x11", "wayland"]
         backend = ComboRow(
@@ -2211,6 +2298,7 @@ class SettingsPage(Adw.Bin):
         backend.connect("notify::selected", lambda row, _pspec: window.set_setting(
             "display_backend", backend_codes[row.get_selected()]))
         game.add(backend)
+        window.runtime_only(backend, "input")
 
         from .display import validated_dpi_scale
         ui_scale = Adw.SpinRow.new_with_range(100, 400, 25)
@@ -2221,6 +2309,7 @@ class SettingsPage(Adw.Bin):
         ui_scale.connect("notify::value", lambda row, _pspec: window.set_setting(
             "dpi_scale", validated_dpi_scale(row.get_value() / 100)))
         game.add(ui_scale)
+        window.runtime_only(ui_scale, "input")
 
         mangohud = Adw.SwitchRow(
             title=_("MangoHud overlay"),
@@ -2239,6 +2328,7 @@ class SettingsPage(Adw.Bin):
         sensitivity.connect("notify::value", lambda row, _pspec: window.set_setting(
             "mouse_sensitivity", round(row.get_value(), 2)))
         game.add(sensitivity)
+        window.runtime_only(sensitivity, "input")
 
         scroll_sens = Adw.SpinRow.new_with_range(0.5, 10.0, 0.5)
         scroll_sens.set_digits(1)
@@ -2248,6 +2338,7 @@ class SettingsPage(Adw.Bin):
         scroll_sens.connect("notify::value", lambda row, _pspec: window.set_setting(
             "scroll_sensitivity", round(row.get_value(), 2)))
         game.add(scroll_sens)
+        window.runtime_only(scroll_sens, "input")
 
         self.raw_mouse_row = Adw.SwitchRow(
             title=_("Raw mouse input"),
@@ -2257,6 +2348,7 @@ class SettingsPage(Adw.Bin):
         self.raw_mouse_row.connect("notify::active", lambda row, _pspec: window.set_setting(
             "raw_mouse", row.get_active()))
         game.add(self.raw_mouse_row)
+        window.runtime_only(self.raw_mouse_row, "input")
 
         menu_bar = Adw.SwitchRow(title=_("Hide the macOS menu bar"),
                                  subtitle=_("The Roblox, Edit, Window… strip at the top of the game window"),
@@ -2264,6 +2356,7 @@ class SettingsPage(Adw.Bin):
         menu_bar.connect("notify::active", lambda row, _pspec: window.set_setting(
             "hide_menu_bar", row.get_active()))
         game.add(menu_bar)
+        window.runtime_only(menu_bar, "input")
 
         hide_launcher = Adw.SwitchRow(title=_("Hide launcher while playing"),
                                       subtitle=_("Hide the launcher window while the game is running"),
@@ -2319,6 +2412,7 @@ class SettingsPage(Adw.Bin):
         graphics_group.add(self._gpu_row(always_visible=True))
         self.m2vk_page.add(graphics_group)
         self.m2vk_page.add(self.m2vk_group)
+        window.runtime_only(self.m2vk_page, "m2vk")
 
         # VR headsets through the host's OpenXR runtime (the VR tab)
         from . import vr
@@ -2353,6 +2447,7 @@ class SettingsPage(Adw.Bin):
         # Its own tab, added after Roblox below.
         self.vr_page = Adw.PreferencesPage()
         self.vr_page.add(vr_group)
+        window.runtime_only(self.vr_page, "vr")
 
         # 3. Discord Rich Presence
         discord_group = Adw.PreferencesGroup(title=_("Discord Rich Presence"))
@@ -2441,6 +2536,7 @@ class SettingsPage(Adw.Bin):
             "block_telemetry", row.get_active()))
         dns_group.add(block)
         self.network_page.add(dns_group)
+        window.runtime_only(dns_group, "dns")
 
         diagnostics = Adw.PreferencesGroup(
             title=_("Diagnostics"),
@@ -2474,6 +2570,7 @@ class SettingsPage(Adw.Bin):
         restart.connect("activated", lambda *_args: self.restart_darling())
         diagnostics.add(restart)
         self.diagnostics_page.add(diagnostics)
+        window.runtime_only(diagnostics, "diagnostics")
 
         self.stack.add_titled_with_icon(self.appearance_page, "appearance", _("Appearance"),
                                         "preferences-desktop-appearance-symbolic")
@@ -2518,6 +2615,7 @@ class SettingsPage(Adw.Bin):
         delete_roblox.connect("activated", lambda *_args: self.delete_roblox())
         roblox.add(delete_roblox)
         self.roblox_page.add(roblox)
+        window.runtime_only(roblox, "client_updates")
 
         # The startup render throttle patch gets a group of its own: the
         # button applies or reverts it by hand, the switch decides whether
@@ -2539,6 +2637,7 @@ class SettingsPage(Adw.Bin):
         throttle.add(self.auto_patch_switch)
         self._in_thread(core.throttle_patch_state, self._throttle_state_done)
         self.roblox_page.add(throttle)
+        window.runtime_only(throttle, "throttle")
 
         account = Adw.PreferencesGroup(title=_("Account"))
         logout = _button_row(_("Sign out"))
@@ -2561,6 +2660,7 @@ class SettingsPage(Adw.Bin):
 
         # 4. CiderDarling page, shown while CiderDarling is installed
         self.cider_page = self._ciderdarling_page()
+        window.runtime_only(self.cider_page, "cider")
         self.cider_stack_page = self.stack.add_titled_with_icon(
             self.cider_page, "ciderdarling", "CiderDarling", "applications-engineering-symbolic")
         self.refresh_ciderdarling()
@@ -3318,7 +3418,11 @@ class SettingsPage(Adw.Bin):
                                   _("The saved session is still there. Press Restart Darling in "
                                     "Diagnostics and try again."))
 
-            self._in_thread(core.logout, done)
+            if self.window.rosemary_selected():
+                prefix = rosemary_runtime.prefix_path(self.window.settings)
+                self._in_thread(lambda: rosemary_runtime.sign_out(prefix) or True, done)
+            else:
+                self._in_thread(core.logout, done)
 
         dialog.connect("response", response)
         dialog.present(self.window)
@@ -4156,6 +4260,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.activity = None
         self.splash = None
         self.settings_open = False
+        self.runtime_widgets = []
         self.launch_cancelled = False
         setup_action = Gio.SimpleAction.new("setup", None)
         setup_action.connect("activate", lambda *_args: self.show_setup())
@@ -4268,13 +4373,46 @@ class LauncherWindow(Adw.ApplicationWindow):
             logs.stop_server_location_polling()
 
     # -- runtime backend (Darling or Rosemary)
+    def runtime_name(self):
+        return backends.ROSEMARY if self.rosemary_selected() else backends.DARLING
+
+    def runtime_only(self, widget, feature):
+        """Register a settings row, group or page that only some runtimes read.
+        It is greyed out, and tagged "<runtime> only", while another is chosen."""
+        entry = {"widget": widget, "feature": feature, "tag": None, "text": None}
+        label = " / ".join(backends.other_runtimes(feature))
+        if isinstance(widget, Adw.PreferencesGroup):
+            entry["text"] = widget.get_description() or ""
+        elif hasattr(widget, "add_suffix"):
+            tag = Gtk.Label(label=_("{runtime} only", runtime=label), css_classes=["dim-label", "caption"],
+                            valign=Gtk.Align.CENTER, visible=False)
+            widget.add_suffix(tag)
+            entry["tag"] = tag
+        self.runtime_widgets.append(entry)
+        self._apply_runtime_entry(entry)
+
+    def _apply_runtime_entry(self, entry):
+        applies = backends.supports(self.runtime_name(), entry["feature"])
+        widget = entry["widget"]
+        widget.set_sensitive(applies)
+        label = " / ".join(backends.other_runtimes(entry["feature"]))
+        if entry["tag"] is not None:
+            entry["tag"].set_visible(not applies)
+        elif entry["text"] is not None:
+            note = "" if applies else _("{runtime} only.", runtime=label)
+            widget.set_description((note + " " + entry["text"]).strip())
+
+    def apply_runtime_state(self):
+        for entry in self.runtime_widgets:
+            self._apply_runtime_entry(entry)
+
     def rosemary_selected(self):
         return self.settings.get("runtime_backend", "darling") == "rosemary"
 
     def client_installed(self):
         """Whether there is a Roblox client to start with the chosen runtime."""
         if self.rosemary_selected():
-            return rosemary_runtime.installed_version() is not None
+            return rosemary_runtime.installed_version(self.settings) is not None
         return core.installed_version() is not None
 
     def runtime_ready(self):
@@ -4443,6 +4581,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         if getattr(self, "studio_page", None):
             self.studio_page.flush()
         self.toasts = Adw.ToastOverlay()
+        self.runtime_widgets = []
         self.stack = Adw.ViewStack()
         self.play_page = PlayPage(self)
         self.stack.add_titled_with_icon(self.play_page, "play", _("Play"), "media-playback-start-symbolic")
@@ -5118,7 +5257,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             return
         if self.game_tracker is None and session.log_path:
             tracker = discord.GameActivityTracker(
-                session.log_path,
+                session.game_log if hasattr(session, "game_log") else session.log_path,
                 lambda info, generation: self._on_game_activity_change(
                     info, session, tracker, generation),
                 autostart=False,
@@ -5277,8 +5416,41 @@ class LauncherWindow(Adw.ApplicationWindow):
                 page.refresh_allowlist()
         return False
 
+    def _rosemary_update_and_relaunch(self):
+        """The client closed to update: install the current build (dropping a
+        pinned older one), then start again with the same link."""
+        if not self.begin("updating"):
+            return
+        self.show_splash(_("Updating Roblox…"))
+        self.splash_update(indeterminate=True)
+        pending = self.pending_uri
+
+        def progress(fraction, text):
+            GLib.idle_add(self.splash_update, text, fraction)
+
+        def work():
+            error = None
+            try:
+                rosemary_runtime.ensure_latest(self.settings, progress, ignore_pin=True)
+            except Exception as failure:
+                error = failure
+            GLib.idle_add(finished, error)
+
+        def finished(error):
+            self.close_splash()
+            self.end(resume_pending=False)
+            if error is not None:
+                self.present_settings()
+                _error_dialog(self, _("Could not update Roblox"), str(error) or repr(error))
+                return False
+            if self.settings.get("rosemary_pinned_build"):
+                self.set_setting("rosemary_pinned_build", "")
+            self.launch(pending)
+            return False
+        threading.Thread(target=work, daemon=True).start()
+
     def _limit_cpus(self, session):
-        if self.session is session:
+        if self.session is session and not getattr(session, "cpu_limited", False):
             threading.Thread(target=core.limit_roblox_cpus,
                              args=(int(self.settings.get("roblox_cpu_limit", 0)),), daemon=True).start()
         return False
@@ -5445,7 +5617,14 @@ class LauncherWindow(Adw.ApplicationWindow):
         # Roblox's macOS updater cannot reliably replace the host bundle through
         # Darling. It exits with success/a quit sentinel, so this is independent
         # of the frontend exit code and must precede pending-URI auto-retries.
-        reason = core.exit_reason(self.last_log)
+        # Rosemary's launch log only holds its own messages; the client's log
+        # has the reason.
+        game_log = session.game_log() if hasattr(session, "game_log") else None
+        reason = core.exit_reason(game_log or self.last_log)
+        if reason == "update_required" and hasattr(session, "game_log"):
+            self.pending_uri = self.pending_uri or uri_handoff.peek_pending() or session.launch_uri
+            self._rosemary_update_and_relaunch()
+            return False
         if reason == "update_required":
             target = core.required_client_update(self.last_log)
             if target and "channel" in target:
