@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.41.p2" date="2026-11-01">
+      <description>
+        <p>Fixes VR being refused with Quadra's own Rosemary installed from its release. Nothing else changes from 0.41.p1.</p>
+      </description>
+    </release>
     <release version="0.41.p1" date="2026-11-01">
       <description>
         <p>Settings, Rosemary tab: choose which Rosemary Quadra installs and runs, Quadra's own build (it adds what VR needs) or the regular one. Nothing else changes from 0.41.</p>

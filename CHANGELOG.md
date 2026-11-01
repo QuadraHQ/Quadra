@@ -3,6 +3,12 @@
 ## Unreleased
 
 
+## 0.41.p2 — 2026-11-01
+
+- Fix VR being refused with Quadra's own Rosemary installed from its release: the check read `bin/rosemary`, only the
+  launcher in a release bundle, instead of the real runtime in `libexec/rosemary`. It now reads both.
+- Quadra's Rosemary 0.5.0-quadra.1 (QuadraHQ/rosemary-fork) is published. Nothing else changes from 0.41.p1.
+
 ## 0.41.p1 — 2026-11-01
 
 - Settings → Rosemary has a "Rosemary build" selector: Quadra's Rosemary (QuadraHQ/rosemary-fork, adds what VR needs)
