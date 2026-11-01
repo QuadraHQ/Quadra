@@ -268,6 +268,26 @@ def ensure_latest(settings, progress, cancel=None):
     return latest.bundle()
 
 
+def running():
+    """Whether a Rosemary program (a game or the process server) is running."""
+    try:
+        entries = os.listdir("/proc")
+    except OSError:
+        return False
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f"/proc/{entry}/cmdline", "rb") as handle:
+                argv = handle.read().split(b"\0")
+        except OSError:
+            continue
+        if argv and os.path.basename(argv[0].decode("utf-8", "replace")) == "rosemary" and len(argv) > 1 \
+                and argv[1] in (b"run", b"server"):
+            return True
+    return False
+
+
 # -- the game
 
 class RosemarySession:

@@ -970,8 +970,15 @@ class PlayPage(Adw.Bin):
         return False
 
     def _refresh_darling_status(self):
-        self._darling_running = core.darlingserver_running()
-        self.dashboard_state.set_label(_("Darling running") if self._darling_running else _("Darling stopped"))
+        # The badge names the runtime in use: Darling or Rosemary.
+        if self.window.rosemary_selected():
+            self._darling_running = rosemary_runtime.running()
+            name = "Rosemary"
+        else:
+            self._darling_running = core.darlingserver_running()
+            name = "Darling"
+        self.dashboard_state.set_label(_("{runtime} running", runtime=name) if self._darling_running
+                                       else _("{runtime} stopped", runtime=name))
         return True
 
     def _watch_darling_status(self, *_args):
@@ -1080,11 +1087,13 @@ class PlayPage(Adw.Bin):
         if not active and not self.window.last_log and viewing_logs:
             self.stack.set_visible_child_name("play")
 
-        version = core.installed_version()
+        rosemary = self.window.rosemary_selected()
+        version = rosemary_runtime.installed_version() if rosemary else core.installed_version()
         parts = [_("Roblox {version}", version=version) if version else _("Roblox not found")]
         self._refresh_darling_status()
-        parts.append(_("Darling running") if self._darling_running
-                     else _("Darling starts with the game"))
+        runtime_name = "Rosemary" if rosemary else "Darling"
+        parts.append(_("{runtime} running", runtime=runtime_name) if self._darling_running
+                     else _("{runtime} starts with the game", runtime=runtime_name))
         if version and not running and not core.signed_in():
             parts.append(_("Sign in with Quick Login"))
         self.status.set_description(" · ".join(parts))
@@ -1092,7 +1101,8 @@ class PlayPage(Adw.Bin):
         renderer = {"opengl": "OpenGL", "vulkan": "Vulkan / Zink", "metal": "Quadra M2VK"}.get(
             self.window.settings.get("renderer", "opengl"), "OpenGL")
         self.dashboard_facts["renderer"].set_label(renderer)
-        self.dashboard_facts["runtime"].set_label("CiderDarling" if core.DARLING_RUNTIME["runtime"] == "ciderdarling" else "Darling")
+        self.dashboard_facts["runtime"].set_label(
+            "Rosemary" if rosemary else ("CiderDarling" if core.DARLING_RUNTIME["runtime"] == "ciderdarling" else "Darling"))
 
         if running:
             self.play.set_label(_("Stop Roblox"))

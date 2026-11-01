@@ -3,6 +3,14 @@
 ## Unreleased
 
 
+## 0.40.p1 — 2026-11-01
+
+- Home says "Rosemary running" or "Rosemary stopped" when Rosemary is the runtime (it always said Darling), and its
+  Roblox version and runtime cards follow the runtime too. Translated into Russian and Chinese.
+- The menu entry the installer writes has a right-click Settings action (), as the distro
+  packages' entry already did.
+- Nothing else changes from 0.40.
+
 ## 0.40 — 2026-11-01
 
 - Quadra starts Roblox straight away. `quadrahq` shows a small splash (logo, progress, Cancel), updates Roblox when a

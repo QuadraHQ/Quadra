@@ -1,3 +1,9 @@
+quadrahq (0.40.p1-1) unstable; urgency=medium
+
+  * The Home badge names the runtime in use (Darling or Rosemary), and the shortcut's right-click menu has a Settings action.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Sun, 01 Nov 2026 11:38:33 -0600
+
 quadrahq (0.40-1) unstable; urgency=medium
 
   * Roblox starts straight away behind a small splash. Settings open from the tray icon, `quadrahq --settings` or the shortcut's Settings action.

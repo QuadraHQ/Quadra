@@ -52,6 +52,13 @@ Terminal=false
 Categories=Game;
 Keywords=roblox;darling;
 StartupNotify=true
+Actions=settings;
+
+[Desktop Action settings]
+Name=Settings
+Name[ru]=Настройки
+Exec=$exec_path --settings
+Icon=quadrahq
 DESKTOP
 
 # Roblox links are LaunchServices protocol handoffs on macOS.  Keep a

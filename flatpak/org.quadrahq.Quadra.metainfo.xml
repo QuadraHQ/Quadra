@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.40.p1" date="2026-11-01">
+      <description>
+        <p>The Home badge says Rosemary running or stopped when Rosemary is the runtime, and the shortcut's right-click menu has a Settings action. Nothing else changes from 0.40.</p>
+      </description>
+    </release>
     <release version="0.40" date="2026-11-01">
       <description>
         <p>Quadra now starts Roblox straight away behind a small splash window; settings open from the tray icon or the shortcut's Settings action. Adds a Servers page with history and region joining, Rosemary as an optional runtime, a mod crash guard, Fast flag allowlist warnings and a server location notification.</p>
