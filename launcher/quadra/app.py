@@ -16,7 +16,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from . import __version__, activity, author, core, discord, dns, tray, backends, fflag_allowlist, game_meta, gpus, rosemary_client, rosemary_install, rosemary_runtime, history, i18n, logevents, modguard, mods, region, runtime, runtime_install, runtime_updates, studio, terminal, theme, uri as uri_handoff  # noqa: E402
+from . import __version__, activity, author, core, discord, dns, tray, backends, fflag_allowlist, game_meta, gpus, rosemary_client, rosemary_install, rosemary_runtime, rosemary_xr, history, i18n, logevents, modguard, mods, region, runtime, runtime_install, runtime_updates, studio, terminal, theme, uri as uri_handoff  # noqa: E402
 from .i18n import _  # noqa: E402
 from .setup import SetupWizard  # noqa: E402
 
@@ -1910,6 +1910,9 @@ class RosemaryPage(Adw.PreferencesPage):
         client_group.add(self.progress)
         self.add(client_group)
 
+        self.vr_row = Adw.ActionRow(title=_("VR support"))
+        client_group.add(self.vr_row)
+
         options = Adw.PreferencesGroup(title=_("Options"))
         engine = ComboRow(title=_("Execution"), subtitle=_("Native runs the machine's own code; emulated recompiles x86-64"),
                           model=Gtk.StringList.new([_("Automatic"), _("Native"), _("Emulated")]))
@@ -1962,7 +1965,8 @@ class RosemaryPage(Adw.PreferencesPage):
             "rosemary_decorations", decorations[row.get_selected()]))
         options.add(title_bar)
         menus = list(rosemary_runtime.MENUS)
-        menu = ComboRow(title=_("Menu placement"), model=Gtk.StringList.new(
+        menu = ComboRow(title=_("Menu placement"), subtitle=_("\"Hide the macOS menu bar\" in Game settings overrides this"),
+                        model=Gtk.StringList.new(
             [_("Default"), _("In the title bar"), _("Strip under it"), _("None")]))
         current = settings.get("rosemary_menu", "")
         menu.set_selected(menus.index(current) if current in menus else 0)
@@ -1976,6 +1980,11 @@ class RosemaryPage(Adw.PreferencesPage):
             row = Adw.SwitchRow(title=title, subtitle=subtitle or "", active=settings.get(key, False))
             row.connect("notify::active", lambda r, _pspec, k=key: window.set_setting(k, r.get_active()))
             options.add(row)
+        zink = Adw.SwitchRow(title=_("VR: OpenGL through Vulkan (zink)"),
+                             subtitle=_("Roblox's VR needs its OpenGL renderer; this runs it on Vulkan with Mesa's zink"),
+                             active=settings.get("rosemary_vr_zink", False))
+        zink.connect("notify::active", lambda row, _pspec: window.set_setting("rosemary_vr_zink", row.get_active()))
+        options.add(zink)
         server = Adw.SwitchRow(title=_("Process server"), subtitle=_("Stopped with the game; turn off to leave it running"),
                                active=settings.get("rosemary_process_server", True))
         server.connect("notify::active", lambda row, _pspec: window.set_setting("rosemary_process_server", row.get_active()))
@@ -2009,6 +2018,12 @@ class RosemaryPage(Adw.PreferencesPage):
             self.program_row.set_subtitle(str(error).splitlines()[0])
             self.install_button.set_label(_("Install"))
         settings = self.window.settings
+        try:
+            program = rosemary_runtime.find_rosemary(settings)
+            self.vr_row.set_subtitle(_("Ready: turn on VR in the VR tab") if rosemary_xr.supports_vr(program)
+                                     else _("This Rosemary cannot load VR. It needs Quadra's build (QuadraHQ/rosemary-fork)."))
+        except rosemary_runtime.RosemaryError:
+            self.vr_row.set_subtitle(_("Install Rosemary first"))
         self.client_row.set_subtitle(rosemary_runtime.installed_version(settings) or _("Not installed"))
         previous = rosemary_runtime.previous_build(settings)
         pinned = bool(settings.get("rosemary_pinned_build"))
@@ -2259,7 +2274,7 @@ class SettingsPage(Adw.Bin):
         menu_bar.connect("notify::active", lambda row, _pspec: window.set_setting(
             "hide_menu_bar", row.get_active()))
         game.add(menu_bar)
-        window.runtime_only(menu_bar, "input")
+        window.runtime_only(menu_bar, "menu_bar")
 
         hide_launcher = Adw.SwitchRow(title=_("Hide launcher while playing"),
                                       subtitle=_("Hide the launcher window while the game is running"),

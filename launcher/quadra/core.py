@@ -180,6 +180,8 @@ DEFAULT_SETTINGS = {
     "rosemary_plain_ctrl_click": False,
     # Key of an installed build to stay on (a rollback); empty follows Roblox's latest.
     "rosemary_pinned_build": "",
+    # VR on Rosemary: run Roblox's OpenGL through Mesa's zink (on Vulkan) instead of the driver's own GL.
+    "rosemary_vr_zink": False,
     "region_join": False,
     "region_preferred": "",
     # A toast when the game you joined was updated in the last day.

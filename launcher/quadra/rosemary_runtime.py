@@ -194,6 +194,9 @@ def run_env(settings, base=None):
         value = settings.get(key, "")
         if value and value in allowed:
             env[variable] = value
+    if settings.get("hide_menu_bar", False):
+        # The same setting that hides Darling's menu strip ("Roblox, Edit, Window...").
+        env["ROSEMARY_MENU"] = "none"
     rate = refresh_rate(settings.get("rosemary_refresh_rate", ""))
     if rate:
         env["ROSEMARY_SCREEN_REFRESH_RATE"] = rate
@@ -414,10 +417,21 @@ class RosemarySession:
         self.prefix = prefix_path(self.settings)
         if not prefix_created(self.prefix):
             create_prefix(self.rosemary, self.prefix)
-        from . import core
-        flags = core.load_fast_flags()
-        if flags:
-            rosemary_client.write_fast_flags(bundle, flags)
+        from . import core, rosemary_xr
+        # VR: the library is injected and Roblox runs on OpenGL (its VR device
+        # attaches to that renderer). A reason it cannot start is logged and the
+        # game starts without VR, as with Darling.
+        vr_session, vr_note = None, None
+        try:
+            vr_session = rosemary_xr.prepare(self.settings, self.rosemary, core)
+        except rosemary_xr.VrUnavailable as error:
+            vr_note = "VR: " + str(error).replace("\n", " ")
+            self.notes.append(vr_note)
+        flags = dict(core.load_fast_flags())
+        if vr_session:
+            flags.update(vr_session.flags)
+        # Always written: a flag from an earlier start (VR's OpenGL) must not stay behind.
+        rosemary_client.write_fast_flags(bundle, flags)
         self._apply_mods(build, bundle)
         logs = self.logs_dir or core.LOGS
         logs.mkdir(parents=True, exist_ok=True)
@@ -429,11 +443,15 @@ class RosemarySession:
             # The limit is in place before Rosemary starts, so no thread escapes it.
             argv = [taskset, "-c", cpus] + argv
         env = run_env(self.settings)
+        if vr_session:
+            vr_session.apply(env)
         root = self.prefix / "root"
         root.mkdir(parents=True, exist_ok=True)
         with open(self.log_path, "wb") as log_file:
             log_file.write(f"[Quadra Lifecycle] runtime=rosemary rosemary={self.rosemary} "
                            f"prefix={self.prefix} app={bundle}\n".encode())
+            if vr_session or vr_note:
+                log_file.write(((vr_session.log if vr_session else vr_note) + "\n").encode())
             log_file.flush()
             self.started_at = time.time()
             self.process = subprocess.Popen(argv, cwd=root, env=env, stdin=subprocess.DEVNULL,

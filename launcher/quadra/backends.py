@@ -9,9 +9,10 @@ ROSEMARY = "rosemary"
 
 FEATURES = {
     DARLING: {"mods", "dns", "telemetry", "cpu_limit", "renderer", "m2vk", "vr", "input", "throttle",
-              "client_updates", "diagnostics", "cider", "web_signin", "mangohud"},
-    # Rosemary has its own gamepad (SDL3) and Metal translation; VR is the fork's work.
-    ROSEMARY: {"mods", "cpu_limit", "mangohud", "rosemary"},
+              "client_updates", "diagnostics", "cider", "web_signin", "mangohud", "menu_bar"},
+    # Rosemary has its own gamepad (SDL3) and Metal translation. VR needs Quadra's
+    # build of Rosemary (rosemary_xr.supports_vr); the VR page says so.
+    ROSEMARY: {"mods", "cpu_limit", "mangohud", "rosemary", "menu_bar", "vr"},
 }
 
 NAMES = {DARLING: "Darling", ROSEMARY: "Rosemary"}

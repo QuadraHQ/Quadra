@@ -73,6 +73,13 @@ class OptionTests(unittest.TestCase):
         self.assertNotIn("ROSEMARY_MENU", bad)
         self.assertNotIn("ROSEMARY_SCREEN_REFRESH_RATE", bad)
 
+    def test_hide_menu_bar_hides_rosemarys_menu_and_wins_over_the_placement(self):
+        self.assertEqual(runtime.run_env({"hide_menu_bar": True}, {})["ROSEMARY_MENU"], "none")
+        self.assertEqual(runtime.run_env({"hide_menu_bar": True, "rosemary_menu": "strip"}, {})["ROSEMARY_MENU"], "none")
+        self.assertEqual(runtime.run_env({"hide_menu_bar": False, "rosemary_menu": "strip"}, {})["ROSEMARY_MENU"], "strip")
+        self.assertNotIn("ROSEMARY_MENU", runtime.run_env({}, {}))
+        self.assertTrue(backends.supports("rosemary", "menu_bar") and backends.supports("darling", "menu_bar"))
+
     def test_inherited_managed_variables_are_cleared(self):
         env = runtime.run_env({}, {"ROSEMARY_MENU": "none", "ROSEMARY_COMMAND_KEY": "alt", "HOME": "/h"})
         self.assertNotIn("ROSEMARY_MENU", env)
@@ -276,7 +283,8 @@ class MiscTests(unittest.TestCase):
         self.assertTrue(backends.supports("darling", "dns"))
         self.assertFalse(backends.supports("rosemary", "dns"))
         self.assertTrue(backends.supports("rosemary", "mods"))
-        self.assertFalse(backends.supports("rosemary", "vr"))
+        self.assertTrue(backends.supports("rosemary", "vr"))     # with Quadra's build of Rosemary (rosemary_xr)
+        self.assertFalse(backends.supports("rosemary", "m2vk"))
         self.assertEqual(backends.other_runtimes("dns"), ["Darling"])
         self.assertFalse(backends.supports("nothing", "mods"))
 
