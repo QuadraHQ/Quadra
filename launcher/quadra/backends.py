@@ -8,7 +8,7 @@ DARLING = "darling"
 ROSEMARY = "rosemary"
 
 FEATURES = {
-    DARLING: {"mods", "dns", "telemetry", "cpu_limit", "renderer", "m2vk", "vr", "input", "throttle",
+    DARLING: {"darling", "mods", "dns", "telemetry", "cpu_limit", "renderer", "m2vk", "vr", "input", "throttle",
               "client_updates", "diagnostics", "cider", "web_signin", "mangohud", "menu_bar"},
     # Rosemary has its own gamepad (SDL3) and Metal translation. VR needs Quadra's
     # build of Rosemary (rosemary_xr.supports_vr); the VR page says so.

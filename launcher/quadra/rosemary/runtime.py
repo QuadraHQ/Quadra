@@ -22,6 +22,7 @@ import threading
 import time
 import tomllib
 from pathlib import Path
+from typing import NamedTuple
 
 from . import client as rosemary_client
 from ..paths import user_directory
@@ -125,6 +126,50 @@ def describe(program):
     return str(program)
 
 
+class Runner(NamedTuple):
+    program: str
+    label: str
+    added_by_hand: bool
+
+
+def _home_relative(program):
+    try:
+        return f"~/{program.relative_to(Path.home())}"
+    except ValueError:
+        return str(program)
+
+
+def runner_list(settings):
+    listed = {}
+
+    def offer(program, label, added_by_hand=False):
+        program = Path(program).expanduser()
+        listed.setdefault(str(program), Runner(str(program), label or _home_relative(program), added_by_hand))
+
+    for _name, program in quadra_runners():
+        offer(program, describe(program))
+    for name, program in runners():
+        offer(program, f"{name} (Butter)")
+    on_path = shutil.which("rosemary")
+    if on_path:
+        offer(on_path, "rosemary on PATH")
+    by_hand = [p for p in settings.get("rosemary_runners") or [] if isinstance(p, str)]
+    for program in [*by_hand, settings.get("rosemary_program") or ""]:
+        if program.strip():
+            offer(program.strip(), None, added_by_hand=True)
+    return list(listed.values())
+
+
+def user_runner_list(settings):
+    quadra_programs = {str(program) for _name, program in quadra_runners()}
+    return [runner for runner in runner_list(settings) if runner.program not in quadra_programs]
+
+
+def is_runnable(program):
+    path = Path(program).expanduser()
+    return path.is_file() and os.access(path, os.X_OK)
+
+
 def find_rosemary(settings):
     """The Rosemary program: the one chosen in settings, else Quadra's own
     newest runner, else Butter's newest, else the one on PATH."""
@@ -133,7 +178,7 @@ def find_rosemary(settings):
         path = Path(chosen).expanduser()
         if not path.is_file() or not os.access(path, os.X_OK):
             raise RosemaryError(f"{path} is not an executable file. Choose another Rosemary program in "
-                                "Settings → Rosemary.", settings=True)
+                                "Settings → Environment.", settings=True)
         return path
     override = os.environ.get("QUADRA_ROSEMARY", "").strip()
     if override:
@@ -152,7 +197,7 @@ def find_rosemary(settings):
     if found:
         return Path(found)
     raise RosemaryError("Rosemary is not installed. Quadra installs it for you: press Install in "
-                        "Settings → Rosemary.", settings=True)
+                        "Settings → Environment.", settings=True)
 
 
 # -- prefix

@@ -88,7 +88,7 @@ class RuntimeUpdatesTests(unittest.TestCase):
     def test_terminal_installs_an_immutable_snapshot_of_the_accepted_release(self):
         project = self.cache / 'project'
         project.mkdir()
-        (project / 'install.sh').write_text('exit 0\n')
+        (project / 'install-runtime.sh').write_text('exit 0\n')
         job = runtime_install.Installation.create(project, 'ciderdarling', self.cache, release=self.release)
         self.addCleanup(job.close)
         self.release['source_revision'] = 'f' * 40

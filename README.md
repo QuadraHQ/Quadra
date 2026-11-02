@@ -75,24 +75,22 @@ traffic continue to go directly to Roblox.
 curl -fsSL https://quadrahq.org/install.sh | bash
 ```
 
-The installer welcomes you and explains the packages, destination and setup
-steps before you begin. It asks which runtime plays Roblox, prepares the
-system tools and adds **Quadra** to the app menu. Open it for a first-time
-guide that downloads Roblox, prepares its app environment, and explains how to
-sign in. Existing Roblox installations open the launcher directly; **Setup
-guide** in its menu reopens the guide.
+The installer only installs the launcher: it downloads Quadra with git and
+adds **Quadra** to the app menu. It needs git, Python 3, GTK 4 and libadwaita
+(PyGObject), installs no packages and does not use sudo. Open Quadra for its
+first-boot screen: pick the launcher's look, then the runtime that plays
+Roblox, and it installs that runtime and Roblox and explains how to sign in.
+Existing Roblox installations open the launcher directly; **Setup guide** in
+its menu reopens the guide.
 
-Setup offers two runtimes. **Rosemary** is the default for a new install:
-there is nothing to build, and Quadra downloads Rosemary and Roblox the first
-time you press Play. **Darling** is outdated and kept for people who still need
-it. Some settings, such as the renderer and DNS, only apply to Darling. Updates
-keep your choice, and an install from before Rosemary stays on Darling. You can
-also choose explicitly, and switch later with **Run Roblox with** in **Settings → Rosemary**:
-
-```bash
-curl -fsSL https://quadrahq.org/install.sh | bash -s -- --backend rosemary
-curl -fsSL https://quadrahq.org/install.sh | bash -s -- --backend darling
-```
+The first-boot screen offers two runtimes. **Rosemary** is recommended: there
+is nothing to build, and Quadra downloads Rosemary and Roblox in its window.
+**Darling** is outdated and kept for people who still need it. Some settings,
+such as the renderer and DNS, only apply to Darling. Choosing Darling opens a
+terminal that runs `install-runtime.sh` from Quadra's folder: it installs the
+system tools Darling needs (it may ask for your sudo password) and Darling
+itself, then Quadra restarts and downloads Roblox. Switch later with **Run
+Roblox with** in **Settings → Environment**.
 
 Uninstalling keeps Rosemary's files in `~/.local/share/quadrahq` unless you add
 `--purge`.
@@ -105,14 +103,13 @@ backdrop; the Quadra logo keeps its colours). The choice is saved and can be
 changed while Roblox is running. An existing install keeps the appearance it
 already saved.
 
-With Darling, setup offers **Regular Darling** (the default Darling) or
-**QuadraHQ's CiderDarling**, our Darling variant with threading, CPU detection
-and OpenGL fixes. Updates keep your choice. You can also choose explicitly
-(`--darling` implies `--backend darling`):
+With Darling, the first-boot screen offers **Regular Darling** (the default
+Darling) or **QuadraHQ's CiderDarling**, our Darling variant with threading,
+CPU detection and OpenGL fixes. `install-runtime.sh` also runs by hand:
 
 ```bash
-curl -fsSL https://quadrahq.org/install.sh | bash -s -- --darling ciderdarling
-curl -fsSL https://quadrahq.org/install.sh | bash -s -- --darling regular
+~/.local/share/QuadraHQ/install-runtime.sh --darling ciderdarling
+~/.local/share/QuadraHQ/install-runtime.sh --darling regular
 ```
 
 Regular Darling keeps the installed-runtime, distro package and pinned upstream
@@ -123,7 +120,7 @@ installer downloads the pinned revision's prebuilt build from CiderDarling's
 CI releases, checks it against a pinned SHA-256 and installs the libraries it
 uses, in minutes. Elsewhere, when the build does not suit the system's
 libraries, or with `--from-source`, it compiles the pinned source instead; the
-source build asks for confirmation even with `--yes`. Arch users can also
+source build always asks for confirmation. Arch users can also
 install `ciderdarling-bin` from the AUR. Its x86_64 build includes OpenGL and
 Metal API stubs.
 Compilation uses the available CPU threads, capped by memory headroom;
@@ -158,7 +155,7 @@ Each runtime release appears through this update feed without a separate
 Quadra release or manual announcement.
 
 Quadra uses the complete published runtime release, with the revision pinned
-in its installer (`CIDER_DARLING_REVISION` in `install.sh`) as the fallback
+in its runtime installer (`CIDER_DARLING_REVISION` in `install-runtime.sh`) as the fallback
 when no update feed is available. The new version is saved for CiderDarling
 with its prefix unchanged, and the active runtime switches to it only if
 CiderDarling was already active. An
@@ -176,8 +173,8 @@ folder. These apply only while CiderDarling is the active runtime.
 
 Run the same command again to update or uninstall. Updates save local source
 changes in `~/.local/share/QuadraHQ-backups` (or your XDG data directory) and
-keep settings and sign-in. Without a terminal, or for scripts, the choices
-are options too:
+keep settings, the runtime and sign-in. Without a terminal, or for scripts, the
+choices are options too:
 
 ```bash
 curl -fsSL https://quadrahq.org/install.sh | bash -s -- --uninstall

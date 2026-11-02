@@ -8,7 +8,7 @@
 }:
 let
   pins = (builtins.fromJSON (builtins.readFile ./runtime-pins.json)).ciderdarling;
-  installer = builtins.readFile ../../install.sh;
+  installer = builtins.readFile ../../install-runtime.sh;
   regularTag = builtins.head (builtins.match ".*\nDARLING_TAG=([^\n]+)\n.*" installer);
   regularHash = builtins.head (builtins.match ".*\nDARLING_DEBS_SHA256=([0-9a-f]+)\n.*" installer);
   cider = runtime == "ciderdarling";

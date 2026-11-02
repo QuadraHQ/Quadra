@@ -18,7 +18,7 @@ for name in ("DPREFIX", "FLATPAK_ID", "QUADRA_PAGE"):
     os.environ.pop(name, None)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 threading.Thread.start = lambda self: None  # no unrelated startup/avatar workers
-from quadra import app, core
+from quadra import core, ui, uri
 from session_fixture import bare_session
 from gi.repository import Adw, Gio, GLib
 
@@ -34,8 +34,8 @@ with ExitStack() as context:
     context.enter_context(patch.object(core, "installed_version", return_value="0.743.0.7431134"))
     context.enter_context(patch.object(core, "roblox_pids", return_value=[]))
     context.enter_context(patch.object(core, "exit_reason", return_value=None))
-    context.enter_context(patch.object(app.uri_handoff, "peek_pending", return_value=None))
-    window = app.LauncherWindow(application)
+    context.enter_context(patch.object(uri, "peek_pending", return_value=None))
+    window = ui.LauncherWindow(application)
     context.callback(window.destroy)
     updates = context.enter_context(patch.object(window.settings_page, "check_launcher_update"))
     logs = context.enter_context(patch.object(window.play_page, "show_logs"))

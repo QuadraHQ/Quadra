@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import signal
 import tempfile
@@ -33,7 +34,7 @@ class ProcessScopeTests(unittest.TestCase):
                   (13,["/usr/bin/darlingserver",str(alias),"1000"])]
         with patch.object(core,"_user_commands",return_value=commands):
             self.assertEqual(core._darlingservers(),[10,13])
-        with patch.object(core.os,"readlink",return_value=str(self.base)):
+        with patch.object(os,"readlink",return_value=str(self.base)):
             self.assertTrue(core._server_for_prefix(10,["darlingserver","selected prefix"]))
         self.assertFalse(core._server_for_prefix(10,["darlingserver"]))
 
@@ -59,19 +60,19 @@ class ProcessScopeTests(unittest.TestCase):
             self.assertEqual(core._orphaned_darling_processes(),[1])
 
     def test_unreadable_process_scope_is_preserved(self):
-        with patch.object(core.Path,"stat",side_effect=PermissionError("fixture")):
+        with patch.object(Path,"stat",side_effect=PermissionError("fixture")):
             self.assertFalse(core._process_in_prefix(1, {"selected"}))
-        with patch.object(core.Path,"read_text",side_effect=PermissionError("fixture")):
+        with patch.object(Path,"read_text",side_effect=PermissionError("fixture")):
             self.assertIsNone(core._process_prefix(1))
 
     def test_scoped_signals_use_stable_handles_and_close_every_descriptor(self):
         def open_descriptor(pid):
             if pid==3: raise ProcessLookupError("exited")
             return 100+pid
-        with patch.object(core.os,"pidfd_open",side_effect=open_descriptor) as opened, \
-                patch.object(core.signal,"pidfd_send_signal") as send, \
-                patch.object(core.os,"close") as close, \
-                patch.object(core.os,"kill") as numeric_kill, \
+        with patch.object(os,"pidfd_open",side_effect=open_descriptor) as opened, \
+                patch.object(signal,"pidfd_send_signal") as send, \
+                patch.object(os,"close") as close, \
+                patch.object(os,"kill") as numeric_kill, \
                 patch.object(core,"_process_state",return_value="R"):
             core._terminate([1,2,1,3],wait=0,scope=lambda pid:pid==1)
         self.assertEqual([call.args[0] for call in opened.call_args_list],[1,2,3])
@@ -81,16 +82,16 @@ class ProcessScopeTests(unittest.TestCase):
 
     def test_scope_failure_closes_handle_without_signaling(self):
         def rejected(_): raise PermissionError("scope disappeared")
-        with patch.object(core.os,"pidfd_open",return_value=101), \
-                patch.object(core.signal,"pidfd_send_signal") as send, \
-                patch.object(core.os,"close") as close:
+        with patch.object(os,"pidfd_open",return_value=101), \
+                patch.object(signal,"pidfd_send_signal") as send, \
+                patch.object(os,"close") as close:
             with self.assertRaises(PermissionError): core._terminate([1],wait=0,scope=rejected)
         close.assert_called_once_with(101); send.assert_not_called()
 
     def test_dead_target_has_no_escalation(self):
-        with patch.object(core.os,"pidfd_open",return_value=101), \
-                patch.object(core.signal,"pidfd_send_signal") as send, \
-                patch.object(core.os,"close") as close, \
+        with patch.object(os,"pidfd_open",return_value=101), \
+                patch.object(signal,"pidfd_send_signal") as send, \
+                patch.object(os,"close") as close, \
                 patch.object(core,"_process_state",return_value="Z"):
             core._terminate([1],wait=0,scope=lambda _:True)
         send.assert_called_once_with(101,signal.SIGTERM);close.assert_called_once_with(101)
@@ -124,8 +125,8 @@ class ProcessScopeTests(unittest.TestCase):
         def check(exe="/usr/libexec/darling/mldr", namespace="orphaned", prefix=None, uid=None):
             namespaces[13]=namespace
             with patch.object(core,"NOROOT_LIB",None), \
-                    patch.object(core.Path,"stat",return_value=SimpleNamespace(st_uid=core.os.getuid() if uid is None else uid)), \
-                    patch.object(core.os,"readlink",return_value=exe), \
+                    patch.object(Path,"stat",return_value=SimpleNamespace(st_uid=os.getuid() if uid is None else uid)), \
+                    patch.object(os,"readlink",return_value=exe), \
                     patch.object(core,"_mount_namespace",side_effect=lambda pid:namespaces[pid]), \
                     patch.object(core,"_user_commands",return_value=[(20,["darlingserver","prefix"])]), \
                     patch.object(core,"_process_prefix",return_value=self.prefix.resolve() if prefix is None else prefix):
@@ -134,13 +135,13 @@ class ProcessScopeTests(unittest.TestCase):
         self.assertFalse(check(exe="/usr/bin/bash"))
         self.assertFalse(check(namespace="live"))
         self.assertFalse(check(prefix=self.base/"other prefix"))
-        self.assertFalse(check(uid=core.os.getuid()+1))
+        self.assertFalse(check(uid=os.getuid()+1))
 
     def test_live_namespaces_require_selected_server_and_exclude_host_namespace(self):
-        namespaces={core.os.getpid():"host",10:"selected",11:"host",12:None,13:"other"}
+        namespaces={os.getpid():"host",10:"selected",11:"host",12:None,13:"other"}
         with patch.object(core,"_mount_namespace",side_effect=lambda pid:namespaces[pid]), \
-                patch.object(core.Path,"stat",return_value=SimpleNamespace(st_uid=core.os.getuid())), \
-                patch.object(core.Path,"read_bytes",return_value=b"darlingserver\0fixture\0"), \
+                patch.object(Path,"stat",return_value=SimpleNamespace(st_uid=os.getuid())), \
+                patch.object(Path,"read_bytes",return_value=b"darlingserver\0fixture\0"), \
                 patch.object(core,"_server_for_prefix",side_effect=lambda pid, argv:pid==10):
             self.assertEqual(core._prefix_namespaces([10,11,12,13]),{"selected"})
 
@@ -164,22 +165,22 @@ class ProcessScopeTests(unittest.TestCase):
             self.assertEqual(core.roblox_pids(("RobloxPlayer",)),[1])
 
     def test_fresh_roblox_scope_rejects_pid_reused_by_another_executable_or_prefix(self):
-        with patch.object(core.Path,"read_bytes",return_value=b"launchd\0"), \
+        with patch.object(Path,"read_bytes",return_value=b"launchd\0"), \
                 patch.object(core,"_process_in_prefix",return_value=True) as scope:
             self.assertFalse(core._roblox_process_in_prefix(1,{"selected"}))
             scope.assert_not_called()
-        with patch.object(core.Path,"read_bytes",return_value=b"RobloxPlayer\0"), \
+        with patch.object(Path,"read_bytes",return_value=b"RobloxPlayer\0"), \
                 patch.object(core,"_process_in_prefix",return_value=False):
             self.assertFalse(core._roblox_process_in_prefix(1,{"selected"}))
-        with patch.object(core.Path,"read_bytes",side_effect=PermissionError("fixture")):
+        with patch.object(Path,"read_bytes",side_effect=PermissionError("fixture")):
             self.assertFalse(core._roblox_process_in_prefix(1,{"selected"}))
 
     def test_one_shot_crash_signal_rechecks_after_open_and_uses_pidfd(self):
         events=[]
-        with patch.object(core.os,"pidfd_open",side_effect=lambda pid:events.append(("open",pid)) or pid+100), \
-                patch.object(core.signal,"pidfd_send_signal",side_effect=lambda fd,sig:events.append(("send",fd,sig))), \
-                patch.object(core.os,"close") as close, \
-                patch.object(core.os,"kill") as numeric:
+        with patch.object(os,"pidfd_open",side_effect=lambda pid:events.append(("open",pid)) or pid+100), \
+                patch.object(signal,"pidfd_send_signal",side_effect=lambda fd,sig:events.append(("send",fd,sig))), \
+                patch.object(os,"close") as close, \
+                patch.object(os,"kill") as numeric:
             def scope(pid): events.append(("scope",pid));return pid==1
             core._signal_scoped([1,2,1],signal.SIGKILL,scope)
         self.assertEqual(events,[("open",1),("scope",1),("send",101,signal.SIGKILL),("open",2),("scope",2)])
@@ -187,10 +188,10 @@ class ProcessScopeTests(unittest.TestCase):
         numeric.assert_not_called()
 
     def test_missing_pidfd_support_preserves_targets_without_numeric_fallback(self):
-        with patch.object(core.os,"pidfd_open"), \
-                patch.object(core.os,"kill") as numeric, \
-                patch.object(core.signal,"pidfd_send_signal") as send:
-            del core.os.pidfd_open
+        with patch.object(os,"pidfd_open"), \
+                patch.object(os,"kill") as numeric, \
+                patch.object(signal,"pidfd_send_signal") as send:
+            del os.pidfd_open
             core._terminate([1],wait=0,scope=lambda _:True)
             core._signal_scoped([1],signal.SIGKILL,lambda _:True)
         numeric.assert_not_called();send.assert_not_called()
@@ -215,7 +216,7 @@ class ProcessScopeTests(unittest.TestCase):
                 patch.object(core,"_with_descendants",return_value=[10,11,22]), \
                 patch.object(core,"_process_in_prefix",side_effect=lambda pid,ns:pid==11), \
                 patch.object(core,"_terminate") as terminate, \
-                patch.object(core.os,"killpg") as kill_group:
+                patch.object(os,"killpg") as kill_group:
             core._terminate_frontend(process)
             descendants,frontend=terminate.call_args_list
             self.assertEqual(descendants.args[0],[11,22])

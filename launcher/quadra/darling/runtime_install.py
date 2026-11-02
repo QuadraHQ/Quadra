@@ -14,11 +14,11 @@ from . import runtime_updates
 # All paths and the variant are positional arguments, never inserted into code.
 # Some terminal applications exit their launch client before the shell finishes;
 # the started/result files report the installer itself rather than that client.
-# The installer records its build log's path in build-log (see install.sh).
+# The installer records its build log's path in build-log (see install-runtime.sh).
 TERMINAL_SCRIPT = r'''set -u
 [[ -d "$3" ]] || exit 125
 printf '%s\n' "$$" > "$3/started.tmp" && mv -- "$3/started.tmp" "$3/started" || exit 125
-if CIDER_RUNTIME_LOG_RECORD="$3/build-log" bash "$1" --install-runtime --darling "$2" --pinned-runtime "${@:4}"; then
+if CIDER_RUNTIME_LOG_RECORD="$3/build-log" bash "$1" --darling "$2" "${@:4}"; then
     cider_install_status=0
 else
     cider_install_status=$?
@@ -32,15 +32,16 @@ exit "$cider_install_status"
 
 
 class Installation:
-    def __init__(self, installer, variant, directory):
+    def __init__(self, installer, variant, directory, with_system_tools=False):
         self.directory = Path(directory)
         self.created = time.monotonic()
         self.target_revision = None
+        runtime_only = [] if with_system_tools else ["--install-runtime", "--pinned-runtime"]
         self.command = ["bash", "-c", TERMINAL_SCRIPT, "quadra-runtime-install",
-                        str(installer), variant, str(self.directory)]
+                        str(installer), variant, str(self.directory), *runtime_only]
 
     @classmethod
-    def create(cls, project, variant, cache, release=None):
+    def create(cls, project, variant, cache, release=None, with_system_tools=False):
         if os.environ.get("FLATPAK_ID"):
             raise RuntimeError("Flatpak uses its bundled Darling runtime.")
         if variant not in VARIANTS:
@@ -51,13 +52,13 @@ class Installation:
             runtime_updates.validate(release)
             if not runtime_updates.supported(release):
                 raise ValueError('This runtime update requires a newer Quadra')
-        installer = Path(project).resolve() / "install.sh"
+        installer = Path(project).resolve() / "install-runtime.sh"
         if not installer.is_file():
             raise FileNotFoundError("Quadra's installer is missing. Update or reinstall Quadra first.")
         folder = Path(cache) / "installer"
         folder.mkdir(parents=True, exist_ok=True)
         directory = tempfile.mkdtemp(prefix="runtime-", dir=folder)
-        job = cls(installer, variant, directory)
+        job = cls(installer, variant, directory, with_system_tools)
         if release is not None:
             try:
                 path = job.directory / 'release.json'

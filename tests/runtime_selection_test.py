@@ -1,6 +1,8 @@
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -125,7 +127,7 @@ class RuntimeSelectionTests(unittest.TestCase):
     def test_version_query_and_environment_use_selected_runtime_and_prefix(self):
         with patch.object(core, "DARLING_EXECUTABLE", str(self.cider / "bin/darling")), \
                 patch.object(core, "DARLING_PREFIX", self.base / "cider-prefix"), \
-                patch.object(core.subprocess, "run") as run:
+                patch.object(subprocess, "run") as run:
             run.return_value.stdout = "selected\n"
             self.assertEqual(core.darling_version(), "selected")
             self.assertEqual(run.call_args.args[0], [str(self.cider / "bin/darling"), "--version"])
@@ -136,7 +138,7 @@ class RuntimeSelectionTests(unittest.TestCase):
             return None if program == str(self.cider / "bin/missing") else "/fixture/bin/program"
         with patch.object(core, "DARLING_EXECUTABLE", str(self.cider / "bin/missing")), \
                 patch.object(core, "DARLING_SYSROOT", self.cider / "libexec/darling"), \
-                patch.object(core.shutil, "which", side_effect=which):
+                patch.object(shutil, "which", side_effect=which):
             self.assertIn("darling", core.missing_tools())
 
     def test_switching_runtime_invalidates_shim_build_stamp(self):
@@ -282,9 +284,9 @@ class RuntimeSelectionTests(unittest.TestCase):
         pin = runtime.pinned_ciderdarling()
         self.assertRegex(pin["revision"], r"^[0-9a-f]{40}$")
         self.assertRegex(pin["manifest"], r"^[0-9a-f]{64}$")
-        source = (Path(runtime.__file__).resolve().parents[3] / "install.sh").read_text()
+        source = (Path(runtime.__file__).resolve().parents[3] / "install-runtime.sh").read_text()
         self.assertIn(f"CIDER_DARLING_REVISION={pin['revision']}\n", source)
-        installer = self.base / "install.sh"
+        installer = self.base / "install-runtime.sh"
         for text in ("", "CIDER_DARLING_REVISION=$(cat pin)\nCIDER_DARLING_MANIFEST=" + "0" * 64,
                      "CIDER_DARLING_REVISION=" + "a" * 40 + "\n"):
             installer.write_text(text)

@@ -16,6 +16,7 @@
         }/bin/quadrahq-runtime-check";
         meta.description = "Check Quadra's ${package.runtime} runtime in a disposable prefix";
       };
+      launcherPython = pkgs.python3.withPackages (ps: [ ps.pygobject3 ]);
     in
     {
       packages.${system} = {
@@ -43,6 +44,19 @@
       checks.${system} = {
         inherit quadrahq;
         regular = self.packages.${system}.quadrahq-regular;
+      };
+
+      devShells.${system} = rec {
+        dev-env = pkgs.mkShell {
+          packages = [
+            launcherPython
+            pkgs.gtk4
+            pkgs.libadwaita
+            pkgs.gobject-introspection
+            pkgs.xdg-utils
+          ];
+        };
+        default = dev-env;
       };
 
       formatter.${system} = pkgs.nixfmt;

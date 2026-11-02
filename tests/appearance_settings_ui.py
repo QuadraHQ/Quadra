@@ -20,7 +20,7 @@ os.environ.update(XDG_CONFIG_HOME=str(base / "config"), XDG_DATA_HOME=str(base /
                   XDG_CACHE_HOME=str(base / "cache"), GSETTINGS_BACKEND="memory")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 threading.Thread.start = lambda self: None
-from quadra import app, core, theme
+from quadra import core, theme, ui
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 Gtk.init()
@@ -75,9 +75,9 @@ with ExitStack() as context:
     context.enter_context(patch.object(core, "installed_version", return_value="0.744.0.7441080"))
     darling = context.enter_context(patch.object(core, "darlingserver_running", return_value=False))
     context.enter_context(patch.object(core, "signed_in", return_value=True))
-    context.enter_context(patch.object(app.LauncherWindow, "_periodic_ciderdarling_updates", return_value=False))
-    context.enter_context(patch.object(app.GameLogsView, "update"))
-    window = app.LauncherWindow(application)
+    context.enter_context(patch.object(ui.LauncherWindow, "_periodic_ciderdarling_updates", return_value=False))
+    context.enter_context(patch.object(ui.GameLogsView, "update"))
+    window = ui.LauncherWindow(application)
     window.present()
     settle(.4)
     # All three choices act on the same live widgets, including pending logs.

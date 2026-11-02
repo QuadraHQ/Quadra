@@ -12,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Suppress unrelated startup update/avatar workers in this UI fixture.
 threading.Thread.start = lambda self: None
-from quadra import app, core
+from quadra import core, ui
 from gi.repository import Adw, Gio, Gtk
 
 saved, shown = [], []
@@ -51,7 +51,7 @@ def stored_vr():
 
 def build(settings):
     with patch.object(core, "load_settings", return_value=dict(settings)):
-        return app.LauncherWindow(application)
+        return ui.LauncherWindow(application)
 
 
 with patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))), \

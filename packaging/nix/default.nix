@@ -36,7 +36,7 @@ let
         ../../vr
         ../../build_debug_shim.sh
         ../../patch_startup_throttle.py
-        ../../install.sh
+        ../../install-runtime.sh
         ../../README.md
         ../../LICENSE
         ../../LICENSES
