@@ -443,7 +443,6 @@ class SettingsPage(Adw.Bin):
         graphics_group.add(self._gpu_row(always_visible=True))
         self.m2vk_page.add(graphics_group)
         self.m2vk_page.add(self.m2vk_group)
-        window.runtime_only(self.m2vk_page, "m2vk")
 
         # VR headsets through the host's OpenXR runtime (the VR tab)
         from .. import vr
@@ -692,9 +691,10 @@ class SettingsPage(Adw.Bin):
         self.stack.add_titled_with_icon(
             self.env_page, "env", _("Environment"), "preferences-system-symbolic"
         )
-        self.stack.add_titled_with_icon(
+        m2vk_tab = self.stack.add_titled_with_icon(
             self.m2vk_page, "m2vk", "Quadra M2VK", "video-display-symbolic"
         )
+        window.runtime_only(m2vk_tab, "m2vk", hide=True)
 
         # 2. Roblox page (Download, updates, version, account)
         self.roblox_page = Adw.PreferencesPage()
