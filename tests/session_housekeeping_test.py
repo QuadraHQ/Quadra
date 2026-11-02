@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import urllib.request
 from unittest.mock import Mock, patch
 
 from quadra import core
@@ -96,7 +97,7 @@ class SessionHousekeepingTests(unittest.TestCase):
             arguments["stdout"].write(b"darlingserver says hello\n")
             return Mock(returncode=0)
 
-        with patch.object(core.subprocess, "run", side_effect=run):
+        with patch.object(subprocess, "run", side_effect=run):
             self.assertEqual(core._darling_warmup({}), 0)
         expected = self.base / f"darlingserver-{core.DARLING_RUNTIME['runtime']}.out"
         self.assertEqual(seen["stdout"], str(expected))
@@ -204,7 +205,7 @@ class SessionHousekeepingTests(unittest.TestCase):
                  "/proc/12/exe": str(root / "old/bin/darlingserver") + " (deleted)"}
         with patch.object(core, "DARLING_EXECUTABLE", str(root / "new/bin/darling")), \
                 patch.object(core, "_darlingservers", return_value=[11, 12, 13]), \
-                patch.object(core.os, "readlink", side_effect=lambda path: links.get(path) or
+                patch.object(os, "readlink", side_effect=lambda path: links.get(path) or
                              (_ for _ in ()).throw(PermissionError(path))):
             self.assertEqual(core._foreign_darlingservers(), [12])  # 13 unreadable: left alone
         with patch.object(core, "DARLING_EXECUTABLE", str(root / "wrapper/darling")), \
@@ -268,7 +269,7 @@ class SessionHousekeepingTests(unittest.TestCase):
     def test_debugging_keeps_the_crash_handler_available(self):
         session = bare_session(dict(core.DEFAULT_SETTINGS, allow_debugger=True))
         with patch.object(core, '_kill_crash_handlers') as kill, \
-                patch.object(core.time, 'sleep') as sleep:
+                patch.object(time, 'sleep') as sleep:
             session._suppress_crash_handler()
             kill.assert_not_called()
             sleep.assert_not_called()
@@ -293,7 +294,7 @@ class SessionHousekeepingTests(unittest.TestCase):
 
     def test_server_lookup_caches_failures_and_skips_private_addresses(self):
         self.patch("_server_location_cache", {})
-        with patch.object(core.urllib.request, "urlopen", side_effect=OSError("offline")) as urlopen, \
+        with patch.object(urllib.request, "urlopen", side_effect=OSError("offline")) as urlopen, \
                 self.assertLogs("quadra", level="WARNING"):
             self.assertIsNone(core.query_server_location("8.8.8.8"))
             self.assertIsNone(core.query_server_location("8.8.8.8"))
@@ -308,7 +309,7 @@ class SessionHousekeepingTests(unittest.TestCase):
     def test_ciderdarling_shortcut_follows_installation(self):
         applications = self.base / "applications"
         entry = applications / core.CIDERDARLING_SHORTCUT
-        with patch.object(core.subprocess, "run") as run, patch.dict(os.environ, {}, clear=True):
+        with patch.object(subprocess, "run") as run, patch.dict(os.environ, {}, clear=True):
             self.assertTrue(core.sync_ciderdarling_shortcut(True, applications))
             text = entry.read_text()
             self.assertIn(core.SHORTCUT_MARKER, text.splitlines())

@@ -128,13 +128,14 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
 
     def test_checkout_is_recognized_with_either_package_layout(self):
         # An existing checkout still has launcher/macoblox until this update
-        # replaces it; the installer must not take it for a foreign directory.
+        # replaces it, and core.py until core was split into a folder; the
+        # installer must not take either for a foreign directory.
         checkout = self.base / 'data/QuadraHQ'
         (checkout / '.git').mkdir(parents=True)
-        for package in ('macoblox', 'quadra'):
-            with self.subTest(package=package):
-                (checkout / 'launcher' / package).mkdir(parents=True)
-                (checkout / 'launcher' / package / 'core.py').touch()
+        for package, core in (('macoblox', 'core.py'), ('quadra', 'core.py'), ('quadra', 'core/__init__.py')):
+            with self.subTest(package=package, core=core):
+                (checkout / 'launcher' / package / core).parent.mkdir(parents=True)
+                (checkout / 'launcher' / package / core).touch()
                 (checkout / 'launcher' / package / '__init__.py').write_text('__version__ = "0.36"\n')
                 self.assertEqual(self.checked(f'launcher_package "{checkout}"'), f'{checkout}/launcher/{package}')
                 result = self.shell('step() { :; }; install_tools() { return 71; }; do_install')

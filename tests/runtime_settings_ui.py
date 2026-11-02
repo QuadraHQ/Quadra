@@ -20,7 +20,7 @@ for key in ("DPREFIX", "FLATPAK_ID", "QUADRA_PAGE", "QUADRA_BUNDLED_DARLING"):
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Do not run startup update checks, author avatars or other unrelated workers.
 threading.Thread.start = lambda self: None
-from quadra import app, core
+from quadra import core, ui
 from quadra.darling import runtime, runtime_install
 from runtime_update_fixture import release_fixture
 from gi.repository import Adw, Gio
@@ -71,9 +71,9 @@ def fixture(active="ciderdarling"):
     context.enter_context(patch.object(core, "restart_darling", side_effect=AssertionError("Must not stop a runtime")))
     context.enter_context(patch.object(runtime, "installed_runtimes", side_effect=discovery))
     context.enter_context(patch.object(runtime, "selection_path", return_value=selection_file))
-    context.enter_context(patch.object(app, "_error_dialog", side_effect=lambda *args: errors.append(args)))
-    context.enter_context(patch.object(app, "_restart_launcher", side_effect=lambda: restarts.append(True)))
-    window = app.LauncherWindow(application)
+    context.enter_context(patch.object(ui, "_error_dialog", side_effect=lambda *args: errors.append(args)))
+    context.enter_context(patch.object(ui, "_restart_launcher", side_effect=lambda: restarts.append(True)))
+    window = ui.LauncherWindow(application)
     context.callback(window.destroy)
     return context, window
 
@@ -124,7 +124,7 @@ with context:
     with patch.object(runtime, "save_selection", side_effect=OSError("Fixture cannot write config")):
         page.runtime_apply_button.emit("clicked")
     assert errors and len(restarts) == 2 and selection_file.read_bytes() == before and window.busy is None
-    with patch.object(app, "_restart_launcher", side_effect=OSError("Fixture cannot restart")):
+    with patch.object(ui, "_restart_launcher", side_effect=OSError("Fixture cannot restart")):
         page.runtime_apply_button.emit("clicked")
     assert runtime.read_selection(selection_file)["runtime"] == "regular"
     assert "Runtime saved. Close and reopen" in errors[-1][-1] and window.busy is None
@@ -180,7 +180,7 @@ with patch.dict(os.environ, QUADRA_BUNDLED_DARLING=str(base / 'ciderdarling')):
 Path(choices["ciderdarling"]["executable"]).unlink()
 runtime.save_selection(choices["regular"], selection_file, current=choices["ciderdarling"])
 context, window = fixture("regular")
-with context, patch.object(app, "_launch_runtime_terminal", return_value=True) as launch_terminal:
+with context, patch.object(ui, "_launch_runtime_terminal", return_value=True) as launch_terminal:
     page = window.settings_page
     page.runtime_row.set_selected(1)
     assert page.runtime_install_row.get_visible() and page.runtime_install_button.get_sensitive()
@@ -214,11 +214,11 @@ with context:
     page = window.settings_page
     page.runtime_row.set_selected(1)
     before = selection_file.read_bytes()
-    with patch.object(app, "_launch_runtime_terminal", side_effect=RuntimeError("No terminal available")):
+    with patch.object(ui, "_launch_runtime_terminal", side_effect=RuntimeError("No terminal available")):
         page.runtime_install_button.emit("clicked")
     assert window.runtime_install_job is None and window.busy is None
     assert selection_file.read_bytes() == before and "No terminal" in errors[-1][-1]
-    with patch.object(app, "_launch_runtime_terminal", return_value=True):
+    with patch.object(ui, "_launch_runtime_terminal", return_value=True):
         page.runtime_install_button.emit("clicked")
     job = window.runtime_install_job
     (job.directory / "result").write_text("1\n")
@@ -229,13 +229,13 @@ with context:
 
 with patch.dict(os.environ, FLATPAK_ID="org.quadrahq.Quadra"):
     context, window = fixture("regular")
-    with context, patch.object(app, "_launch_runtime_terminal") as launch_terminal:
+    with context, patch.object(ui, "_launch_runtime_terminal") as launch_terminal:
         assert not window.settings_page.runtime_install_row.get_visible()
         window.install_ciderdarling()
         assert not launch_terminal.called
 
-with patch.object(app.os, "execve") as execute, patch.object(app.sys, "argv", ["launcher", "roblox:old-link"]):
-    app._restart_launcher()
+with patch.object(os, "execve") as execute, patch.object(sys, "argv", ["launcher", "roblox:old-link"]):
+    ui._restart_launcher()
     command, arguments, environment = execute.call_args.args
     assert command == sys.executable
     assert arguments == [sys.executable, str(core.PROJECT / "launcher/quadrahq-launcher")]
@@ -249,7 +249,7 @@ metadata.write_text(json.dumps({'schema_version': 1, 'name': 'CiderDarling',
                                'architecture': 'x86_64', 'source_revision': 'b' * 40}))
 runtime.save_selection(choices['regular'], selection_file, current=choices['ciderdarling'])
 context, window = fixture('regular')
-with context, patch.object(app, '_launch_runtime_terminal', return_value=True):
+with context, patch.object(ui, '_launch_runtime_terminal', return_value=True):
     page = window.settings_page
     before = selection_file.read_bytes()
     release = release_fixture()

@@ -1440,11 +1440,12 @@ do_install() {
 # ---------------------------------------------------------------- uninstall
 
 # The launcher's Python package in a checkout: launcher/quadra, or
-# launcher/macoblox in a checkout from before the rename.
+# launcher/macoblox in a checkout from before the rename. Its core is the
+# folder core/, or core.py in a checkout from before core was split up.
 launcher_package() {
   local name
   for name in quadra macoblox; do
-    if [[ -f $1/launcher/$name/core.py ]]; then
+    if [[ -f $1/launcher/$name/core/__init__.py || -f $1/launcher/$name/core.py ]]; then
       printf '%s' "$1/launcher/$name"
       return 0
     fi

@@ -23,7 +23,7 @@ for key in ("WAYLAND_DISPLAY", "BASH_ENV", "ENV"):
 (base / "config").mkdir()
 (base / "config/xdg-terminals.list").write_text("org.kde.konsole.desktop\n")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
-from quadra import app, terminal
+from quadra import terminal, ui
 from quadra.darling import runtime_install
 from runtime_update_fixture import release_fixture
 from gi.repository import Gtk
@@ -45,7 +45,7 @@ try:
     modes = {"desktop default": [],
              "own terminal list": [patch.object(terminal.shutil, "which", without_xdg),
                                    patch.dict(os.environ, {"TERMINAL": "", "XDG_CURRENT_DESKTOP": "KDE"})],
-             "GIO fallback": [patch.object(app.terminal, "command", return_value=None)]}
+             "GIO fallback": [patch.object(terminal, "command", return_value=None)]}
     for mode, patches in modes.items():
         release = release_fixture() if mode == "GIO fallback" else None
         job = runtime_install.Installation.create(project, "ciderdarling", base / "cache", release=release)
@@ -53,7 +53,7 @@ try:
             with ExitStack() as stack:
                 for active in patches:
                     stack.enter_context(active)
-                assert app._launch_runtime_terminal(window, job.command)
+                assert ui._launch_runtime_terminal(window, job.command)
             deadline = time.monotonic() + 20
             while True:
                 status = job.poll()
@@ -84,9 +84,9 @@ try:
     # No terminal anywhere: GIO's error becomes an explanation.
     empty = base / "empty-path"
     empty.mkdir()
-    with patch.object(app.terminal, "command", return_value=None), patch.dict(os.environ, {"PATH": str(empty)}):
+    with patch.object(terminal, "command", return_value=None), patch.dict(os.environ, {"PATH": str(empty)}):
         try:
-            app._launch_runtime_terminal(window, ["true"])
+            ui._launch_runtime_terminal(window, ["true"])
         except RuntimeError as error:
             assert "No terminal application was found" in str(error), error
         else:

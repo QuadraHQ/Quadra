@@ -55,8 +55,8 @@ class MetalTuningTests(unittest.TestCase):
 class GraphicsTests(unittest.TestCase):
     def test_gpu_budget_uses_selected_adapter_and_current_free_memory(self):
         output = "NVIDIA GeForce RTX 3060 Ti, 8192, 4096\nNVIDIA Other, 24576, 20000\n"
-        with patch.object(core.Path, "glob", return_value=[]), \
-                patch.object(core.subprocess, "check_output", return_value=output):
+        with patch.object(Path, "glob", return_value=[]), \
+                patch.object(subprocess, "check_output", return_value=output):
             self.assertEqual(core.host_vram_bytes("zink (NVIDIA GeForce RTX 3060 Ti)"),
                              (4096 - 256) * 1024 * 1024)
             self.assertEqual(core.host_vram_bytes(), (4096 - 256) * 1024 * 1024)
@@ -64,8 +64,8 @@ class GraphicsTests(unittest.TestCase):
 
     def test_gpu_budget_fallback_is_conservative_and_bad_reports_are_ignored(self):
         for output in ("", "bad driver output", "GPU, 8192, 9000", "GPU, 8192, -1"):
-            with self.subTest(output=output), patch.object(core.Path, "glob", return_value=[]), \
-                    patch.object(core.subprocess, "check_output", return_value=output):
+            with self.subTest(output=output), patch.object(Path, "glob", return_value=[]), \
+                    patch.object(subprocess, "check_output", return_value=output):
                 self.assertEqual(core.host_vram_bytes(), 512 * 1024 * 1024)
 
     def test_vulkan_dependency_check_identifies_each_missing_component(self):
@@ -351,7 +351,7 @@ class GraphicsTests(unittest.TestCase):
         session.web_socket = session.dns = session.audio = None
         with patch.object(graphics.Path, "is_file", return_value=True), \
                 patch.object(core, "host_vram_bytes", return_value=0), \
-                patch.dict(core.os.environ, {"MANGOHUD": "1", "MANGOHUD_CONFIG": "fps,frametime,gpu_name", "MANGOHUD_CONFIGFILE": "/tmp/hud config.conf"}), \
+                patch.dict(os.environ, {"MANGOHUD": "1", "MANGOHUD_CONFIG": "fps,frametime,gpu_name", "MANGOHUD_CONFIGFILE": "/tmp/hud config.conf"}), \
                 patch.object(core, "icon_argb_file", side_effect=OSError):
             env = dict(item.split("=", 1) for item in session.shim_variables())
         self.assertEqual(env["MESA_LOADER_DRIVER_OVERRIDE"], "zink")
@@ -395,7 +395,7 @@ class GraphicsTests(unittest.TestCase):
         session = bare_session()
         session.settings = dict(core.DEFAULT_SETTINGS, mangohud=True)
         session.web_socket = session.dns = session.audio = None
-        with patch.dict(core.os.environ, {}, clear=True), \
+        with patch.dict(os.environ, {}, clear=True), \
                 patch.object(graphics.Path, "is_file", return_value=True), \
                 patch.object(core, "host_vram_bytes", return_value=0), \
                 patch.object(core, "icon_argb_file", side_effect=OSError):

@@ -10,7 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Suppress unrelated startup update/avatar workers in this UI fixture.
 threading.Thread.start = lambda self: None
-from quadra import app, core, graphics
+from quadra import core, graphics, ui
 from gi.repository import Adw, Gio
 
 saved, pending, errors = [], [], []
@@ -29,10 +29,10 @@ def walk(widget):
 
 with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS)), \
         patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))), \
-        patch.object(app.SettingsPage, "_in_thread", side_effect=lambda work, done: pending.append((work, done))), \
-        patch.object(app, "_error_dialog", side_effect=lambda *args: errors.append(args)), \
+        patch.object(ui.SettingsPage, "_in_thread", side_effect=lambda work, done: pending.append((work, done))), \
+        patch.object(ui, "_error_dialog", side_effect=lambda *args: errors.append(args)), \
         patch.object(graphics, "missing_vulkan_dependencies", return_value=["Zink"]):
-    window = app.LauncherWindow(application)
+    window = ui.LauncherWindow(application)
     # Environment -> Game, and its copies on the Quadra M2VK and CiderDarling tabs.
     rows = [widget for widget in walk(window.settings_page)
             if isinstance(widget, Adw.ComboRow) and widget.get_title() == "Renderer"]

@@ -28,7 +28,7 @@ class PublicDownloadTests(unittest.TestCase):
     def test_default_version_check_ignores_a_saved_restricted_channel(self):
         payload = json.dumps({'version': '0.743.0.7431134', 'clientVersionUpload': UPLOAD}).encode()
         with patch.object(core, 'load_settings', return_value={'roblox_channel': 'zbeta'}) as settings, \
-                patch.object(core, 'open_public', return_value=Response(payload)) as opener:
+                patch.object(core.roblox, 'open_public', return_value=Response(payload)) as opener:
             self.assertEqual(core.latest_version(), ('0.743.0.7431134', UPLOAD))
         opener.assert_called_once_with(VERSION, timeout=10)
         settings.assert_not_called()
@@ -37,7 +37,7 @@ class PublicDownloadTests(unittest.TestCase):
         target = {'channel': 'zbeta', 'version': '0.743.0.7431134', 'upload': UPLOAD}
         error = denied(VERSION + '/channel/zbeta', 401)
         self.addCleanup(error.close)
-        with patch.object(core, 'open_public', side_effect=error), \
+        with patch.object(core.roblox, 'open_public', side_effect=error), \
                 patch.object(core, 'required_client_update', return_value=target), \
                 patch.object(core, 'installed_version', return_value='0.742.0.7420000'):
             self.assertEqual(core.latest_version('zbeta', required_log='current.log'),

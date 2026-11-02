@@ -18,7 +18,7 @@ class RuntimeDefaultTests(unittest.TestCase):
         patcher = mock.patch.object(core, "SETTINGS_FILE", self.file)
         patcher.start()
         self.addCleanup(patcher.stop)
-        bundled = mock.patch.object(core, "is_bundled", return_value=False)
+        bundled = mock.patch.object(core.config, "is_bundled", return_value=False)
         self.bundled = bundled.start()
         self.addCleanup(bundled.stop)
 

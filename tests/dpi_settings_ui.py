@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 threading.Thread.start = lambda self: None
-from quadra import app, core
+from quadra import core, ui
 from gi.repository import Adw, Gio
 
 saved = []
@@ -26,7 +26,7 @@ def walk(widget):
 
 with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS)), \
         patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))):
-    window = app.LauncherWindow(application)
+    window = ui.LauncherWindow(application)
     rows = [widget for widget in walk(window.settings_page)
             if isinstance(widget, Adw.SpinRow) and widget.get_title() == "Roblox UI scale"]
     assert len(rows) == 1

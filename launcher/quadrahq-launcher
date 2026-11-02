@@ -70,6 +70,6 @@ if sys.argv[1:2] == ["--ciderdarling-settings"]:
 # plain `quadrahq` starts Roblox straight away behind a small splash.
 open_settings = sys.argv[1:2] == ["--settings"]
 
-from quadra.app import main  # noqa: E402
+from quadra.ui import main  # noqa: E402
 
 sys.exit(main(page, open_settings))

@@ -18,7 +18,7 @@ os.environ.update(XDG_CONFIG_HOME=str(base / 'config'), XDG_CACHE_HOME=str(base 
                   XDG_DATA_HOME=str(base / 'data'))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'launcher'))
 threading.Thread.start = lambda self: None
-from quadra import app, core
+from quadra import core, ui
 from gi.repository import Adw, Gio
 
 application = Adw.Application(application_id='org.quadrahq.Quadra.UpdateTest',
@@ -43,9 +43,9 @@ with ExitStack() as context:
     installed = context.enter_context(patch.object(core, 'installed_version', return_value=None))
     context.enter_context(patch.object(core, 'roblox_pids', return_value=[]))
     context.enter_context(patch.object(core, 'missing_tools', return_value=[]))
-    opener = context.enter_context(patch.object(core, 'open_public', side_effect=response))
+    opener = context.enter_context(patch.object(core.roblox, 'open_public', side_effect=response))
     context.enter_context(patch.object(core, 'check_launcher_update', return_value=(False, '', '')))
-    window = app.LauncherWindow(application)
+    window = ui.LauncherWindow(application)
     context.callback(window.destroy)
     window.last_log = stale
     page = window.settings_page

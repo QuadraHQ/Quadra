@@ -61,7 +61,7 @@ class DisplayTests(unittest.TestCase):
         self.assertEqual(guest["QUADRA_DPI_SCALE"], "1.000")
 
     def test_texture_preset_does_not_disable_dpi(self):
-        tree = ast.parse((core.PROJECT / "launcher/quadra/app.py").read_text())
+        tree = ast.parse((core.PROJECT / "launcher/quadra/ui/flags_page.py").read_text())
         presets = next(ast.literal_eval(node.value) for node in tree.body
                        if isinstance(node, ast.Assign) and any(
                            isinstance(target, ast.Name) and target.id == "PRESETS"

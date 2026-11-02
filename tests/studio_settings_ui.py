@@ -2,6 +2,7 @@
 
 GDK_BACKEND=x11 GSK_RENDERER=cairo xvfb-run -a python3 tests/studio_settings_ui.py
 """
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -11,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Suppress unrelated startup update/avatar workers in this UI fixture.
 threading.Thread.start = lambda self: None
-from quadra import app, core, studio
+from quadra import core, studio, ui
 from gi.repository import Adw, Gio
 
 saved, errors, toasts = [], [], []
@@ -39,14 +40,14 @@ def tabs(page):
 
 
 def make_window():
-    return app.LauncherWindow(application)
+    return ui.LauncherWindow(application)
 
 
 with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS)), \
         patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))), \
-        patch.object(app, "_error_dialog", side_effect=lambda *args: errors.append(args)), \
-        patch.object(app, "_toast", side_effect=lambda overlay, text: toasts.append(text)), \
-        patch.object(app, "_open_uri", side_effect=lambda window, uri: toasts.append(uri)), \
+        patch.object(ui, "_error_dialog", side_effect=lambda *args: errors.append(args)), \
+        patch.object(ui, "_toast", side_effect=lambda overlay, text: toasts.append(text)), \
+        patch.object(ui, "_open_uri", side_effect=lambda window, uri: toasts.append(uri)), \
         patch.object(studio, "_state", return_value={"wine": "stable+1", "webview": "144.0.3719.92"}), \
         patch.object(studio, "installed_version", return_value="version-0123456789abcdef"), \
         patch.object(studio, "vulkan_layer_built", return_value=False):
@@ -191,7 +192,7 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
     assert not page.progress.get_visible() and not play.studio_progress.get_visible()
 
     # The launch button of the section starts the same flow as Play's.
-    with patch.object(app.LauncherWindow, "studio_clicked") as clicked:
+    with patch.object(ui.LauncherWindow, "studio_clicked") as clicked:
         page.launch_row.emit("activated")
         clicked.assert_called_once()
 
@@ -203,8 +204,8 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
     window.destroy()
 
     # No Wine in the Flatpak: the section is not there.
-    real = app.os.path.exists
-    with patch.object(app.os.path, "exists", side_effect=lambda path: path == "/.flatpak-info" or real(path)):
+    real = os.path.exists
+    with patch.object(os.path, "exists", side_effect=lambda path: path == "/.flatpak-info" or real(path)):
         flatpak = make_window()
         names = [flatpak.stack.get_pages().get_item(i).get_name() for i in range(flatpak.stack.get_pages().get_n_items())]
         assert names == ["play", "settings", "servers", "mods", "info"], names

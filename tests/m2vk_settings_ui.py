@@ -13,7 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "launcher"))
 # Suppress unrelated startup update/avatar workers in this UI fixture.
 threading.Thread.start = lambda self: None
-from quadra import app, core, graphics
+from quadra import core, graphics, ui
 from gi.repository import Adw, Gio, GLib, Gtk
 
 saved, errors = [], []
@@ -38,8 +38,8 @@ def row(window, title, kind):
 
 with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS)), \
         patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))), \
-        patch.object(app, "_error_dialog", side_effect=lambda *args: errors.append(args)):
-    window = app.LauncherWindow(application)
+        patch.object(ui, "_error_dialog", side_effect=lambda *args: errors.append(args)):
+    window = ui.LauncherWindow(application)
     page = window.settings_page
     group = page.m2vk_group
     # Its own tab, holding the renderer choice and the settings.

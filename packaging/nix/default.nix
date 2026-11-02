@@ -19,8 +19,8 @@
   withStudio ? false,
 }:
 let
-  darling = callPackage ./darling.nix { inherit runtime; };
-  metalHost = callPackage ./metal-host.nix { };
+  # darling = callPackage ./darling.nix { inherit runtime; };
+  # metalHost = callPackage ./metal-host.nix { };
   python = python3.withPackages (p: [
     p.pygobject3
     p.pycairo
@@ -68,42 +68,42 @@ let
     dontWrapGApps = true;
     # Mach-O files are cross compiled against Darling's SDK. The host clang
     # wrapper injects Linux flags, so use unwrapped clang for Darwin only.
-    postPatch = ''
-      substituteInPlace build_debug_shim.sh darling/metal-vulkan/build.sh \
-        --replace-fail 'clang -target' '${llvmPackages.clang-unwrapped}/bin/clang -target'
-    '';
-    buildPhase = ''
-      runHook preBuild
-      export DARLING_SYSROOT=${darling}/libexec/darling
-      export QUADRA_BUILD_DIR="$PWD/native-build"
-      bash build_debug_shim.sh
-      QUADRA_METAL_HOST_LIBRARY=${metalHost}/lib/libquadra_metal_host.so bash packaging/build-metal.sh
-      $CC -shared -fPIC -O2 -DQUADRA_NIX_STORE flatpak/darling-noroot.c -ldl -o native-build/darling-noroot.so
-      ${llvmPackages.clang-unwrapped}/bin/clang -target x86_64-apple-darwin -fuse-ld=lld \
-        -isysroot "$DARLING_SYSROOT" -mmacosx-version-min=11.0 -dynamiclib -O2 \
-        flatpak/launchd_pid1.c -o native-build/launchd_pid1.dylib
-      runHook postBuild
-    '';
-    installPhase = ''
-      runHook preInstall
-      bash packaging/install-payload.sh "$PWD" "$PWD/native-build" "$PWD/stage" /usr/lib
-      mkdir -p "$out"
-      cp -a stage/usr/. "$out/"
-      install -m755 native-build/darling-noroot.so native-build/launchd_pid1.dylib "$out/lib/quadrahq/"
-      ${lib.optionalString (runtime == "ciderdarling") ''
-        install -m644 packaging/org.quadrahq.Quadra.CiderDarling.desktop "$out/share/applications/"
-      ''}
-      runHook postInstall
-    '';
-    preFixup = ''
-      makeWrapper ${python}/bin/python3 "$out/bin/quadrahq" \
-        --add-flags "$out/share/quadrahq/launcher/quadrahq-launcher" \
-        --set QUADRA_PREBUILT_SHIM "$out/lib/quadrahq/shim" \
-        --set QUADRA_BUNDLED_DARLING ${darling} \
-        --set QUADRA_NOROOT_LIB "$out/lib/quadrahq/darling-noroot.so" \
-        --set QUADRA_PID1_DYLIB "$out/lib/quadrahq/launchd_pid1.dylib" \
-        "''${gappsWrapperArgs[@]}"
-    '';
+    # postPatch = ''
+    #   substituteInPlace build_debug_shim.sh darling/metal-vulkan/build.sh \
+    #     --replace-fail 'clang -target' '${llvmPackages.clang-unwrapped}/bin/clang -target'
+    # '';
+    # buildPhase = ''
+    #   runHook preBuild
+    #   export DARLING_SYSROOT=${darling}/libexec/darling
+    #   export QUADRA_BUILD_DIR="$PWD/native-build"
+    #   bash build_debug_shim.sh
+    #   QUADRA_METAL_HOST_LIBRARY=${metalHost}/lib/libquadra_metal_host.so bash packaging/build-metal.sh
+    #   $CC -shared -fPIC -O2 -DQUADRA_NIX_STORE flatpak/darling-noroot.c -ldl -o native-build/darling-noroot.so
+    #   ${llvmPackages.clang-unwrapped}/bin/clang -target x86_64-apple-darwin -fuse-ld=lld \
+    #     -isysroot "$DARLING_SYSROOT" -mmacosx-version-min=11.0 -dynamiclib -O2 \
+    #     flatpak/launchd_pid1.c -o native-build/launchd_pid1.dylib
+    #   runHook postBuild
+    # '';
+    # installPhase = ''
+    #   runHook preInstall
+    #   bash packaging/install-payload.sh "$PWD" "$PWD/native-build" "$PWD/stage" /usr/lib
+    #   mkdir -p "$out"
+    #   cp -a stage/usr/. "$out/"
+    #   install -m755 native-build/darling-noroot.so native-build/launchd_pid1.dylib "$out/lib/quadrahq/"
+    #   ${lib.optionalString (runtime == "ciderdarling") ''
+    #     install -m644 packaging/org.quadrahq.Quadra.CiderDarling.desktop "$out/share/applications/"
+    #   ''}
+    #   runHook postInstall
+    # '';
+    # preFixup = ''
+    #   makeWrapper ${python}/bin/python3 "$out/bin/quadrahq" \
+    #     --add-flags "$out/share/quadrahq/launcher/quadrahq-launcher" \
+    #     --set QUADRA_PREBUILT_SHIM "$out/lib/quadrahq/shim" \
+    #     # --set QUADRA_BUNDLED_DARLING
+    #     # --set QUADRA_NOROOT_LIB "$out/lib/quadrahq/darling-noroot.so" \
+    #     # --set QUADRA_PID1_DYLIB "$out/lib/quadrahq/launchd_pid1.dylib" \
+    #     "''${gappsWrapperArgs[@]}"
+    # '';
     doInstallCheck = true;
     installCheckPhase = ''
       for entry in "$out"/share/applications/*.desktop; do
@@ -165,21 +165,21 @@ buildFHSEnv {
   # The guest root contains symlinks such as /Volumes/SystemRoot -> /.
   # Mount it after the FHS merge, which otherwise follows guest symlinks.
   # Darling's no-overlay copy uses lstat, so the root must be a real directory.
-  extraBuildCommands = ''
-    mkdir -p "$out${if runtime == "ciderdarling" then darling.fhsPrefix else "/usr/libexec/darling"}"
-    for program in ${darling}/bin/*; do
-      ln -s "$program" "$out/usr/bin/$(basename "$program")"
-    done
-  '';
-  extraBwrapArgs =
-    if runtime == "ciderdarling" then
-      [
-        "--ro-bind ${darling} ${darling.fhsPrefix}"
-      ]
-    else
-      [
-        "--ro-bind ${darling}/libexec/darling /usr/libexec/darling"
-      ];
+  # extraBuildCommands = ''
+  #   mkdir -p "$out${if runtime == "ciderdarling" then darling.fhsPrefix else "/usr/libexec/darling"}"
+  #   for program in ${darling}/bin/*; do
+  #     ln -s "$program" "$out/usr/bin/$(basename "$program")"
+  #   done
+  # '';
+  # extraBwrapArgs =
+  #   if runtime == "ciderdarling" then
+  #     [
+  #       "--ro-bind ${darling} ${darling.fhsPrefix}"
+  #     ]
+  #   else
+  #     [
+  #       "--ro-bind ${darling}/libexec/darling /usr/libexec/darling"
+  #     ];
   runScript = "${payload}/bin/quadrahq";
   extraInstallCommands = ''
     mkdir -p "$out/share/applications"
@@ -190,14 +190,14 @@ buildFHSEnv {
     substituteInPlace "$out"/share/applications/*.desktop \
       --replace-fail 'Exec=quadrahq' "Exec=$out/bin/quadrahq"
   '';
-  passthru = {
-    inherit
-      darling
-      payload
-      metalHost
-      runtime
-      ;
-  };
+  # passthru = {
+  #   inherit
+  #     darling
+  #     payload
+  #     metalHost
+  #     runtime
+  #     ;
+  # };
   meta = {
     description = "Roblox launcher using ${runtime} with rootless NixOS support";
     homepage = "https://quadrahq.org";
