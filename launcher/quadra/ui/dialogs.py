@@ -21,8 +21,7 @@ def _toast(overlay, text):
 
 
 def _error_dialog(window, heading, details):
-    """Shows the whole error text, selectable and with a copy button, so
-    people can send it. Also kept in ~/.cache/quadrahq/last-error.txt."""
+    # Logs are kept in ~/.cache/quadrahq/last-error.txt.
     try:
         core.CACHE_DIR.mkdir(parents=True, exist_ok=True)
         core.LAST_ERROR.write_text(f"Quadra {__version__}\n{heading}\n\n{details}\n")
@@ -60,9 +59,6 @@ def _error_dialog(window, heading, details):
 
 
 def _vr_warning_dialog(window, accepted):
-    """The warning before VR is turned on. VR attaches its device by changing the running client's memory,
-    which is what a Roblox cheat does too, so Roblox's anti-cheat could flag it. `accepted` runs when the
-    user goes ahead; only then is "Don't show this again" kept, so cancelling never counts as agreeing."""
     dialog = Adw.AlertDialog(
         heading=_("Turn on VR?"),
         body=_(
