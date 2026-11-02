@@ -1323,6 +1323,30 @@ class SettingsPage(Adw.Bin):
 
         self.rosemary_vr_row = Adw.ActionRow(title=_("VR support"))
         client_group.add(self.rosemary_vr_row)
+
+        clear_cache = widgets._button_row(_("Clear Roblox cache"))
+        clear_cache.set_tooltip_text(
+            _(
+                "Deletes the downloaded interface updates and assets from the prefix. "
+                "Your sign-in is kept. The next launch downloads them again."
+            )
+        )
+        clear_cache.connect("activated", lambda *_args: self.clear_roblox_cache())
+        client_group.add(clear_cache)
+        cache_on_launch = Adw.SwitchRow(
+            title=_("Clear the cache before each launch"),
+            subtitle=_(
+                "Runs Roblox's bundled interface every time. Games load assets again."
+            ),
+            active=self.window.settings.get("rosemary_clear_cache_on_launch", False),
+        )
+        cache_on_launch.connect(
+            "notify::active",
+            lambda row, _pspec: self.window.set_setting(
+                "rosemary_clear_cache_on_launch", row.get_active()
+            ),
+        )
+        client_group.add(cache_on_launch)
         return client_group
 
     def _rosemary_source(self):
@@ -2420,6 +2444,25 @@ class SettingsPage(Adw.Bin):
 
         self._in_thread(work, done)
         return True
+
+    def clear_roblox_cache(self):
+        prefix = rosemary_runtime.prefix_path(self.window.settings)
+        if not self.window.begin("clearing the cache"):
+            return
+
+        def done(freed, error):
+            self.window.end()
+            if error:
+                dialogs._error_dialog(
+                    self.window, _("Could not clear the cache"), str(error)
+                )
+                return
+            dialogs._toast(
+                self.window.toasts,
+                _("Roblox cache cleared ({size} MB)", size=round(freed / 1_000_000)),
+            )
+
+        self._in_thread(lambda: rosemary_runtime.clear_roblox_cache(prefix), done)
 
     def logout(self):
         dialog = Adw.AlertDialog(

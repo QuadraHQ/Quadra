@@ -1,7 +1,28 @@
 # Changelog
 
-## 0.42.p1 — 2026-11-01
+## 0.42.p2 — 2026-11-02
 
+- Rosemary: Settings → Roblox has a **Clear Roblox cache** button and a switch that clears the cache before each
+  launch. The client keeps Roblox's over-the-air interface updates (and its asset cache) in the prefix as
+  `rbx-storage`: a fresh prefix runs the interface bundled with the client, and every later launch runs the cached
+  update. On the machine where this was found, a fresh prefix worked once and each launch after it failed (the 3D
+  world stayed black in VR, and the logs show `SetCore: ResetButtonCallback has not been registered by the
+  CoreScripts`) until the prefix was cleared. Clearing deletes `rbx-storage` and nothing else, so the sign-in stays and
+  the next launch runs the bundled interface again. The button is refused while a game runs. The switch is off by
+  default and makes games load their assets again on every launch. No Fast flag does this: Roblox only applies the
+  flags on its public allowlist, and the client's patch flags (`DataModelPatcherForceLocal` and the rest) are not on it.
+- The launcher's settings follow the runtime. Darling-only settings and the Quadra M2VK
+  tab are hidden while Rosemary is selected, the Rosemary Roblox group moved into the Roblox tab, and the Rosemary
+  runner selector is clearer.
+  The runtime and the theme are chosen in the onboarding page, and the bootstrapper no longer needs Darling or lld to
+  run. `app.py` and `core.py` are split into the `core/` and `ui/` packages, and the repository has a Nix development
+  flake.
+- Checked: the launcher's 459 Python tests pass with a clean configuration directory (two of them read the real
+  `~/.config/quadrahq/fastflags.json` and fail if it holds flags), and eight of the nine GTK fixtures pass headless
+  (Xvfb, Cairo renderer). `tests/m2vk_settings_ui.py` fails with `('Fast', [])` on `main` before this release and
+  still does. Not run: the new button and switch in the launcher on a real desktop, a package, Flatpak or Nix build,
+  and whether clearing only the cache (not the whole prefix) removes the black VR world.
+- 0.42.p1 was tagged but never published; its changes are part of this release:
 - New logo (nested tilted squares, purple to pink) everywhere the old ones were: the application and tray icons at
   every size, the setup and Play pages, the README, the website and its favicon, the Discord application icon image and
   the wordmarks (`branding/make_wordmark.py` rebuilt the PNG wordmarks, which had still read "Mac O' Blox"). The old

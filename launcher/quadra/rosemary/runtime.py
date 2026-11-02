@@ -489,6 +489,9 @@ class RosemarySession:
         self.prefix = prefix_path(self.settings)
         if not prefix_created(self.prefix):
             create_prefix(self.rosemary, self.prefix)
+        if self.settings.get("rosemary_clear_cache_on_launch", False):
+            freed = clear_roblox_cache(self.prefix)
+            self.notes.append(f"Roblox cache cleared before launch ({freed // 1_000_000} MB)")
         from .. import core
         from . import xr as rosemary_xr
         # VR: the library is injected and Roblox runs on OpenGL (its VR device
@@ -637,3 +640,30 @@ def sign_out(prefix):
         except OSError:
             pass
     return removed
+
+
+def roblox_cache_paths(prefix):
+    paths = [prefix / "root" / "private" / "tmp" / "Roblox" / "rbx-storage"]
+    for home in sorted((prefix / "root" / "Users").glob("*")):
+        library = home / "Library" / "Roblox"
+        paths += [library / name for name in (
+            "rbx-storage", "rbx-storage-sc", "rbx-storage.id",
+            "rbx-storage.db", "rbx-storage.db-shm", "rbx-storage.db-wal")]
+    return [path for path in paths if path.exists() or path.is_symlink()]
+
+
+def clear_roblox_cache(prefix):
+    freed = 0
+    for path in roblox_cache_paths(prefix):
+        try:
+            if path.is_symlink() or path.is_file():
+                size = path.lstat().st_size
+                path.unlink()
+            else:
+                size = sum(entry.lstat().st_size for entry in path.rglob("*")
+                           if entry.is_file() and not entry.is_symlink())
+                shutil.rmtree(path)
+            freed += size
+        except OSError:
+            log.warning("Could not clear %s", path)
+    return freed

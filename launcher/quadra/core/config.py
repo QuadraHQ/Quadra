@@ -90,6 +90,7 @@ DEFAULT_SETTINGS = {
     # Which Rosemary Quadra installs: "quadra" (its own build, adds VR) or "upstream" (the regular one).
     "rosemary_source": "quadra",
     "rosemary_prefix": "",
+    "rosemary_clear_cache_on_launch": False,
     "rosemary_engine": "auto",
     "rosemary_force_opengl": False,
     "rosemary_video_driver": "",

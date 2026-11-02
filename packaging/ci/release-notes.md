@@ -1,11 +1,12 @@
-Quadra 0.42.p1 brings a new logo, makes GNOME the default launcher appearance and keeps the logo in colour in the Monochrome appearance. Nothing else changes from 0.42.
+Quadra 0.42.p2 adds a Clear Roblox cache button for the Rosemary runtime, reorganises the launcher's settings around the chosen runtime, and includes everything from the unpublished 0.42.p1: a new logo, GNOME as the default launcher appearance and a shorter VR warning.
 
+- **Clear Roblox cache (Rosemary):** Settings → Roblox deletes the downloaded interface updates and assets from the prefix and keeps your sign-in. A switch can do it before every launch, which makes games load their assets again each time. It exists because a prefix that worked on its first launch and failed on later ones ran the cached update; the logs showed the bundled interface on the first launch.
+- **Settings follow the runtime:** Darling-only settings and the Quadra M2VK tab are hidden while Rosemary is selected, the Rosemary group moved into the Roblox tab, and the runtime and theme are chosen in the onboarding page.
 - **New logo:** the nested tilted squares replace the old logo in the application and tray icons, the setup and Play pages, the README, the website and the Discord icon. The old Tux square and the `macoblox-*` icons are gone from the tree.
 - **GNOME is the default:** a new install opens in the system appearance instead of Grid. An install that already saved an appearance keeps it, and Settings → Environment → Interface → Launcher appearance still switches between GNOME, Grid and Monochrome.
-- **Monochrome keeps the logo's colours:** every other image there is still drawn in grey.
-- **VR warning:** worded more briefly, in English, Russian and Chinese.
+- **Monochrome keeps the logo's colours; the VR warning is worded more briefly,** in English, Russian and Chinese.
 - Everything in the 0.42 notes still applies.
 
-Validation: 453 launcher unit tests and the nine GTK fixtures pass headless (Xvfb, Cairo renderer); the appearance fixture reads real pixels to check that the logo is coloured and the rest grey in Monochrome, and fails when that is broken. Not run: the launcher on a real desktop with the GL or Vulkan renderer, and no package, Flatpak or Nix build. The website and Flatpak screenshots still show the old Cider launcher.
+Validation: 459 launcher unit tests pass with a clean configuration directory, and eight of the nine GTK fixtures pass headless (Xvfb, Cairo renderer). `tests/m2vk_settings_ui.py` fails on `main` before this release and still does. Not run: the new button and switch on a real desktop, any package, Flatpak or Nix build, and whether clearing only the cache removes the black VR world that clearing the whole prefix removed. The website and Flatpak screenshots still show the old Cider launcher.
 
 Fully close and reopen Quadra after updating. Studio is not in the Flatpak. OpenGL remains the default for the game on Darling; VR requires OpenGL or Vulkan/Zink. Native packages include the matching Metal host and framework. Install `.pkg.tar.zst` on Arch derivatives, `.deb` on Ubuntu 24.04+/Debian 13+, or the binary `.rpm` on current Fedora. Darling/CiderDarling downloads remain separate. Source archives, build recipes and `SHA256SUMS` are attached.
