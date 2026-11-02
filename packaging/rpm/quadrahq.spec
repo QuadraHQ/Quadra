@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.42.p2
+%global upstream_version 0.42.p3
 Name:           quadrahq
-Version:        0.42.p2
+Version:        0.42.p3
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,7 +101,7 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
-* Mon Nov 02 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42.p2-1
+* Mon Nov 02 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42.p3-1
 - Settings > Roblox has a Clear Roblox cache button and a switch to clear it before each launch (Rosemary).
 - Settings hide what the chosen runtime does not use; the runtime and theme are chosen in the onboarding page.
 - The launcher's Python modules are split into the core/ and ui/ packages.

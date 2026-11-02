@@ -1,16 +1,21 @@
 # Changelog
 
-## 0.42.p2 — 2026-11-02
+## 0.42.p3 — 2026-11-02
 
 - Rosemary: Settings → Roblox has a **Clear Roblox cache** button and a switch that clears the cache before each
-  launch. The client keeps Roblox's over-the-air interface updates (and its asset cache) in the prefix as
-  `rbx-storage`: a fresh prefix runs the interface bundled with the client, and every later launch runs the cached
-  update. On the machine where this was found, a fresh prefix worked once and each launch after it failed (the 3D
-  world stayed black in VR, and the logs show `SetCore: ResetButtonCallback has not been registered by the
-  CoreScripts`) until the prefix was cleared. Clearing deletes `rbx-storage` and nothing else, so the sign-in stays and
-  the next launch runs the bundled interface again. The button is refused while a game runs. The switch is off by
-  default and makes games load their assets again on every launch. No Fast flag does this: Roblox only applies the
-  flags on its public allowlist, and the client's patch flags (`DataModelPatcherForceLocal` and the rest) are not on it.
+  launch. The client keeps the interface updates Roblox ships over the air in the prefix (`OTAPatchBackups`, next to
+  the `rbx-storage` asset cache): a fresh prefix runs the interface bundled with the client, and every later launch
+  runs the cached update. On the machine where this was found, a fresh prefix worked once and each launch after it
+  failed (Roblox's VR bottom bar never appeared, the 3D world stayed black in VR, and the logs show `SetCore:
+  ResetButtonCallback has not been registered by the CoreScripts`) until the prefix was cleared. Clearing deletes
+  `OTAPatchBackups` and `rbx-storage` and nothing else, so the sign-in stays and the next launch runs the bundled
+  interface again. That launch downloads the updates again, so the switch has to stay on to keep it that way. The
+  button is refused while a game runs. The switch is off by default and makes games load their assets again on every
+  launch. No Fast flag does this: Roblox only applies the flags on its public allowlist, and the client's patch flags
+  (`DataModelPatcherForceLocal` and the rest) are not on it.
+- 0.42.p2 was tagged but its release workflow failed and nothing was published. Its Clear Roblox cache removed
+  `rbx-storage` but not `OTAPatchBackups`, so the cached interface survived, and the workflow's regression job lacked
+  the PyGObject and libadwaita packages that `installer_runtime_test` needs; the job now installs them.
 - The launcher's settings follow the runtime. Darling-only settings and the Quadra M2VK
   tab are hidden while Rosemary is selected, the Rosemary Roblox group moved into the Roblox tab, and the Rosemary
   runner selector is clearer.

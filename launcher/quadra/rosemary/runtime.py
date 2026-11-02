@@ -647,7 +647,7 @@ def roblox_cache_paths(prefix):
     for home in sorted((prefix / "root" / "Users").glob("*")):
         library = home / "Library" / "Roblox"
         paths += [library / name for name in (
-            "rbx-storage", "rbx-storage-sc", "rbx-storage.id",
+            "OTAPatchBackups", "rbx-storage", "rbx-storage-sc", "rbx-storage.id",
             "rbx-storage.db", "rbx-storage.db-shm", "rbx-storage.db-wal")]
     return [path for path in paths if path.exists() or path.is_symlink()]
 

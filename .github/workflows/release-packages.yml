@@ -58,7 +58,7 @@ jobs:
       - name: Test with isolated settings and fake services
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang
+          sudo apt-get install -y clang python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
           config=$(mktemp -d)
           XDG_CONFIG_HOME="$config/config" XDG_CACHE_HOME="$config/cache" \
             XDG_DATA_HOME="$config/data" DPREFIX="$config/prefix" bash tests/run.sh

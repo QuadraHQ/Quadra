@@ -36,6 +36,8 @@ class ClearRobloxCacheTests(unittest.TestCase):
             write(self.library / "Roblox" / "rbx-storage.db", 50),
             write(self.library / "Roblox" / "rbx-storage.db-shm", 10),
             write(self.library / "Roblox" / "rbx-storage.db-wal", 0),
+            write(self.library / "Roblox" / "OTAPatchBackups" / "DataModelPatch_118593852151835_16168", 20),
+            write(self.library / "Roblox" / "OTAPatchBackups" / "DataModelPatch_80471914653504_16075", 11),
         ]
 
     def test_the_cache_goes_and_the_sign_in_stays(self):
@@ -46,7 +48,7 @@ class ClearRobloxCacheTests(unittest.TestCase):
             self.assertTrue(path.exists(), path)
         self.assertEqual(self.cookie.read_bytes(), b"x" * 40)
         self.assertEqual(runtime.cookie_files(self.prefix), [self.cookie])
-        self.assertEqual(freed, 100 + 30 + 7 + 3 + 50 + 10)
+        self.assertEqual(freed, 100 + 30 + 7 + 3 + 50 + 10 + 20 + 11)
 
     def test_clearing_twice_is_harmless(self):
         runtime.clear_roblox_cache(self.prefix)

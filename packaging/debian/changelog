@@ -1,4 +1,4 @@
-quadrahq (0.42.p2-1) unstable; urgency=medium
+quadrahq (0.42.p3-1) unstable; urgency=medium
 
   * Settings > Roblox has a Clear Roblox cache button and a switch to clear it before each launch (Rosemary).
   * Settings hide what the chosen runtime does not use; the runtime and theme are chosen in the onboarding page.
@@ -8,7 +8,7 @@ quadrahq (0.42.p2-1) unstable; urgency=medium
   * The logo keeps its colours in the Monochrome appearance.
   * The VR warning is worded more briefly.
 
- -- Quadra maintainers <noreply@aubree.wtf>  Mon, 02 Nov 2026 08:08:33 -0600
+ -- Quadra maintainers <noreply@aubree.wtf>  Mon, 02 Nov 2026 08:22:40 -0600
 
 quadrahq (0.42-1) unstable; urgency=medium
 
