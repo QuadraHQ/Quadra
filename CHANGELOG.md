@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.42.p1 — 2026-11-01
+
+- New logo (nested tilted squares, purple to pink) everywhere the old ones were: the application and tray icons at
+  every size, the setup and Play pages, the README, the website and its favicon, the Discord application icon image and
+  the wordmarks (`branding/make_wordmark.py` rebuilt the PNG wordmarks, which had still read "Mac O' Blox"). The old
+  Tux square and its sources (`branding/square.svg`, `branding/source/Tux.*`), the `macoblox-*` icons and the README's
+  Tux credit are removed. The icons are cut from the designer's PNG exports, not from the SVG: librsvg draws the SVG's
+  noise and shadow filters wrongly, so the scalable icon is still not installed. The screenshots on the website and in
+  the Flatpak metadata still show the old Cider launcher.
+- GNOME (the system appearance) is now the launcher's default appearance, where it was Grid. An install that already
+  saved an appearance keeps it; a settings file that never saved one now opens in GNOME.
+- In the Monochrome appearance the logo on the Play page and in setup keeps its colours; everything else is still drawn
+  in grey.
+- The VR warning is worded more briefly (it no longer compares VR to a Roblox cheat); the Russian and Chinese
+  texts follow.
+- Checked: the launcher's 453 Python tests and the nine GTK fixtures pass headless (Xvfb, Cairo renderer), including a
+  pixel check that the logo is coloured and the rest grey in Monochrome, and the new test fails when that is broken. Not
+  run: the launcher on a real desktop with the GL or Vulkan renderer, and no package was built.
+
 ## 0.42 — 2026-11-01
 
 - The source tree is sorted by runtime. Darling's native code moved to `darling/` (`shim/` for the injected shim and its

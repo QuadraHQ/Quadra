@@ -1,3 +1,12 @@
+quadrahq (0.42.p1-1) unstable; urgency=medium
+
+  * New logo everywhere; the old Tux square and macoblox icons are removed.
+  * GNOME is the default launcher appearance; an install that saved another one keeps it.
+  * The logo keeps its colours in the Monochrome appearance.
+  * The VR warning is worded more briefly.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Sun, 01 Nov 2026 21:37:26 -0600
+
 quadrahq (0.42-1) unstable; urgency=medium
 
   * Rosemary is the default runtime for a new install and Darling is marked outdated; install.sh asks which to use.

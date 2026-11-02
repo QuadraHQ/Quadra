@@ -98,10 +98,12 @@ Uninstalling keeps Rosemary's files in `~/.local/share/quadrahq` unless you add
 `--purge`.
 
 **Settings → Environment → Interface → Launcher appearance** switches
-immediately between **Grid** (square controls and a subtle grid background),
-**GNOME (classic)** (the original system appearance), and **Monochrome ·
+immediately between **GNOME (classic)** (the default: the system appearance),
+**Grid** (square controls and a subtle grid background), and **Monochrome ·
 aubree.lat** (pure black, grey outlines, Archivo/JetBrains Mono and a topology
-backdrop). The choice is saved and can be changed while Roblox is running.
+backdrop; the Quadra logo keeps its colours). The choice is saved and can be
+changed while Roblox is running. An existing install keeps the appearance it
+already saved.
 
 With Darling, setup offers **Regular Darling** (the default Darling) or
 **QuadraHQ's CiderDarling**, our Darling variant with threading, CPU detection
@@ -657,7 +659,7 @@ Quadra is licensed under the [GNU GPL v3](LICENSE). Mac O' Blox, the original co
 is based on, was released by Narezy under the MIT License; that notice is kept in
 [LICENSES/MIT-MacOBlox.txt](LICENSES/MIT-MacOBlox.txt).
 
-[Darling](https://www.darlinghq.org) · Tux by Larry Ewing and The GIMP ·
+[Darling](https://www.darlinghq.org) ·
 [Comfortaa](https://github.com/alexeiva/comfortaa) font (SIL OFL) ·
 [Archivo](https://github.com/Omnibus-Type/Archivo) and
 [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) fonts in the launcher (SIL OFL) ·

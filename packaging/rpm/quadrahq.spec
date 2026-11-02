@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.42
+%global upstream_version 0.42.p1
 Name:           quadrahq
-Version:        0.42
+Version:        0.42.p1
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,12 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42.p1-1
+- New logo everywhere; the old Tux square and macoblox icons are removed.
+- GNOME is the default launcher appearance; an install that saved another one keeps it.
+- The logo keeps its colours in the Monochrome appearance.
+- The VR warning is worded more briefly.
+
 * Sun Nov 01 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42-1
 - Rosemary is the default runtime for a new install and Darling is marked outdated; install.sh asks which to use.
 - Ask before turning VR on: it changes the running client's memory, as a Roblox cheat does.

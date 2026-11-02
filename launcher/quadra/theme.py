@@ -20,7 +20,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Graphene", "1.0")
-from gi.repository import Adw, Gdk, GLib, Graphene, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, GLib, Graphene, Gsk, Gtk, Pango  # noqa: E402
 
 FONT_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
 
@@ -693,8 +693,30 @@ class GridBackdrop(Gtk.Widget):
             snapshot.append_color(self._line, rect.init(0, y, width, 1))
 
 
+# The Logo widgets that are on screen now; the layer below looks them up when it draws. They are held strongly
+# while mapped: PyGObject does not keep the Python object of a widget that only the widget tree refers to, so
+# a weak set would be emptied as soon as the map handler returned.
+_LOGOS = set()
+
+
+class Logo(Gtk.Image):
+    """The Quadra mark. Every other image goes grey in the monochrome appearance (AppearanceLayer),
+    but the mark keeps its colours there."""
+
+    __gtype_name__ = "QuadraLogo"
+
+    def __init__(self, path, size, **properties):
+        super().__init__(**properties)
+        self.set_from_file(str(path))
+        self.set_pixel_size(size)
+        self.connect("map", lambda logo: _LOGOS.add(logo))
+        self.connect("unmap", lambda logo: _LOGOS.discard(logo))
+
+
 class AppearanceLayer(Gtk.Box):
-    """Keep images and asynchronously loaded avatars monochrome too."""
+    """Keep images and asynchronously loaded avatars monochrome too. The one exception is Logo: the child
+    is drawn grey, then drawn again in colour through a mask that only covers the logos, so a logo keeps
+    its place in its page (scrolling, fades, and what is drawn over it) and only its colours differ."""
 
     def __init__(self, child):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
@@ -704,16 +726,35 @@ class AppearanceLayer(Gtk.Box):
             .2126, .2126, .2126, 0, .7152, .7152, .7152, 0,
             .0722, .0722, .0722, 0, 0, 0, 0, 1])
         self._offset = Graphene.Vec4().init(0, 0, 0, 0)
+        self._opaque = Gdk.RGBA()
+        self._opaque.parse("#000000")
 
     def set_appearance(self, appearance):
         self.monochrome = appearance == "monochrome"
         self.queue_draw()
 
+    def _logo_bounds(self):
+        bounds = []
+        for logo in _LOGOS:
+            found, rect = logo.compute_bounds(self)
+            if found and logo.get_mapped():
+                bounds.append(rect)
+        return bounds
+
     def do_snapshot(self, snapshot):
-        if self.monochrome:
-            snapshot.push_color_matrix(self._matrix, self._offset)
+        if not self.monochrome:
+            Gtk.Box.do_snapshot(self, snapshot)
+            return
+        snapshot.push_color_matrix(self._matrix, self._offset)
         Gtk.Box.do_snapshot(self, snapshot)
-        if self.monochrome:
+        snapshot.pop()
+        logos = self._logo_bounds()
+        if logos:
+            snapshot.push_mask(Gsk.MaskMode.ALPHA)
+            for rect in logos:
+                snapshot.append_color(self._opaque, rect)
+            snapshot.pop()  # the mask is done; what follows is drawn through it
+            Gtk.Box.do_snapshot(self, snapshot)
             snapshot.pop()
 
 

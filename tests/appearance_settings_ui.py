@@ -52,11 +52,25 @@ def capture(window, name):
                         "+repage", str(preview / (name + ".png"))], check=True, timeout=10)
 
 
+def saturation(window, widget):
+    """The most saturated pixel (0 to 1, HSL) inside a widget, read off the X screen."""
+    settle(.4)
+    found, rect = widget.compute_bounds(window)
+    assert found
+    shot = base / "saturation.png"
+    subprocess.run(["magick", "import", "-window", "root", str(shot)], check=True, timeout=10)
+    crop = f"{int(rect.get_width())}x{int(rect.get_height())}+{int(rect.get_x())}+{int(rect.get_y())}"
+    out = subprocess.run(["magick", str(shot), "-crop", crop, "+repage", "-colorspace", "HSL", "-channel", "G",
+                          "-separate", "-format", "%[fx:maxima]", "info:"],
+                         check=True, timeout=10, capture_output=True, text=True).stdout
+    return float(out)
+
+
 with ExitStack() as context:
     # This fixture drives Darling's "stopped"/"running" state, so it pins Darling; Rosemary is the default.
     context.enter_context(patch.object(core, "load_settings", return_value=dict(
-        core.DEFAULT_SETTINGS, setup_complete=True, show_playtime=True, playtime_seconds=7440,
-        auto_check_ciderdarling_updates=False, auto_check_roblox_updates=False, runtime_backend="darling")))
+        core.DEFAULT_SETTINGS, launcher_appearance="grid", setup_complete=True, show_playtime=True,
+        playtime_seconds=7440, auto_check_ciderdarling_updates=False, auto_check_roblox_updates=False, runtime_backend="darling")))
     context.enter_context(patch.object(core, "save_settings", side_effect=lambda value: saved.append(dict(value))))
     context.enter_context(patch.object(core, "installed_version", return_value="0.744.0.7441080"))
     darling = context.enter_context(patch.object(core, "darlingserver_running", return_value=False))
@@ -103,6 +117,13 @@ with ExitStack() as context:
         assert page.appearance_stack.get_visible_child_name() == ("gnome" if code == "gnome" else "custom")
         assert (theme._provider is None) == (code == "gnome")
         assert window.appearance_layer.monochrome == (code == "monochrome")
+        if code != "gnome":
+            # Monochrome greys every image, except the logo, which keeps its colours there as everywhere.
+            logo, = [shown for shown in theme._LOGOS if shown.is_ancestor(window)]
+            assert saturation(window, logo) > .3, code + ": the logo lost its colours"
+            if code == "monochrome":  # Grid is tinted on purpose; only Monochrome is grey
+                assert saturation(window, page.dashboard_state) < .05, "text is not grey"
+                assert saturation(window, window.sidebar_toolbar) < .05, "the sidebar is not grey"
         capture(window, code + "-play")
     window.session = None
     window.set_launcher_appearance("grid")
