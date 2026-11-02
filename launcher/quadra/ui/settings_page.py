@@ -749,7 +749,11 @@ class SettingsPage(Adw.Bin):
         delete_roblox.connect("activated", lambda *_args: self.delete_roblox())
         roblox.add(delete_roblox)
         self.roblox_page.add(roblox)
-        window.runtime_only(roblox, "client_updates")
+        window.runtime_only(roblox, "client_updates", hide=True)
+        rosemary_roblox = self._build_rosemary_client_group()
+        self.roblox_page.add(rosemary_roblox)
+        window.runtime_only(rosemary_roblox, "rosemary", hide=True)
+        self.refresh_rosemary()
 
         # The startup render throttle patch gets a group of its own: the
         # button applies or reverts it by hand, the switch decides whether
@@ -1091,27 +1095,10 @@ class SettingsPage(Adw.Bin):
             lambda row: window.set_setting("rosemary_prefix", row.get_text().strip()),
         )
         program.add(prefix)
+        program_progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
+        program.add(program_progress)
+        self.rosemary_progress_bars = [program_progress]
         self.env_page.add(program)
-
-        client_group = Adw.PreferencesGroup(title=_("Roblox for Rosemary"))
-        self.rosemary_client_row = Adw.ActionRow(title=_("Installed version"))
-        self.rosemary_client_button = Gtk.Button(
-            label=_("Install or update"), valign=Gtk.Align.CENTER
-        )
-        self.rosemary_client_button.connect("clicked", lambda *_args: self._install_rosemary_client())
-        self.rosemary_client_row.add_suffix(self.rosemary_client_button)
-        client_group.add(self.rosemary_client_row)
-        self.rosemary_rollback_row = Adw.ActionRow(title=_("Previous version"))
-        self.rosemary_rollback_button = Gtk.Button(valign=Gtk.Align.CENTER)
-        self.rosemary_rollback_button.connect("clicked", lambda *_args: self._toggle_rosemary_rollback())
-        self.rosemary_rollback_row.add_suffix(self.rosemary_rollback_button)
-        client_group.add(self.rosemary_rollback_row)
-        self.rosemary_progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
-        client_group.add(self.rosemary_progress)
-        self.env_page.add(client_group)
-
-        self.rosemary_vr_row = Adw.ActionRow(title=_("VR support"))
-        client_group.add(self.rosemary_vr_row)
 
         options = Adw.PreferencesGroup(title=_("Options"))
         engine = widgets.ComboRow(
@@ -1300,9 +1287,30 @@ class SettingsPage(Adw.Bin):
         )
         options.add(server)
         self.env_page.add(options)
-        for group in (program, client_group, options):
+        for group in (program, options):
             window.runtime_only(group, "rosemary", hide=True)
-        self.refresh_rosemary()
+
+    def _build_rosemary_client_group(self):
+        client_group = Adw.PreferencesGroup(title=_("Roblox for Rosemary"))
+        self.rosemary_client_row = Adw.ActionRow(title=_("Installed version"))
+        self.rosemary_client_button = Gtk.Button(
+            label=_("Install or update"), valign=Gtk.Align.CENTER
+        )
+        self.rosemary_client_button.connect("clicked", lambda *_args: self._install_rosemary_client())
+        self.rosemary_client_row.add_suffix(self.rosemary_client_button)
+        client_group.add(self.rosemary_client_row)
+        self.rosemary_rollback_row = Adw.ActionRow(title=_("Previous version"))
+        self.rosemary_rollback_button = Gtk.Button(valign=Gtk.Align.CENTER)
+        self.rosemary_rollback_button.connect("clicked", lambda *_args: self._toggle_rosemary_rollback())
+        self.rosemary_rollback_row.add_suffix(self.rosemary_rollback_button)
+        client_group.add(self.rosemary_rollback_row)
+        client_progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
+        client_group.add(client_progress)
+        self.rosemary_progress_bars.append(client_progress)
+
+        self.rosemary_vr_row = Adw.ActionRow(title=_("VR support"))
+        client_group.add(self.rosemary_vr_row)
+        return client_group
 
     def _rosemary_source(self):
         return rosemary_install.normalize_source(
@@ -1396,20 +1404,21 @@ class SettingsPage(Adw.Bin):
     def _set_rosemary_busy(self, busy):
         for button in (self.rosemary_install_button, self.rosemary_client_button):
             button.set_sensitive(not busy)
-        self.rosemary_progress.set_visible(busy)
+        for bar in self.rosemary_progress_bars:
+            bar.set_visible(busy)
 
     def _run_rosemary(self, work):
         """Run `work(progress)` off the GTK thread with the progress bar."""
         self._set_rosemary_busy(True)
 
+        def show_progress(fraction, text):
+            for bar in self.rosemary_progress_bars:
+                bar.set_fraction(max(0.0, min(1.0, fraction)))
+                bar.set_text(text)
+            return False
+
         def progress(fraction, text):
-            GLib.idle_add(
-                lambda: (
-                    self.rosemary_progress.set_fraction(max(0.0, min(1.0, fraction))),
-                    self.rosemary_progress.set_text(text),
-                    False,
-                )[-1]
-            )
+            GLib.idle_add(show_progress, fraction, text)
 
         def run():
             error = None
