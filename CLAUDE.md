@@ -1,1 +1,1 @@
-Use `nix develop` for a fully setup developer environment, if `nix` exists.
+Use `nix develop .#dev-env` for a fully setup developer environment, if `nix` exists.
