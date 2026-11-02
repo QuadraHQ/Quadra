@@ -104,6 +104,15 @@ The rootless runtime needs user namespaces enabled (the NixOS default).
 This is a NixOS package; using it on other distributions may require extra
 GPU integration. Wine is optional and is only included with `withStudio`.
 
+## Development
+
+`nix develop .#dev-env` (or plain `nix develop`) opens a shell with only what
+the launcher needs to start: Python with PyGObject, GTK 4, libadwaita and
+xdg-utils (opening links and registering Roblox link handlers). Run
+`python3 launcher/quadrahq-launcher` from it. The first-boot screen installs
+the rest itself: Rosemary and Roblox in its window, and Darling with its
+tools through `install-runtime.sh` in a terminal.
+
 ## Maintainers
 
 Run `nix flake check -L` to build both runtime variants. Their native payloads
@@ -118,7 +127,7 @@ checks keep the prefix for inspection. CI runs both checks after building.
 `runtime-pins.json` pins the CiderDarling Ubuntu 24.04 archive, revision and
 patch manifest from a complete published runtime release. Update all three
 values together, verify its runtime metadata, and build both variants before
-shipping. Regular Darling reads the existing pins from `install.sh`.
+shipping. Regular Darling reads the existing pins from `install-runtime.sh`.
 The Rust git dependency hash is in `metal-host.nix`; update it together with
 the Metal host's `Cargo.lock`. `nix flake update nixpkgs` updates the build
 and runtime libraries.

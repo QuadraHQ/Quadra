@@ -16,52 +16,49 @@
         }/bin/quadrahq-runtime-check";
         meta.description = "Check Quadra's ${package.runtime} runtime in a disposable prefix";
       };
-      python = pkgs.python3.withPackages (
-        ps: with ps; [
-          pygobject3
-        ]
-      );
+      launcherPython = pkgs.python3.withPackages (ps: [ ps.pygobject3 ]);
     in
     {
-      # packages.${system} = {
-      #   inherit quadrahq;
-      #   default = quadrahq;
-      #   quadrahq-regular = quadrahq.override { runtime = "regular"; };
-      # };
+      packages.${system} = {
+        inherit quadrahq;
+        default = quadrahq;
+        quadrahq-regular = quadrahq.override { runtime = "regular"; };
+      };
 
-      # apps.${system} = {
-      #   default = {
-      #     type = "app";
-      #     program = "${quadrahq}/bin/quadrahq";
-      #     meta.description = quadrahq.meta.description;
-      #   };
-      #   check-runtime = runtimeCheck quadrahq;
-      #   check-runtime-regular = runtimeCheck self.packages.${system}.quadrahq-regular;
-      # };
+      apps.${system} = {
+        default = {
+          type = "app";
+          program = "${quadrahq}/bin/quadrahq";
+          meta.description = quadrahq.meta.description;
+        };
+        check-runtime = runtimeCheck quadrahq;
+        check-runtime-regular = runtimeCheck self.packages.${system}.quadrahq-regular;
+      };
 
-      # overlays.default = final: prev: {
-      #   quadrahq = final.callPackage ./packaging/nix { };
-      # };
+      overlays.default = final: prev: {
+        quadrahq = final.callPackage ./packaging/nix { };
+      };
 
-      # nixosModules.default = import ./packaging/nix/module.nix self;
+      nixosModules.default = import ./packaging/nix/module.nix self;
 
-      # checks.${system} = {
-      #   inherit quadrahq;
-      #   regular = self.packages.${system}.quadrahq-regular;
-      # };
+      checks.${system} = {
+        inherit quadrahq;
+        regular = self.packages.${system}.quadrahq-regular;
+      };
+
+      devShells.${system} = rec {
+        dev-env = pkgs.mkShell {
+          packages = [
+            launcherPython
+            pkgs.gtk4
+            pkgs.libadwaita
+            pkgs.gobject-introspection
+            pkgs.xdg-utils
+          ];
+        };
+        default = dev-env;
+      };
 
       formatter.${system} = pkgs.nixfmt;
-
-      devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
-          python
-          gtk4
-          libadwaita
-          gobject-introspection
-          glib
-          xdg-utils
-          lld
-        ];
-      };
     };
 }
