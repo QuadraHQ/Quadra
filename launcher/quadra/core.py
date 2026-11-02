@@ -100,7 +100,7 @@ DOWNLOAD_URL = "https://setup.rbxcdn.com/mac/{upload}-RobloxPlayer.zip"
 DEFAULT_SETTINGS = {
     "setup_complete": False,
     "language": "en",
-    "launcher_appearance": "grid",
+    "launcher_appearance": "gnome",
     "mouse_sensitivity": 1.0,
     "scroll_sensitivity": 1.5,
     "auto_patch_throttle": True,
@@ -262,7 +262,8 @@ def load_settings():
         settings["runtime_backend"] = "darling"
     for key, value in stored.items():
         if key == "launcher_appearance":
-            settings[key] = value if isinstance(value, str) and value in ("grid", "gnome", "monochrome") else "grid"
+            settings[key] = (value if isinstance(value, str) and value in ("grid", "gnome", "monochrome")
+                             else DEFAULT_SETTINGS[key])
             continue
         if key == "dpi_scale":
             from .display import validated_dpi_scale

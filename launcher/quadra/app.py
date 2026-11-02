@@ -162,8 +162,8 @@ def _vr_warning_dialog(window, accepted):
     user goes ahead; only then is "Don't show this again" kept, so cancelling never counts as agreeing."""
     dialog = Adw.AlertDialog(
         heading=_("Turn on VR?"),
-        body=_("VR mode patches the Roblox client's memory while the game runs, the same way a Roblox cheat "
-               "does. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not "
+        body=_("VR mode patches the Roblox client's memory while the game runs. "
+               "You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not "
                "known how low.\n\nTurn it on only if you accept that risk."))
     hide = Adw.SwitchRow(title=_("Don't show this again"))
     group = Adw.PreferencesGroup()
@@ -861,9 +861,7 @@ class PlayPage(Adw.Bin):
         hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["play-hero"])
         head = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["play-hero-head"])
         identity = Gtk.Box(spacing=14)
-        logo = Gtk.Image.new_from_file(str(core.ICONS / "quadrahq-64.png"))
-        logo.set_pixel_size(48)
-        identity.append(logo)
+        identity.append(theme.Logo(core.ICONS / "quadrahq-64.png", 48))
         titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, hexpand=True)
         titles.append(Gtk.Label(label="Quadra", xalign=0, css_classes=["play-title"]))
         identity.append(titles)
@@ -2238,7 +2236,7 @@ class SettingsPage(Adw.Bin):
             title=_("Launcher appearance"),
             subtitle=_("Applies immediately. GNOME follows your system appearance."),
             model=Gtk.StringList.new([_("Grid"), _("GNOME (classic)"), _("Monochrome · aubree.lat")]))
-        self.appearance_row.set_selected(self.appearance_codes.index(settings.get("launcher_appearance", "grid")))
+        self.appearance_row.set_selected(self.appearance_codes.index(settings.get("launcher_appearance", "gnome")))
         self.appearance_row.connect("notify::selected", lambda row, _pspec: window.set_launcher_appearance(
             self.appearance_codes[row.get_selected()]))
         interface.add(self.appearance_row)
@@ -4112,7 +4110,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.set_default_size(760, 580)
         self.set_resizable(True)
         self.settings = core.load_settings()
-        appearance = self.settings.get("launcher_appearance", "grid")
+        appearance = self.settings.get("launcher_appearance", "gnome")
         theme.install(appearance)
         if appearance != "gnome":
             self.set_default_size(960, 680)
@@ -4557,7 +4555,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             self.content_stack.set_visible_child_name("launcher")
 
     def apply_launcher_appearance(self):
-        appearance = self.settings.get("launcher_appearance", "grid")
+        appearance = self.settings.get("launcher_appearance", "gnome")
         custom = appearance != "gnome"
         self.backdrops.set_visible_child_name(appearance)
         self.appearance_layer.set_appearance(appearance)

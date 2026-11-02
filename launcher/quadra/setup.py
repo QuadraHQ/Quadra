@@ -6,7 +6,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk, Pango  # noqa: E402
 
-from . import __version__, core  # noqa: E402
+from . import __version__, core, theme  # noqa: E402
 from .i18n import _  # noqa: E402
 
 _STYLE = """
@@ -102,8 +102,7 @@ class SetupWizard(Adw.Bin):
 
     def _welcome(self):
         page, body = self._page("Welcome to Quadra", "Play Roblox on your Linux desktop.")
-        logo = Gtk.Image.new_from_file(str(core.ICONS / "quadrahq-128.png"))
-        logo.set_pixel_size(88)
+        logo = theme.Logo(core.ICONS / "quadrahq-128.png", 88)
         logo.set_halign(Gtk.Align.CENTER)
         body.prepend(logo)
         body.append(_label("A short setup downloads Roblox and gets it ready to launch. "
