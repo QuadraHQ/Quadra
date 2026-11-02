@@ -1,6 +1,6 @@
 pkgbase = quadrahq
 	pkgdesc = Run the macOS Roblox client on Linux through Darling
-	pkgver = 0.42
+	pkgver = 0.42.p3
 	pkgrel = 1
 	url = https://quadrahq.org
 	arch = x86_64
@@ -50,7 +50,7 @@ pkgbase = quadrahq
 	conflicts = macoblox-git
 	replaces = ciderhq
 	replaces = macoblox
-	source = quadrahq-0.42.tar.gz::https://github.com/QuadraHQ/Quadra/releases/download/v0.42/quadrahq-0.42-source.tar.gz
-	sha256sums = 9894e59dd4d514f47bc6b0b6e4231cf707c2cb4516a9d5bf4dc78115a903fca8
+	source = quadrahq-0.42.p3.tar.gz::https://github.com/QuadraHQ/Quadra/releases/download/v0.42.p3/quadrahq-0.42.p3-source.tar.gz
+	sha256sums = 44d96da3b78d2dec30f6715f1d3a8cf21ec335d30470bb426137c742c8420606
 
 pkgname = quadrahq
