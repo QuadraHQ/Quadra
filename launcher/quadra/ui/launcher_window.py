@@ -219,14 +219,15 @@ class LauncherWindow(Adw.ApplicationWindow):
     def runtime_name(self):
         return backends.ROSEMARY if self.rosemary_selected() else backends.DARLING
 
-    def runtime_only(self, widget, feature):
+    def runtime_only(self, widget, feature, hide=False):
         """Register a settings row, group or page that only some runtimes read.
-        It is greyed out, and tagged "<runtime> only", while another is chosen."""
-        entry = {"widget": widget, "feature": feature, "tag": None, "text": None}
+        It is greyed out, and tagged "<runtime> only", while another is chosen;
+        with `hide`, it is hidden instead."""
+        entry = {"widget": widget, "feature": feature, "hide": hide, "tag": None, "text": None}
         label = " / ".join(backends.other_runtimes(feature))
-        if isinstance(widget, Adw.PreferencesGroup):
+        if not hide and isinstance(widget, Adw.PreferencesGroup):
             entry["text"] = widget.get_description() or ""
-        elif hasattr(widget, "add_suffix"):
+        elif not hide and hasattr(widget, "add_suffix"):
             tag = Gtk.Label(
                 label=_("{runtime} only", runtime=label),
                 css_classes=["dim-label", "caption"],
@@ -241,6 +242,9 @@ class LauncherWindow(Adw.ApplicationWindow):
     def _apply_runtime_entry(self, entry):
         applies = backends.supports(self.runtime_name(), entry["feature"])
         widget = entry["widget"]
+        if entry["hide"]:
+            widget.set_visible(applies)
+            return
         widget.set_sensitive(applies)
         label = " / ".join(backends.other_runtimes(entry["feature"]))
         if entry["tag"] is not None:
@@ -481,7 +485,7 @@ class LauncherWindow(Adw.ApplicationWindow):
 
         if page == "ciderdarling":
             self.show_ciderdarling_settings()
-        elif page in ("flags", "env", "m2vk", "roblox", "vr", "rosemary"):
+        elif page in ("flags", "env", "m2vk", "roblox", "vr"):
             self.stack.set_visible_child_name("settings")
             self.settings_page.set_tab(page)
         else:
@@ -564,7 +568,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.apply_launcher_appearance()
         if page == "setup" or (
             page
-            not in ("settings", "ciderdarling", "env", "roblox", "flags", "rosemary")
+            not in ("settings", "ciderdarling", "env", "roblox", "flags")
             and not core.installed_version()
             and not self.settings.get("setup_complete", False)
         ):
@@ -1095,14 +1099,14 @@ class LauncherWindow(Adw.ApplicationWindow):
             self.end(resume_pending=False)
             if error is not None:
                 self.present_settings()
-                self.settings_page.rosemary_page.refresh()
+                self.settings_page.refresh_rosemary()
                 dialogs._error_dialog(
                     self,
                     _("Could not install Roblox with Rosemary"),
                     str(error) or repr(error),
                 )
                 return False
-            self.settings_page.rosemary_page.refresh()
+            self.settings_page.refresh_rosemary()
             self.launch(
                 launch_uri, _installed=True
             )  # a second miss is an error, not another install

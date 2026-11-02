@@ -133,7 +133,7 @@ def find_rosemary(settings):
         path = Path(chosen).expanduser()
         if not path.is_file() or not os.access(path, os.X_OK):
             raise RosemaryError(f"{path} is not an executable file. Choose another Rosemary program in "
-                                "Settings → Rosemary.", settings=True)
+                                "Settings → Environment.", settings=True)
         return path
     override = os.environ.get("QUADRA_ROSEMARY", "").strip()
     if override:
@@ -152,7 +152,7 @@ def find_rosemary(settings):
     if found:
         return Path(found)
     raise RosemaryError("Rosemary is not installed. Quadra installs it for you: press Install in "
-                        "Settings → Rosemary.", settings=True)
+                        "Settings → Environment.", settings=True)
 
 
 # -- prefix

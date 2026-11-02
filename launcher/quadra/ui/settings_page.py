@@ -5,11 +5,13 @@ import threading
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from .. import __version__, core, dns, i18n
+from .. import __version__, backends, core, dns, i18n
 from ..darling import runtime, runtime_updates
 from ..i18n import _
+from ..rosemary import install as rosemary_install
 from ..rosemary import runtime as rosemary_runtime
-from . import dialogs, flags_page, rosemary_page, system, widgets
+from ..rosemary import xr as rosemary_xr
+from . import dialogs, flags_page, system, widgets
 
 __all__ = [
     "DNS_CHOICES",
@@ -35,7 +37,7 @@ class SettingsPage(Adw.Bin):
         toolbar_view = Adw.ToolbarView()
         self.stack = Adw.ViewStack()
 
-        # 1. Environment page (Darling, Interface, Game, DNS, Diagnostics)
+        # 1. Environment page (Runtime, Interface, Darling or Rosemary, Game, DNS, Diagnostics)
         self.env_page = Adw.PreferencesPage()
 
         launcher_group = Adw.PreferencesGroup(title="Quadra")
@@ -150,7 +152,7 @@ class SettingsPage(Adw.Bin):
         darling_group = Adw.PreferencesGroup(
             title="Darling", description=_("Each runtime keeps its own Roblox sign-in.")
         )
-        self.runtime_group = darling_group
+        self.darling_group = darling_group
         labels = [
             self._runtime_labels[variant]
             if variant in self._runtime_choices or bundled
@@ -224,8 +226,9 @@ class SettingsPage(Adw.Bin):
         )
         self._runtime_selection_changed()
 
-        window.runtime_only(darling_group, "renderer")
+        window.runtime_only(darling_group, "darling", hide=True)
         self.env_page.add(darling_group)
+        self._build_rosemary_groups(settings)
 
         game = Adw.PreferencesGroup(title=_("Game"))
         # The renderer and graphics card rows also appear on the CiderDarling
@@ -233,7 +236,7 @@ class SettingsPage(Adw.Bin):
         self._renderer_rows = []
         renderer_row = self._renderer_row()
         game.add(renderer_row)
-        window.runtime_only(renderer_row, "renderer")
+        window.runtime_only(renderer_row, "renderer", hide=True)
 
         self._build_m2vk_group(settings)
 
@@ -241,7 +244,6 @@ class SettingsPage(Adw.Bin):
         self._gpu_rows = []
         self.gpu_row = self._gpu_row()
         game.add(self.gpu_row)
-        window.runtime_only(self.gpu_row, "renderer")
 
         backend_codes = ["x11", "wayland"]
         backend = widgets.ComboRow(
@@ -262,7 +264,7 @@ class SettingsPage(Adw.Bin):
             ),
         )
         game.add(backend)
-        window.runtime_only(backend, "input")
+        window.runtime_only(backend, "input", hide=True)
 
         from ..display import validated_dpi_scale
 
@@ -280,7 +282,7 @@ class SettingsPage(Adw.Bin):
             ),
         )
         game.add(ui_scale)
-        window.runtime_only(ui_scale, "input")
+        window.runtime_only(ui_scale, "input", hide=True)
 
         mangohud = Adw.SwitchRow(
             title=_("MangoHud overlay"),
@@ -310,7 +312,7 @@ class SettingsPage(Adw.Bin):
             ),
         )
         game.add(sensitivity)
-        window.runtime_only(sensitivity, "input")
+        window.runtime_only(sensitivity, "input", hide=True)
 
         scroll_sens = Adw.SpinRow.new_with_range(0.5, 10.0, 0.5)
         scroll_sens.set_digits(1)
@@ -324,7 +326,7 @@ class SettingsPage(Adw.Bin):
             ),
         )
         game.add(scroll_sens)
-        window.runtime_only(scroll_sens, "input")
+        window.runtime_only(scroll_sens, "input", hide=True)
 
         self.raw_mouse_row = Adw.SwitchRow(
             title=_("Raw mouse input"),
@@ -338,7 +340,7 @@ class SettingsPage(Adw.Bin):
             lambda row, _pspec: window.set_setting("raw_mouse", row.get_active()),
         )
         game.add(self.raw_mouse_row)
-        window.runtime_only(self.raw_mouse_row, "input")
+        window.runtime_only(self.raw_mouse_row, "input", hide=True)
 
         menu_bar = Adw.SwitchRow(
             title=_("Hide the macOS menu bar"),
@@ -637,7 +639,7 @@ class SettingsPage(Adw.Bin):
         )
         dns_group.add(block)
         self.env_page.add(dns_group)
-        window.runtime_only(dns_group, "dns")
+        window.runtime_only(dns_group, "dns", hide=True)
 
         diagnostics = Adw.PreferencesGroup(
             title=_("Diagnostics"),
@@ -685,7 +687,7 @@ class SettingsPage(Adw.Bin):
         restart.connect("activated", lambda *_args: self.restart_darling())
         diagnostics.add(restart)
         self.env_page.add(diagnostics)
-        window.runtime_only(diagnostics, "diagnostics")
+        window.runtime_only(diagnostics, "diagnostics", hide=True)
 
         self.stack.add_titled_with_icon(
             self.env_page, "env", _("Environment"), "preferences-system-symbolic"
@@ -788,10 +790,6 @@ class SettingsPage(Adw.Bin):
             self.roblox_page, "roblox", "Roblox", "application-x-executable-symbolic"
         )
 
-        self.rosemary_page = rosemary_page.RosemaryPage(window)
-        self.stack.add_titled_with_icon(
-            self.rosemary_page, "rosemary", "Rosemary", "system-run-symbolic"
-        )
         self.stack.add_titled_with_icon(self.vr_page, "vr", "VR", "quadra-vr-symbolic")
 
         # 3. Fast flags page
@@ -927,7 +925,7 @@ class SettingsPage(Adw.Bin):
             )
         else:
             subtitle = _("Each runtime keeps its own Roblox sign-in.")
-        self.runtime_group.set_description(subtitle)
+        self.darling_group.set_description(subtitle)
 
     def refresh_runtime_choices(self):
         try:
@@ -1034,6 +1032,416 @@ class SettingsPage(Adw.Bin):
             "runtime_backend", "rosemary" if row.get_selected() == 1 else "darling"
         )
         window.apply_runtime_state()
+        self._show_gpu_rows()
+        self.refresh_rosemary()
+        if (
+            window.rosemary_selected()
+            and not window.rosemary_ready()
+            and not window.busy
+        ):
+            self._install_rosemary_client()
+
+    def _build_rosemary_groups(self, settings):
+        window = self.window
+        program = Adw.PreferencesGroup(title=_("Rosemary"))
+        self._rosemary_sources = ["quadra", "upstream"]
+        self.rosemary_source_row = widgets.ComboRow(
+            title=_("Rosemary build"),
+            subtitle=_(
+                "Quadra's build adds what VR needs; the regular one is microlift's. Quadra installs the one you pick."
+            ),
+            model=Gtk.StringList.new(
+                [_("Quadra's Rosemary (adds VR)"), _("Regular Rosemary")]
+            ),
+        )
+        self.rosemary_source_row.set_selected(
+            self._rosemary_sources.index(
+                rosemary_install.normalize_source(settings.get("rosemary_source"))
+            )
+        )
+        self.rosemary_source_row.connect("notify::selected", self._rosemary_source_selected)
+        program.add(self.rosemary_source_row)
+        self.rosemary_program_row = Adw.ActionRow(title=_("Rosemary program"))
+        self.rosemary_install_button = Gtk.Button(
+            label=_("Install"),
+            valign=Gtk.Align.CENTER,
+            css_classes=["suggested-action"],
+        )
+        self.rosemary_install_button.connect("clicked", lambda *_args: self._install_rosemary())
+        self.rosemary_program_row.add_suffix(self.rosemary_install_button)
+        program.add(self.rosemary_program_row)
+        path = Adw.EntryRow(
+            title=_("Program path (leave empty to find it automatically)")
+        )
+        path.set_text(settings.get("rosemary_program", ""))
+        path.set_show_apply_button(True)
+        path.connect(
+            "apply",
+            lambda row: (
+                window.set_setting("rosemary_program", row.get_text().strip()),
+                self.refresh_rosemary(),
+            ),
+        )
+        program.add(path)
+        prefix = Adw.EntryRow(title=_("Prefix folder (empty: Quadra's own)"))
+        prefix.set_text(settings.get("rosemary_prefix", ""))
+        prefix.set_show_apply_button(True)
+        prefix.connect(
+            "apply",
+            lambda row: window.set_setting("rosemary_prefix", row.get_text().strip()),
+        )
+        program.add(prefix)
+        self.env_page.add(program)
+
+        client_group = Adw.PreferencesGroup(title=_("Roblox for Rosemary"))
+        self.rosemary_client_row = Adw.ActionRow(title=_("Installed version"))
+        self.rosemary_client_button = Gtk.Button(
+            label=_("Install or update"), valign=Gtk.Align.CENTER
+        )
+        self.rosemary_client_button.connect("clicked", lambda *_args: self._install_rosemary_client())
+        self.rosemary_client_row.add_suffix(self.rosemary_client_button)
+        client_group.add(self.rosemary_client_row)
+        self.rosemary_rollback_row = Adw.ActionRow(title=_("Previous version"))
+        self.rosemary_rollback_button = Gtk.Button(valign=Gtk.Align.CENTER)
+        self.rosemary_rollback_button.connect("clicked", lambda *_args: self._toggle_rosemary_rollback())
+        self.rosemary_rollback_row.add_suffix(self.rosemary_rollback_button)
+        client_group.add(self.rosemary_rollback_row)
+        self.rosemary_progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
+        client_group.add(self.rosemary_progress)
+        self.env_page.add(client_group)
+
+        self.rosemary_vr_row = Adw.ActionRow(title=_("VR support"))
+        client_group.add(self.rosemary_vr_row)
+
+        options = Adw.PreferencesGroup(title=_("Options"))
+        engine = widgets.ComboRow(
+            title=_("Execution"),
+            subtitle=_(
+                "Native runs the machine's own code; emulated recompiles x86-64"
+            ),
+            model=Gtk.StringList.new([_("Automatic"), _("Native"), _("Emulated")]),
+        )
+        modes = list(rosemary_runtime.ENGINES)
+        engine.set_selected(
+            modes.index(settings.get("rosemary_engine", "auto"))
+            if settings.get("rosemary_engine", "auto") in modes
+            else 0
+        )
+        engine.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_engine", modes[row.get_selected()]
+            ),
+        )
+        options.add(engine)
+        opengl = Adw.SwitchRow(
+            title=_("Force OpenGL"),
+            subtitle=_("For machines without a Vulkan driver"),
+            active=settings.get("rosemary_force_opengl", False),
+        )
+        opengl.connect(
+            "notify::active",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_force_opengl", row.get_active()
+            ),
+        )
+        options.add(opengl)
+        drivers = list(rosemary_runtime.VIDEO_DRIVERS)
+        display = widgets.ComboRow(
+            title=_("Display server"),
+            model=Gtk.StringList.new([_("Default"), "Wayland", "X11 (XWayland)"]),
+        )
+        display.set_selected(
+            drivers.index(settings.get("rosemary_video_driver", ""))
+            if settings.get("rosemary_video_driver", "") in drivers
+            else 0
+        )
+        display.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_video_driver", drivers[row.get_selected()]
+            ),
+        )
+        options.add(display)
+        swaps = list(rosemary_runtime.SWAP_INTERVALS)
+        vsync = widgets.ComboRow(
+            title="VSync",
+            model=Gtk.StringList.new([_("Default"), _("Off"), _("On"), _("Adaptive")]),
+        )
+        vsync.set_selected(
+            swaps.index(settings.get("rosemary_swap_interval", ""))
+            if settings.get("rosemary_swap_interval", "") in swaps
+            else 0
+        )
+        vsync.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_swap_interval", swaps[row.get_selected()]
+            ),
+        )
+        options.add(vsync)
+        presentation = list(rosemary_runtime.PRESENTATION_MODES)
+        present = widgets.ComboRow(
+            title=_("Presentation mode"),
+            subtitle=_("How frames reach the screen (Vulkan present mode)"),
+            model=Gtk.StringList.new(
+                [_("Default"), _("Immediate"), "FIFO", _("FIFO relaxed"), "Mailbox"]
+            ),
+        )
+        current = settings.get("rosemary_presentation_mode", "")
+        present.set_selected(
+            presentation.index(current) if current in presentation else 0
+        )
+        present.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_presentation_mode", presentation[row.get_selected()]
+            ),
+        )
+        options.add(present)
+        rate = Adw.EntryRow(
+            title=_("Refresh rate told to the game (Hz, empty: the display's)")
+        )
+        rate.set_text(settings.get("rosemary_refresh_rate", ""))
+        rate.set_show_apply_button(True)
+
+        def rate_applied(row):
+            text = row.get_text().strip()
+            if text and not rosemary_runtime.refresh_rate(text):
+                row.add_css_class("error")
+                dialogs._toast(window.toasts, _("Enter a number of hertz above zero"))
+                return
+            row.remove_css_class("error")
+            window.set_setting("rosemary_refresh_rate", text)
+
+        rate.connect("apply", rate_applied)
+        options.add(rate)
+        decorations = list(rosemary_runtime.DECORATIONS)
+        title_bar = widgets.ComboRow(
+            title=_("Title bar"),
+            subtitle=_("Who draws the window's title bar"),
+            model=Gtk.StringList.new(
+                [_("Default"), _("Rosemary (Mac style)"), _("Window manager")]
+            ),
+        )
+        current = settings.get("rosemary_decorations", "")
+        title_bar.set_selected(
+            decorations.index(current) if current in decorations else 0
+        )
+        title_bar.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_decorations", decorations[row.get_selected()]
+            ),
+        )
+        options.add(title_bar)
+        menus = list(rosemary_runtime.MENUS)
+        menu = widgets.ComboRow(
+            title=_("Menu placement"),
+            subtitle=_('"Hide the macOS menu bar" in Game settings overrides this'),
+            model=Gtk.StringList.new(
+                [_("Default"), _("In the title bar"), _("Strip under it"), _("None")]
+            ),
+        )
+        current = settings.get("rosemary_menu", "")
+        menu.set_selected(menus.index(current) if current in menus else 0)
+        menu.connect(
+            "notify::selected",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_menu", menus[row.get_selected()]
+            ),
+        )
+        options.add(menu)
+        for key, title, subtitle in (
+            ("rosemary_confine_pointer", _("Keep the pointer inside the window"), None),
+            (
+                "rosemary_control_edit_keys",
+                _("Control works as Command in editing shortcuts"),
+                None,
+            ),
+            (
+                "rosemary_plain_ctrl_click",
+                _("Control-click is a plain left click"),
+                _("Crouching with Control would otherwise be a right click"),
+            ),
+        ):
+            row = Adw.SwitchRow(
+                title=title, subtitle=subtitle or "", active=settings.get(key, False)
+            )
+            row.connect(
+                "notify::active",
+                lambda r, _pspec, k=key: window.set_setting(k, r.get_active()),
+            )
+            options.add(row)
+        zink = Adw.SwitchRow(
+            title=_("VR: OpenGL through Vulkan (zink)"),
+            subtitle=_(
+                "Roblox's VR needs its OpenGL renderer; this runs it on Vulkan with Mesa's zink"
+            ),
+            active=settings.get("rosemary_vr_zink", False),
+        )
+        zink.connect(
+            "notify::active",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_vr_zink", row.get_active()
+            ),
+        )
+        options.add(zink)
+        server = Adw.SwitchRow(
+            title=_("Process server"),
+            subtitle=_("Stopped with the game; turn off to leave it running"),
+            active=settings.get("rosemary_process_server", True),
+        )
+        server.connect(
+            "notify::active",
+            lambda row, _pspec: window.set_setting(
+                "rosemary_process_server", row.get_active()
+            ),
+        )
+        options.add(server)
+        self.env_page.add(options)
+        for group in (program, client_group, options):
+            window.runtime_only(group, "rosemary", hide=True)
+        self.refresh_rosemary()
+
+    def _rosemary_source(self):
+        return rosemary_install.normalize_source(
+            self.window.settings.get("rosemary_source")
+        )
+
+    def _rosemary_source_selected(self, row, _pspec):
+        window = self.window
+        kind = self._rosemary_sources[row.get_selected()]
+        window.set_setting("rosemary_source", kind)
+        self.refresh_rosemary()
+        # Quadra installs the build you picked when it is not there yet.
+        if (
+            not rosemary_runtime.quadra_runners(kind)
+            and not (window.settings.get("rosemary_program") or "").strip()
+            and not window.busy
+        ):
+            self._install_rosemary()
+
+    def _check_rosemary_update(self):
+        kind = self._rosemary_source()
+        newest = rosemary_install.latest_version(source=kind)
+        have = {
+            name.removeprefix("Rosemary ")
+            for name, _path in rosemary_runtime.quadra_runners(kind)
+        }
+        # Quadra's build falls back to the regular one while it has no release: not an update.
+        if (
+            newest
+            and have
+            and newest not in have
+            and rosemary_install.runner_kind(newest) == kind
+        ):
+            GLib.idle_add(
+                self.rosemary_install_button.set_label, _("Update to {version}", version=newest)
+            )
+        return False
+
+    def refresh_rosemary(self):
+        kind = self._rosemary_source()
+        try:
+            found = rosemary_runtime.find_rosemary(self.window.settings)
+            self.rosemary_program_row.set_subtitle(rosemary_runtime.describe(found))
+            has_chosen = bool(rosemary_runtime.quadra_runners(kind))
+            custom = bool((self.window.settings.get("rosemary_program") or "").strip())
+            self.rosemary_install_button.set_label(
+                _("Update") if (has_chosen or custom) else _("Install")
+            )
+            if has_chosen:
+                threading.Thread(target=self._check_rosemary_update, daemon=True).start()
+        except rosemary_runtime.RosemaryError as error:
+            self.rosemary_program_row.set_subtitle(str(error).splitlines()[0])
+            self.rosemary_install_button.set_label(_("Install"))
+        settings = self.window.settings
+        try:
+            program = rosemary_runtime.find_rosemary(settings)
+            self.rosemary_vr_row.set_subtitle(
+                _("Ready: turn on VR in the VR tab")
+                if rosemary_xr.supports_vr(program)
+                else _(
+                    'This Rosemary cannot load VR. Choose Quadra\'s Rosemary under "Rosemary build".'
+                )
+            )
+        except rosemary_runtime.RosemaryError:
+            self.rosemary_vr_row.set_subtitle(_("Install Rosemary first"))
+        self.rosemary_client_row.set_subtitle(
+            rosemary_runtime.installed_version(settings) or _("Not installed")
+        )
+        previous = rosemary_runtime.previous_build(settings)
+        pinned = bool(settings.get("rosemary_pinned_build"))
+        self.rosemary_rollback_row.set_visible(pinned or previous is not None)
+        if pinned:
+            self.rosemary_rollback_row.set_subtitle(
+                _("Staying on this version; updates are paused")
+            )
+            self.rosemary_rollback_button.set_label(_("Follow latest"))
+        elif previous is not None:
+            self.rosemary_rollback_row.set_subtitle(previous[0].version or previous[0].guid)
+            self.rosemary_rollback_button.set_label(_("Go back"))
+
+    def _toggle_rosemary_rollback(self):
+        settings = self.window.settings
+        if settings.get("rosemary_pinned_build"):
+            self.window.set_setting("rosemary_pinned_build", "")
+        else:
+            previous = rosemary_runtime.previous_build(settings)
+            if previous is not None:
+                self.window.set_setting("rosemary_pinned_build", previous[0].key)
+        self.refresh_rosemary()
+
+    def _set_rosemary_busy(self, busy):
+        for button in (self.rosemary_install_button, self.rosemary_client_button):
+            button.set_sensitive(not busy)
+        self.rosemary_progress.set_visible(busy)
+
+    def _run_rosemary(self, work):
+        """Run `work(progress)` off the GTK thread with the progress bar."""
+        self._set_rosemary_busy(True)
+
+        def progress(fraction, text):
+            GLib.idle_add(
+                lambda: (
+                    self.rosemary_progress.set_fraction(max(0.0, min(1.0, fraction))),
+                    self.rosemary_progress.set_text(text),
+                    False,
+                )[-1]
+            )
+
+        def run():
+            error = None
+            try:
+                work(progress)
+            except Exception as failure:
+                error = failure
+            GLib.idle_add(self._rosemary_finished, error)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _rosemary_finished(self, error):
+        self._set_rosemary_busy(False)
+        self.refresh_rosemary()
+        if error is not None:
+            dialogs._error_dialog(self.window, _("Rosemary"), str(error) or repr(error))
+        else:
+            dialogs._toast(self.window.toasts, _("Done"))
+        return False
+
+    def _install_rosemary(self):
+        source = self._rosemary_source()
+        self._run_rosemary(
+            lambda progress: rosemary_install.install_latest(progress, source=source)
+        )
+
+    def _install_rosemary_client(self):
+        self._run_rosemary(
+            lambda progress: rosemary_runtime.ensure_ready(
+                self.window.settings, progress
+            )
+        )
 
     # Keep the stored Metal key so existing selections follow Quadra M2VK.
     RENDERER_CODES = ("opengl", "vulkan", "metal")
@@ -1364,7 +1772,6 @@ class SettingsPage(Adw.Bin):
             subtitle=_("Detecting graphics cards… Applies on next launch."),
             model=Gtk.StringList.new([_("Automatic")]),
             sensitive=False,
-            visible=always_visible or self.window.settings.get("gpu", "auto") != "auto",
         )
         self._gpu_rows.append(
             (row, row.connect("notify::selected", self._select_gpu), always_visible)
@@ -1372,8 +1779,15 @@ class SettingsPage(Adw.Bin):
         if len(self._gpu_rows) == 1:
             from .. import gpus
 
+            self._gpu_choice_needed = self.window.settings.get("gpu", "auto") != "auto"
             self._in_thread(gpus.enumerate_gpus, self._gpu_choices_loaded)
+        self._show_gpu_rows()
         return row
+
+    def _show_gpu_rows(self):
+        renderer_applies = backends.supports(self.window.runtime_name(), "renderer")
+        for row, _handler, always_visible in self._gpu_rows:
+            row.set_visible(always_visible or (renderer_applies and self._gpu_choice_needed))
 
     def _select_gpu(self, row, _pspec):
         selected = row.get_selected()
@@ -1396,7 +1810,9 @@ class SettingsPage(Adw.Bin):
             codes.append(selection)
             labels.append(_("Selected graphics card unavailable"))
         self._gpu_codes = codes
-        for row, handler, always_visible in self._gpu_rows:
+        self._gpu_choice_needed = len(adapters) > 1 or selection != "auto" or error is not None
+        self._show_gpu_rows()
+        for row, handler, _always_visible in self._gpu_rows:
             row.handler_block(handler)
             try:
                 row.set_model(Gtk.StringList.new(labels))
@@ -1404,12 +1820,6 @@ class SettingsPage(Adw.Bin):
             finally:
                 row.handler_unblock(handler)
             row.set_sensitive(True)
-            row.set_visible(
-                always_visible
-                or len(adapters) > 1
-                or selection != "auto"
-                or error is not None
-            )
             row.set_subtitle(
                 _(
                     "Could not detect graphics cards. Select Automatic to use the system default."

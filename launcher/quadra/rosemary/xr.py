@@ -156,7 +156,7 @@ def prepare(settings, program, core):
         return None
     if not supports_vr(program):
         raise VrUnavailable(_("This Rosemary cannot load VR. Quadra's own build is needed "
-                              "(QuadraHQ/rosemary-fork); choose it under Settings → Rosemary."))
+                              "(QuadraHQ/rosemary-fork); choose it under Settings → Environment."))
     variables, log = vr.shim_variables({**settings, "renderer": "opengl"})
     if not variables:
         raise VrUnavailable(log.removeprefix("VR: "))

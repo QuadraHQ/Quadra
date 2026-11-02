@@ -10,8 +10,7 @@ in the order they load (a module only uses the ones above it):
     play_page        Play
     flags_page       the fast flag editors (client and Studio)
     studio_page      Roblox Studio
-    rosemary_page    Settings -> Rosemary, with the runtime choice
-    settings_page    Settings and its tabs
+    settings_page    Settings and its tabs, with the runtime choice
     info_page        Info
     mods_page        Mods
     servers_page     Servers
@@ -40,7 +39,6 @@ from . import (  # noqa: E402
     play_page,
     flags_page,
     studio_page,
-    rosemary_page,
     settings_page,
     info_page,
     mods_page,
@@ -51,8 +49,8 @@ from . import (  # noqa: E402
 )
 
 namespace.share_names(__name__, [
-    dialogs, widgets, system, logs_view, play_page, flags_page, studio_page, rosemary_page,
-    settings_page, info_page, mods_page, servers_page, boot_splash, launcher_window, launcher_app,
+    dialogs, widgets, system, logs_view, play_page, flags_page, studio_page, settings_page,
+    info_page, mods_page, servers_page, boot_splash, launcher_window, launcher_app,
 ])
 
 if TYPE_CHECKING:  # tells editors and type checkers what ui.NAME is
@@ -63,7 +61,6 @@ if TYPE_CHECKING:  # tells editors and type checkers what ui.NAME is
     from .play_page import *  # noqa: F403
     from .flags_page import *  # noqa: F403
     from .studio_page import *  # noqa: F403
-    from .rosemary_page import *  # noqa: F403
     from .settings_page import *  # noqa: F403
     from .info_page import *  # noqa: F403
     from .mods_page import *  # noqa: F403

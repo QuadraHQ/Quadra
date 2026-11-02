@@ -155,7 +155,7 @@ with patch.dict(os.environ, FLATPAK_ID="org.quadrahq.Quadra"):
     with context:
         page = window.settings_page
         assert not page.runtime_row.get_sensitive() and not page.runtime_apply_button.get_visible()
-        assert "bundled" in page.runtime_group.get_description()
+        assert "bundled" in page.darling_group.get_description()
         page.apply_runtime()
         assert len(restarts) == 2
 
@@ -164,7 +164,7 @@ with patch.dict(os.environ, QUADRA_BUNDLED_DARLING=str(base / 'ciderdarling')):
     with context, patch.object(runtime_install.Installation, 'create') as install:
         page = window.settings_page
         assert not page.runtime_row.get_sensitive()
-        assert 'Nix manages' in page.runtime_group.get_description()
+        assert 'Nix manages' in page.darling_group.get_description()
         assert page.cider_stack_page.get_visible()
         assert not page.cider_check_button.get_visible()
         assert not page.cider_rollback_row.get_visible()
