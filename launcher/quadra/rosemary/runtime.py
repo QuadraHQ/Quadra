@@ -22,6 +22,7 @@ import threading
 import time
 import tomllib
 from pathlib import Path
+from typing import NamedTuple
 
 from . import client as rosemary_client
 from ..paths import user_directory
@@ -123,6 +124,45 @@ def describe(program):
         folder = parts[parts.index("rosemary-runner") + 1]
         return f"{rosemary_install.SOURCE_NAMES[rosemary_install.runner_kind(folder)]} {folder}"
     return str(program)
+
+
+class Runner(NamedTuple):
+    program: str
+    label: str
+    added_by_hand: bool
+
+
+def _home_relative(program):
+    try:
+        return f"~/{program.relative_to(Path.home())}"
+    except ValueError:
+        return str(program)
+
+
+def runner_list(settings):
+    listed = {}
+
+    def offer(program, label, added_by_hand=False):
+        program = Path(program).expanduser()
+        listed.setdefault(str(program), Runner(str(program), label or _home_relative(program), added_by_hand))
+
+    for _name, program in quadra_runners():
+        offer(program, describe(program))
+    for name, program in runners():
+        offer(program, f"{name} (Butter)")
+    on_path = shutil.which("rosemary")
+    if on_path:
+        offer(on_path, "rosemary on PATH")
+    by_hand = [p for p in settings.get("rosemary_runners") or [] if isinstance(p, str)]
+    for program in [*by_hand, settings.get("rosemary_program") or ""]:
+        if program.strip():
+            offer(program.strip(), None, added_by_hand=True)
+    return list(listed.values())
+
+
+def is_runnable(program):
+    path = Path(program).expanduser()
+    return path.is_file() and os.access(path, os.X_OK)
 
 
 def find_rosemary(settings):

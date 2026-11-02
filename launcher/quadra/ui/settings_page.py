@@ -2,6 +2,7 @@
 
 import os
 import threading
+from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
@@ -1065,28 +1066,39 @@ class SettingsPage(Adw.Bin):
         )
         self.rosemary_source_row.connect("notify::selected", self._rosemary_source_selected)
         program.add(self.rosemary_source_row)
-        self.rosemary_program_row = Adw.ActionRow(title=_("Rosemary program"))
+        self.rosemary_runner_row = Adw.ComboRow(title=_("Rosemary runner"), use_subtitle=False)
+        self._rosemary_runners = []
+        self._runner_selected_handler = self.rosemary_runner_row.connect(
+            "notify::selected", self._rosemary_runner_selected
+        )
+        self.rosemary_remove_runner_button = Gtk.Button(
+            icon_name="user-trash-symbolic",
+            tooltip_text=_("Remove from the list"),
+            valign=Gtk.Align.CENTER,
+            css_classes=["flat"],
+        )
+        self.rosemary_remove_runner_button.connect(
+            "clicked", lambda *_args: self._remove_rosemary_runner()
+        )
+        self.rosemary_runner_row.add_suffix(self.rosemary_remove_runner_button)
         self.rosemary_install_button = Gtk.Button(
             label=_("Install"),
             valign=Gtk.Align.CENTER,
             css_classes=["suggested-action"],
         )
         self.rosemary_install_button.connect("clicked", lambda *_args: self._install_rosemary())
-        self.rosemary_program_row.add_suffix(self.rosemary_install_button)
-        program.add(self.rosemary_program_row)
-        path = Adw.EntryRow(
-            title=_("Program path (leave empty to find it automatically)")
+        self.rosemary_runner_row.add_suffix(self.rosemary_install_button)
+        program.add(self.rosemary_runner_row)
+        self._keep_typed_rosemary_program_listed()
+        add_runner = Adw.ActionRow(
+            title=_("Add your own Rosemary"),
+            subtitle=_("Pick a rosemary program you built or downloaded"),
         )
-        path.set_text(settings.get("rosemary_program", ""))
-        path.set_show_apply_button(True)
-        path.connect(
-            "apply",
-            lambda row: (
-                window.set_setting("rosemary_program", row.get_text().strip()),
-                self.refresh_rosemary(),
-            ),
-        )
-        program.add(path)
+        browse = Gtk.Button(label=_("Browse…"), valign=Gtk.Align.CENTER)
+        browse.connect("clicked", lambda *_args: self._choose_rosemary_runner())
+        add_runner.add_suffix(browse)
+        add_runner.set_activatable_widget(browse)
+        program.add(add_runner)
         prefix = Adw.EntryRow(title=_("Prefix folder (empty: Quadra's own)"))
         prefix.set_text(settings.get("rosemary_prefix", ""))
         prefix.set_show_apply_button(True)
@@ -1325,7 +1337,7 @@ class SettingsPage(Adw.Bin):
         # Quadra installs the build you picked when it is not there yet.
         if (
             not rosemary_runtime.quadra_runners(kind)
-            and not (window.settings.get("rosemary_program") or "").strip()
+            and not self._chosen_rosemary_program()
             and not window.busy
         ):
             self._install_rosemary()
@@ -1351,18 +1363,19 @@ class SettingsPage(Adw.Bin):
 
     def refresh_rosemary(self):
         kind = self._rosemary_source()
+        self._fill_rosemary_runner_list()
         try:
             found = rosemary_runtime.find_rosemary(self.window.settings)
-            self.rosemary_program_row.set_subtitle(rosemary_runtime.describe(found))
+            self.rosemary_runner_row.set_subtitle(rosemary_runtime.describe(found))
             has_chosen = bool(rosemary_runtime.quadra_runners(kind))
-            custom = bool((self.window.settings.get("rosemary_program") or "").strip())
+            custom = bool(self._chosen_rosemary_program())
             self.rosemary_install_button.set_label(
                 _("Update") if (has_chosen or custom) else _("Install")
             )
             if has_chosen:
                 threading.Thread(target=self._check_rosemary_update, daemon=True).start()
         except rosemary_runtime.RosemaryError as error:
-            self.rosemary_program_row.set_subtitle(str(error).splitlines()[0])
+            self.rosemary_runner_row.set_subtitle(str(error).splitlines()[0])
             self.rosemary_install_button.set_label(_("Install"))
         settings = self.window.settings
         try:
@@ -1390,6 +1403,90 @@ class SettingsPage(Adw.Bin):
         elif previous is not None:
             self.rosemary_rollback_row.set_subtitle(previous[0].version or previous[0].guid)
             self.rosemary_rollback_button.set_label(_("Go back"))
+
+    def _chosen_rosemary_program(self):
+        chosen = (self.window.settings.get("rosemary_program") or "").strip()
+        return str(Path(chosen).expanduser()) if chosen else ""
+
+    def _keep_typed_rosemary_program_listed(self):
+        typed = self._chosen_rosemary_program()
+        settings = self.window.settings
+        typed_runner = next(
+            (r for r in rosemary_runtime.runner_list(settings) if r.program == typed), None
+        )
+        added = settings.get("rosemary_runners") or []
+        if typed_runner and typed_runner.added_by_hand and typed not in added:
+            self.window.set_setting("rosemary_runners", [*added, typed])
+
+    def _fill_rosemary_runner_list(self):
+        automatic = rosemary_runtime.Runner("", _("Automatic"), False)
+        runners = [automatic, *rosemary_runtime.runner_list(self.window.settings)]
+        programs = [runner.program for runner in runners]
+        chosen = self._chosen_rosemary_program()
+        with self.rosemary_runner_row.handler_block(self._runner_selected_handler):
+            if runners != self._rosemary_runners:
+                self._rosemary_runners = runners
+                self.rosemary_runner_row.set_model(
+                    Gtk.StringList.new([runner.label for runner in runners])
+                )
+            self.rosemary_runner_row.set_selected(programs.index(chosen) if chosen in programs else 0)
+        self._show_remove_runner_button()
+
+    def _selected_rosemary_runner(self):
+        return self._rosemary_runners[self.rosemary_runner_row.get_selected()]
+
+    def _show_remove_runner_button(self):
+        self.rosemary_remove_runner_button.set_visible(
+            self._selected_rosemary_runner().added_by_hand
+        )
+
+    def _rosemary_runner_selected(self, _row, _pspec):
+        self.window.set_setting("rosemary_program", self._selected_rosemary_runner().program)
+        self.refresh_rosemary()
+
+    def _choose_rosemary_runner(self):
+        dialog = Gtk.FileChooserNative.new(
+            _("Choose a Rosemary program"),
+            self.window,
+            Gtk.FileChooserAction.OPEN,
+            _("Add"),
+            _("Cancel"),
+        )
+
+        def on_response(chooser, response):
+            file = chooser.get_file() if response == Gtk.ResponseType.ACCEPT else None
+            chooser.destroy()
+            if file is not None and file.get_path():
+                self._add_rosemary_runner(file.get_path())
+
+        dialog.connect("response", on_response)
+        dialog.show()
+
+    def _add_rosemary_runner(self, program):
+        if not rosemary_runtime.is_runnable(program):
+            dialogs._error_dialog(
+                self.window,
+                _("Rosemary"),
+                _("{path} is not an executable file.", path=program),
+            )
+            return
+        window = self.window
+        added = [p for p in window.settings.get("rosemary_runners") or [] if p != program]
+        window.set_setting("rosemary_runners", [*added, program])
+        window.set_setting("rosemary_program", program)
+        self.refresh_rosemary()
+
+    def _remove_rosemary_runner(self):
+        window = self.window
+        removed = self._selected_rosemary_runner().program
+        kept = [
+            p
+            for p in window.settings.get("rosemary_runners") or []
+            if str(Path(p).expanduser()) != removed
+        ]
+        window.set_setting("rosemary_runners", kept)
+        window.set_setting("rosemary_program", "")
+        self.refresh_rosemary()
 
     def _toggle_rosemary_rollback(self):
         settings = self.window.settings

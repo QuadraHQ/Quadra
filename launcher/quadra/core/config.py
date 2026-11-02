@@ -85,6 +85,7 @@ DEFAULT_SETTINGS = {
     # (outdated). load_settings keeps an install that predates the choice, and a bundled one, on Darling.
     "runtime_backend": "rosemary",
     "rosemary_program": "",
+    "rosemary_runners": [],
     # Which Rosemary Quadra installs: "quadra" (its own build, adds VR) or "upstream" (the regular one).
     "rosemary_source": "quadra",
     "rosemary_prefix": "",
