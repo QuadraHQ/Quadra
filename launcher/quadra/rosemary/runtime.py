@@ -160,6 +160,11 @@ def runner_list(settings):
     return list(listed.values())
 
 
+def user_runner_list(settings):
+    quadra_programs = {str(program) for _name, program in quadra_runners()}
+    return [runner for runner in runner_list(settings) if runner.program not in quadra_programs]
+
+
 def is_runnable(program):
     path = Path(program).expanduser()
     return path.is_file() and os.access(path, os.X_OK)

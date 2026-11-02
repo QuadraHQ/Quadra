@@ -284,9 +284,9 @@ class RuntimeSelectionTests(unittest.TestCase):
         pin = runtime.pinned_ciderdarling()
         self.assertRegex(pin["revision"], r"^[0-9a-f]{40}$")
         self.assertRegex(pin["manifest"], r"^[0-9a-f]{64}$")
-        source = (Path(runtime.__file__).resolve().parents[3] / "install.sh").read_text()
+        source = (Path(runtime.__file__).resolve().parents[3] / "install-runtime.sh").read_text()
         self.assertIn(f"CIDER_DARLING_REVISION={pin['revision']}\n", source)
-        installer = self.base / "install.sh"
+        installer = self.base / "install-runtime.sh"
         for text in ("", "CIDER_DARLING_REVISION=$(cat pin)\nCIDER_DARLING_MANIFEST=" + "0" * 64,
                      "CIDER_DARLING_REVISION=" + "a" * 40 + "\n"):
             installer.write_text(text)

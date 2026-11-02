@@ -1,4 +1,7 @@
-"""Exercise installer decisions with stubbed builds; never install host packages."""
+"""Exercise the installers' decisions with stubbed builds; never install host packages.
+
+install.sh installs only the launcher; install-runtime.sh installs Darling and
+its tools, run by the launcher's first-boot screen and settings."""
 import json
 import os
 from pathlib import Path
@@ -19,10 +22,12 @@ class InstallerRuntimeTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
-        self.functions = self.base / "installer-functions.sh"
-        source = (ROOT / "install.sh").read_text()
-        self.assertTrue(source.endswith('main "$@"; exit\n'))
-        self.functions.write_text(source.removesuffix('main "$@"; exit\n') + '\nCIDER_DARLING_PINNED=1\n')
+        self.functions = self.base / "runtime-installer-functions.sh"
+        self.launcher_functions = self.base / "installer-functions.sh"
+        for script, functions in (("install-runtime.sh", self.functions), ("install.sh", self.launcher_functions)):
+            source = (ROOT / script).read_text()
+            self.assertTrue(source.endswith('main "$@"; exit\n'))
+            functions.write_text(source.removesuffix('main "$@"; exit\n') + '\nCIDER_DARLING_PINNED=1\n')
         self.environment = dict(os.environ, HOME=str(self.base),
                                 XDG_CONFIG_HOME=str(self.base / "config"),
                                 XDG_CACHE_HOME=str(self.base / "cache"),
@@ -58,15 +63,16 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('Invalid or incompatible', result.stderr)
 
-    def shell(self, body, **environment):
+    def shell(self, body, launcher=False, **environment):
         # A new session has no controlling terminal: prompts that read
         # /dev/tty fail instead of waiting for the person running the tests.
-        return subprocess.run(["bash", "-c", '. "$1"\n' + body, "test", str(self.functions)],
+        functions = self.launcher_functions if launcher else self.functions
+        return subprocess.run(["bash", "-c", '. "$1"\n' + body, "test", str(functions)],
                               env=dict(self.environment, **environment),
                               capture_output=True, text=True, timeout=20, start_new_session=True)
 
-    def checked(self, body, **environment):
-        result = self.shell(body, **environment)
+    def checked(self, body, launcher=False, **environment):
+        result = self.shell(body, launcher, **environment)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result.stdout
 
@@ -89,11 +95,12 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
     def test_rebrand_does_not_replace_existing_quadra_settings(self):
         for name in ('quadrahq', 'ciderhq', 'macoblox'):
             directory = self.base / 'config' / name
-            directory.mkdir(parents=True)
+            directory.mkdir(parents=True, exist_ok=True)
             (directory / 'settings.json').write_text(name)
-        self.checked('migrate_user_directories')
-        for name in ('quadrahq', 'ciderhq', 'macoblox'):
-            self.assertEqual((self.base / 'config' / name / 'settings.json').read_text(), name)
+        for launcher in (False, True):
+            self.checked('migrate_user_directories', launcher)
+            for name in ('quadrahq', 'ciderhq', 'macoblox'):
+                self.assertEqual((self.base / 'config' / name / 'settings.json').read_text(), name)
 
     def test_source_checkout_migrates_from_cider_before_updating(self):
         legacy = self.base / 'data/CiderHQ'
@@ -102,8 +109,8 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
         for file in ('build_debug_shim.sh', 'launcher/ciderhq-launcher', 'launcher/macoblox/core.py'):
             (legacy / file).touch()
         (legacy / 'saved-session').write_text('keep this')
-        # Stop before installing dependencies or fetching anything.
-        result = self.shell('step() { :; }; install_tools() { return 71; }; do_install')
+        # Stop before checking requirements or fetching anything.
+        result = self.shell('step() { :; }; check_requirements() { return 71; }; do_install', launcher=True)
         self.assertEqual(result.returncode, 71, result.stdout + result.stderr)
         self.assertFalse(legacy.exists())
         self.assertEqual((self.base / 'data/QuadraHQ/saved-session').read_text(), 'keep this')
@@ -122,7 +129,7 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
             with self.subTest(url=url):
                 subprocess.run(['git', '-C', str(checkout), 'remote', 'remove', 'origin'], capture_output=True)
                 subprocess.run(['git', '-C', str(checkout), 'remote', 'add', 'origin', url], check=True)
-                self.checked('migrate_origin_remote')
+                self.checked('migrate_origin_remote', launcher=True)
                 origin = subprocess.check_output(['git', '-C', str(checkout), 'remote', 'get-url', 'origin'], text=True)
                 self.assertEqual(origin.strip(), current if moves else url)
 
@@ -137,22 +144,23 @@ printf '%s|%s|%s|%s' "$CIDER_DARLING_REVISION" "$CIDER_DARLING_INSTALL" "$CIDER_
                 (checkout / 'launcher' / package / core).parent.mkdir(parents=True)
                 (checkout / 'launcher' / package / core).touch()
                 (checkout / 'launcher' / package / '__init__.py').write_text('__version__ = "0.36"\n')
-                self.assertEqual(self.checked(f'launcher_package "{checkout}"'), f'{checkout}/launcher/{package}')
-                result = self.shell('step() { :; }; install_tools() { return 71; }; do_install')
+                self.assertEqual(self.checked(f'launcher_package "{checkout}"', launcher=True),
+                                 f'{checkout}/launcher/{package}')
+                result = self.shell('step() { :; }; check_requirements() { return 71; }; do_install', launcher=True)
                 self.assertEqual(result.returncode, 71, result.stdout + result.stderr)
                 shutil.rmtree(checkout / 'launcher' / package)
-        result = self.shell('step() { :; }; install_tools() { return 71; }; do_install')
+        result = self.shell('step() { :; }; check_requirements() { return 71; }; do_install', launcher=True)
         self.assertNotEqual(result.returncode, 71)
         self.assertIn('without a Git checkout', result.stdout + result.stderr)
 
     def test_default_and_cli_choices_and_invalid_values(self):
         body = '''
-banner() { :; }; setup_plan() { :; }
-do_install() { printf '%s|%s' "$DARLING_RUNTIME" "$PREFIX"; }
+banner() { :; }
+do_setup() { printf '%s|%s' "$DARLING_RUNTIME" "$PREFIX"; }
 main '''
-        self.assertEqual(self.checked(body + '--yes').lstrip('\n'), f'regular|{self.base}/.darling')
-        self.assertEqual(self.checked(body + '--yes --darling ciderdarling').lstrip('\n'), f'ciderdarling|{self.base}/.ciderdarling')
-        self.assertEqual(self.checked(body + '--yes --darling=regular').lstrip('\n'), f'regular|{self.base}/.darling')
+        self.assertEqual(self.checked(body), f'regular|{self.base}/.darling')
+        self.assertEqual(self.checked(body + '--darling ciderdarling'), f'ciderdarling|{self.base}/.ciderdarling')
+        self.assertEqual(self.checked(body + '--darling=regular'), f'regular|{self.base}/.darling')
         for options in ('--darling wrong', '--darling', '--darling='):
             self.assertNotEqual(self.shell(body + options).returncode, 0)
 
@@ -168,9 +176,8 @@ ensure_darling() {
   DARLING_EXECUTABLE=$CIDER_DARLING_INSTALL/bin/darling
   export DARLING_SYSROOT=$CIDER_DARLING_INSTALL/libexec/darling
 }
-do_install() { exit 91; }
 install_tools() { exit 92; }
-main --install-runtime --darling ciderdarling --yes
+main --install-runtime --darling ciderdarling
 '''
         output = self.checked(stub)
         self.assertIn('ensured:ciderdarling', output)
@@ -180,7 +187,7 @@ main --install-runtime --darling ciderdarling --yes
         self.assertEqual({key: saved[key] for key in runtime.SELECTION_KEYS},
                          {key: original[key] for key in runtime.SELECTION_KEYS})
         cider = runtime.remembered_runtimes(saved)['ciderdarling']
-        pin = runtime.pinned_ciderdarling(ROOT / 'install.sh')['revision']
+        pin = runtime.pinned_ciderdarling(ROOT / 'install-runtime.sh')['revision']
         self.assertEqual(cider['executable'], f'/opt/ciderdarling/{pin}/bin/darling')
         self.assertEqual(cider['prefix'], str(self.base / '.ciderdarling'))
         # An update of the selected CiderDarling switches to the new version
@@ -347,7 +354,7 @@ confirm_darling_build() { return 0; }
 sudo() { printf 'sudo:%s\\n' "$*"; "$@"; }
 build_darling_source() { printf 'built\\n'; }
 '''
-        pin = runtime.pinned_ciderdarling(ROOT / 'install.sh')['revision']
+        pin = runtime.pinned_ciderdarling(ROOT / 'install-runtime.sh')['revision']
         root = self.base / 'versions' / pin
         (root / 'bin').mkdir(parents=True)
         (root / 'bin/partial').write_text('interrupted')
@@ -365,102 +372,28 @@ build_darling_source() { printf 'built\\n'; }
 banner() { :; }; do_install_runtime() { printf '%s' "$REPLACE_INCOMPLETE_RUNTIME"; }
 main --install-runtime --darling ciderdarling --replace-incomplete-runtime''').strip(), '1')
 
-    def test_menu_can_select_either_runtime_and_cancel(self):
-        # Darling is chosen up front here, so the first menu is the choice between its two variants.
+    def test_menu_installs_the_launcher_without_asking_about_runtimes(self):
         body = '''
-load_darling_selection; BACKEND=darling; BACKEND_EXPLICIT=1
-is_installed() { return 1; }; setup_plan() { :; }
-choose() { CHOICE=$FAKE_CHOICE; FAKE_CHOICE=0; }
-FAKE_CHOICE='''
-        for choice, variant in ((0, 'regular'), (1, 'ciderdarling')):
-            output = self.checked(body + str(choice) + '\nmenu_install\nprintf "%s" "$DARLING_RUNTIME"')
-            self.assertEqual(output, variant)
-        self.assertNotEqual(self.shell(body + '2\nmenu_install').returncode, 0)
-
-    def test_menu_offers_rosemary_first_and_darling_as_outdated(self):
-        body = '''
-load_darling_selection; select_backend
 is_installed() { return 1; }; setup_plan() { :; }
 choose() { printf '%s\\n' "${2%%|*}" >> "$FIXTURE/menu"; CHOICE=$FAKE_CHOICE; FAKE_CHOICE=0; }
 FAKE_CHOICE='''
-        menu = self.base / 'menu'
-        output = self.checked(body + '0\nmenu_install\nprintf "%s" "$BACKEND"')
-        self.assertEqual(output, 'rosemary')
-        # The runtime menu, then the plan and the final screen: Darling's variants are never asked about.
-        self.assertEqual(menu.read_text().splitlines(), ['Rosemary', 'Continue', 'Install Quadra'])
-        menu.unlink()
-        output = self.checked(body + '1\nmenu_install\nprintf "%s|%s" "$BACKEND" "$DARLING_RUNTIME"')
-        self.assertEqual(output, 'darling|regular')
-        self.assertEqual(menu.read_text().splitlines()[:2], ['Rosemary', 'Regular Darling'])
-        menu.unlink()
-        self.assertNotEqual(self.shell(body + '2\nmenu_install').returncode, 0)
-        # An install already on Darling is offered that first, and Darling is called outdated.
-        output = self.checked('''
-BACKEND=darling
-is_installed() { return 1; }; setup_plan() { :; }
-choose() { printf '%s' "$2"; CHOICE=2; }
-menu_install || true''')
-        self.assertTrue(output.startswith('Darling (outdated)|Keep the current selection'), output)
+        self.checked(body + '0\nmenu_install', launcher=True)
+        self.assertEqual((self.base / 'menu').read_text().splitlines(), ['Continue', 'Install Quadra'])
+        self.assertNotEqual(self.shell(body + '1\nmenu_install', launcher=True).returncode, 0)
 
-    def test_runtime_defaults_to_rosemary_and_keeps_what_was_saved(self):
-        config = self.base / 'config/quadrahq'
-        config.mkdir(parents=True)
-        # (settings.json, runtime.json saved, --darling given, expected)
-        cases = [
-            (None, False, '', 'rosemary'),
-            ('{}', False, '', 'rosemary'),
-            ('not json', False, '', 'rosemary'),
-            ('{"vr": false}', False, '', 'darling'),
-            ('{"runtime_backend": "rosemary"}', False, '', 'rosemary'),
-            ('{"runtime_backend": "darling"}', False, '', 'darling'),
-            (None, True, '', 'darling'),
-            (None, False, '1', 'darling'),
-            ('{"runtime_backend": "rosemary"}', False, '1', 'darling'),
-        ]
-        for settings, saved_runtime, darling_given, expected in cases:
-            with self.subTest(settings=settings, runtime=saved_runtime, darling=darling_given):
-                for name in ('settings.json', 'runtime.json'):
-                    (config / name).unlink(missing_ok=True)
-                if settings is not None:
-                    (config / 'settings.json').write_text(settings)
-                if saved_runtime:
-                    (config / 'runtime.json').touch()
-                output = self.checked(f'DARLING_CHOICE_EXPLICIT={darling_given!r}\nselect_backend\nprintf "%s" "$BACKEND"')
-                self.assertEqual(output, expected)
-        # An explicit --backend is never overridden by what was saved.
-        (config / 'settings.json').write_text('{"runtime_backend": "darling"}')
-        self.assertEqual(self.checked('BACKEND=rosemary; select_backend; printf "%s" "$BACKEND"'), 'rosemary')
-
-    def test_backend_option_and_its_conflicts(self):
+    def test_runtime_options_point_to_the_first_boot_screen(self):
         body = '''
 banner() { :; }; setup_plan() { :; }
-do_install() { printf '%s' "$BACKEND"; }
+do_install() { printf installed; }
 main '''
-        self.assertEqual(self.checked(body + '--yes').lstrip('\n'), 'rosemary')
-        self.assertEqual(self.checked(body + '--yes --backend darling').lstrip('\n'), 'darling')
-        self.assertEqual(self.checked(body + '--yes --backend=rosemary').lstrip('\n'), 'rosemary')
-        self.assertEqual(self.checked(body + '--yes --darling regular').lstrip('\n'), 'darling')
-        self.assertEqual(self.checked(body + '--yes --backend darling --darling ciderdarling').lstrip('\n'), 'darling')
-        for options in ('--backend wrong', '--backend', '--backend=', '--backend rosemary --darling regular'):
+        self.assertEqual(self.checked(body + '--yes', launcher=True).strip(), 'installed')
+        for options in ('--backend darling', '--backend=rosemary', '--darling regular', '--install-runtime'):
             with self.subTest(options=options):
-                self.assertNotEqual(self.shell(body + options).returncode, 0)
-        self.assertIn('--backend', self.checked('usage'))
-
-    def test_runtime_choice_is_saved_without_touching_other_settings(self):
-        settings = self.base / 'config/quadrahq/settings.json'
-        self.checked('BACKEND=rosemary; save_backend_setting')
-        self.assertEqual(json.loads(settings.read_text()), {'runtime_backend': 'rosemary'})
-        settings.write_text(json.dumps({'vr': True, 'runtime_backend': 'darling', 'dns': 'custom'}))
-        self.checked('BACKEND=rosemary; save_backend_setting')
-        self.assertEqual(json.loads(settings.read_text()),
-                         {'vr': True, 'runtime_backend': 'rosemary', 'dns': 'custom'})
-        # A file that cannot be read is left exactly as it is, and the person is told.
-        settings.write_text('not json')
-        result = self.shell('BACKEND=rosemary; save_backend_setting')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(settings.read_text(), 'not json')
-        self.assertIn('Could not save the runtime choice', result.stdout)
-        self.assertEqual([path.name for path in settings.parent.iterdir()], ['settings.json'])
+                result = self.shell(body + options, launcher=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('first-boot screen', result.stderr)
+        self.assertIn('first-boot screen', self.checked('usage', launcher=True))
+        self.assertNotIn('--backend', self.checked('usage', launcher=True))
 
     def fake_checkout(self):
         checkout = self.base / 'data/QuadraHQ'
@@ -475,41 +408,50 @@ main '''
             path.chmod(0o755)
         return checkout
 
-    INSTALL_STUBS = '''
-git() { :; }; step() { :; }; install_tools() { :; }
-validate_tools() { echo "tools $BACKEND" >> "$FIXTURE/log"; }
-ensure_darling() { echo darling >> "$FIXTURE/log"; export DARLING_SYSROOT=/fixture; }
-save_darling_selection() { echo selection >> "$FIXTURE/log"; }
+    def test_install_adds_only_the_launcher(self):
+        self.fake_checkout()
+        stubs = '''
+git() { :; }; step() { :; }
+check_requirements() { echo requirements >> "$FIXTURE/log"; }
 '''
-
-    def test_rosemary_install_needs_no_darling_and_builds_nothing(self):
-        self.fake_checkout()
-        result = self.shell(self.INSTALL_STUBS + 'BACKEND=rosemary\ndo_install')
+        result = self.shell(stubs + 'do_install', launcher=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual((self.base / 'log').read_text().splitlines(), ['tools rosemary', 'launcher'])
-        self.assertEqual(json.loads((self.base / 'config/quadrahq/settings.json').read_text()),
-                         {'runtime_backend': 'rosemary'})
-        self.assertIn('Press Play', result.stdout)
+        self.assertEqual((self.base / 'log').read_text().splitlines(), ['requirements', 'launcher'])
+        self.assertFalse((self.base / 'config/quadrahq/settings.json').exists())
         self.assertFalse((self.base / 'config/quadrahq/runtime.json').exists())
+        self.assertIn('welcome screen', result.stdout)
+        for name in ('install_tools', 'ensure_darling', 'validate_tools', 'save_darling_selection'):
+            self.assertNotEqual(self.shell(f'declare -F {name}', launcher=True).returncode, 0, name)
 
-    def test_darling_install_still_installs_darling_and_builds_the_shim(self):
-        self.fake_checkout()
-        result = self.shell(self.INSTALL_STUBS + 'BACKEND=darling\ndo_install')
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_darling_setup_installs_tools_then_darling_then_selects_it(self):
+        stubs = '''
+step() { :; }; uname() { printf x86_64; }
+install_tools() { echo tools >> "$FIXTURE/log"; }
+validate_tools() { echo validate >> "$FIXTURE/log"; }
+ensure_darling() { echo "darling $DARLING_RUNTIME" >> "$FIXTURE/log"; }
+save_darling_selection() { echo "selection ${1:-activate}" >> "$FIXTURE/log"; }
+banner() { :; }
+'''
+        self.checked(stubs + 'main --darling ciderdarling')
         self.assertEqual((self.base / 'log').read_text().splitlines(),
-                         ['tools darling', 'darling', 'shim', 'launcher', 'selection'])
-        self.assertEqual(json.loads((self.base / 'config/quadrahq/settings.json').read_text()),
-                         {'runtime_backend': 'darling'})
+                         ['tools', 'validate', 'darling ciderdarling', 'selection activate'])
 
-    def test_tool_check_asks_rosemary_only_for_the_launchers_tools(self):
-        empty = self.base / 'bin'
-        empty.mkdir()
-        for tool in ('python3', 'git'):
-            (empty / tool).symlink_to(shutil.which(tool))
-        # clang, lld, pw-cat and the SDL2 headers are missing: fine for Rosemary, fatal for Darling.
-        rosemary = self.shell('BACKEND=rosemary\nPATH="$FIXTURE/bin"\nvalidate_tools')
-        self.assertNotIn('is missing', rosemary.stdout + rosemary.stderr)
-        darling = self.shell('BACKEND=darling\nPATH="$FIXTURE/bin"\nvalidate_tools')
+    def test_launcher_needs_only_git_python_and_gtk(self):
+        tools = self.base / 'bin'
+        tools.mkdir()
+        (tools / 'python3').symlink_to(shutil.which('python3'))
+        missing_git = self.shell('PATH="$FIXTURE/bin"\ncheck_requirements', launcher=True)
+        self.assertNotEqual(missing_git.returncode, 0)
+        self.assertIn('git is missing', missing_git.stderr)
+        (tools / 'git').symlink_to(shutil.which('git'))
+        self.checked('PATH="$FIXTURE/bin"\ncheck_requirements', launcher=True)
+        no_gtk = self.base / 'no-gtk'
+        no_gtk.mkdir()
+        (no_gtk / 'gi.py').write_text('raise ImportError("no PyGObject")\n')
+        result = self.shell('PATH="$FIXTURE/bin"\ncheck_requirements', launcher=True, PYTHONPATH=str(no_gtk))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GTK 4 and libadwaita', result.stderr)
+        darling = self.shell('PATH="$FIXTURE/bin"\nvalidate_tools')
         self.assertNotEqual(darling.returncode, 0)
         self.assertIn('is missing', darling.stdout + darling.stderr)
 
@@ -528,7 +470,7 @@ save_darling_selection() { echo selection >> "$FIXTURE/log"; }
         client.write_text('#!/bin/sh\nexit 0\n'); client.chmod(0o755)
         metadata = root / 'libexec/darling/usr/share/ciderdarling/runtime.json'
         metadata.parent.mkdir(parents=True)
-        source = (ROOT / 'install.sh').read_text()
+        source = (ROOT / 'install-runtime.sh').read_text()
         def constant(name):
             return next(line.split('=', 1)[1] for line in source.splitlines() if line.startswith(name + '='))
         data = {'schema_version': 1, 'name': 'CiderDarling', 'architecture': 'x86_64',
@@ -545,7 +487,7 @@ save_darling_selection() { echo selection >> "$FIXTURE/log"; }
     def prebuilt_fixture(self):
         """A release archive and manifest like CiderDarling's CI publishes."""
         import hashlib
-        source = (ROOT / 'install.sh').read_text()
+        source = (ROOT / 'install-runtime.sh').read_text()
         def constant(name):
             return next(line.split('=', 1)[1] for line in source.splitlines() if line.startswith(name + '='))
         revision, series = constant('CIDER_DARLING_REVISION'), constant('CIDER_DARLING_MANIFEST')

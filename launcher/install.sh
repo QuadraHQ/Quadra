@@ -42,15 +42,15 @@ cat > "$data_home/applications/org.quadrahq.Quadra.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Quadra
-Comment=Run the macOS Roblox client on Linux through Darling
-Comment[ru]=Запуск клиента Roblox для macOS на Linux через Darling
+Comment=Run the macOS Roblox client on Linux
+Comment[ru]=Запуск клиента Roblox для macOS на Linux
 GenericName=Roblox launcher
 GenericName[ru]=Лаунчер Roblox
 Exec=$exec_path
 Icon=quadrahq
 Terminal=false
 Categories=Game;
-Keywords=roblox;darling;
+Keywords=roblox;rosemary;darling;
 StartupNotify=true
 Actions=settings;
 

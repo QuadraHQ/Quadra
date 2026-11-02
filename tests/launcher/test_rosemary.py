@@ -124,7 +124,8 @@ class RuntimeTests(unittest.TestCase):
         self.fake.chmod(0o755)
         os.environ["FAKE_LOG"] = str(self.root / "calls.log")
         for patch in (mock.patch.object(client, "data_dir", lambda: self.root / "rosemary"),
-                      mock.patch.dict(os.environ, {"XDG_DATA_HOME": str(self.root / "xdg")})):
+                      mock.patch.dict(os.environ, {"XDG_DATA_HOME": str(self.root / "xdg")}),
+                      mock.patch.object(runtime, "butter_data_dirs", lambda: [self.root / "xdg" / "butter"])):
             patch.start()
             self.addCleanup(patch.stop)
         self.settings = {"rosemary_program": str(self.fake), "rosemary_prefix": str(self.root / "prefix")}
@@ -161,6 +162,15 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(listed[0].label, "Rosemary 1 (Butter)")
         self.assertTrue(runtime.is_runnable(self.fake))
         self.assertFalse(runtime.is_runnable(self.root / "missing"))
+
+    def test_user_runner_list_leaves_out_quadras_own_rosemary(self):
+        own = self.root / "rosemary-runner" / "1.0-quadra" / "bin" / "rosemary"
+        settings = {"rosemary_runners": [str(self.fake)], "rosemary_program": str(own)}
+        with mock.patch.object(runtime.shutil, "which", return_value=None), \
+                mock.patch.object(runtime, "runners", return_value=[]), \
+                mock.patch.object(runtime, "quadra_runners", return_value=[("Rosemary 1.0-quadra", own)]):
+            self.assertEqual([r.program for r in runtime.runner_list(settings)], [str(own), str(self.fake)])
+            self.assertEqual([r.program for r in runtime.user_runner_list(settings)], [str(self.fake)])
 
     def test_env_clears_inherited_managed_variables(self):
         base = {"ROSEMARY_SERVER": "off", "SDL_VIDEODRIVER": "x11", "PATH": "/bin"}

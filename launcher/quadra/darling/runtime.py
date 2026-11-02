@@ -11,10 +11,10 @@ from ..paths import user_directory
 VARIANTS = ("regular", "ciderdarling")
 SELECTION_KEYS = ("runtime", "executable", "sysroot", "prefix")
 CIDER_DIRECTORY = Path("/opt/ciderdarling")
-# install.sh is the single source of the pinned CiderDarling build: it runs
-# standalone (curl | bash), so it cannot read a separate file. Packages ship it
-# next to the launcher too, and it is what "Update CiderDarling" runs.
-INSTALLER = Path(__file__).resolve().parents[3] / "install.sh"
+# install-runtime.sh is the single source of the pinned CiderDarling build.
+# Packages ship it next to the launcher too, and it is what "Update
+# CiderDarling" and the first-boot screen run.
+INSTALLER = Path(__file__).resolve().parents[3] / "install-runtime.sh"
 
 
 def is_bundled(environment=None):
@@ -190,7 +190,7 @@ def installed_runtimes(current=None, environment=None, selection_file=None,
     The installer's pinned CiderDarling directory wins when it is complete, so
     a remembered older revision does not hide an update; then remembered
     runtimes, PATH clients and other version directories, newest first.
-    `pinned` is a revision; the default reads it from install.sh.
+    `pinned` is a revision; the default reads it from install-runtime.sh.
     """
     env = os.environ if environment is None else environment
     if env.get("QUADRA_BUNDLED_DARLING") and not env.get("FLATPAK_ID"):

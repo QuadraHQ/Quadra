@@ -1,13 +1,21 @@
-"""First-launch setup pages, sharing the launcher's Roblox installer."""
+"""First-launch setup pages: the theme, the runtime that plays Roblox, and
+installing it, sharing the launcher's Roblox installer."""
+
+import threading
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, GLib, Gtk, Pango  # noqa: E402
 
 from . import __version__, core, theme  # noqa: E402
+from .darling import runtime as darling_runtime  # noqa: E402
+from .darling import runtime_install  # noqa: E402
 from .i18n import _  # noqa: E402
+from .paths import user_directory  # noqa: E402
+from .rosemary import install as rosemary_install  # noqa: E402
+from .rosemary import runtime as rosemary_runtime  # noqa: E402
 
 _STYLE = """
 .setup-wizard {
@@ -45,14 +53,34 @@ def _label(text, *, classes=(), centered=False):
                      css_classes=list(classes))
 
 
+APPEARANCES = (
+    ("grid", "Grid", "A tiled backdrop behind the launcher."),
+    ("gnome", "GNOME (classic)", "Follows your system's light or dark appearance."),
+    ("monochrome", "Monochrome · aubree.lat", "Black and white, with a soft backdrop."),
+)
+RUNTIMES = (
+    ("rosemary", "Rosemary", "Recommended. Quadra downloads it for you: nothing to build."),
+    ("darling", "Darling (outdated)", "Installs Darling and its tools in a terminal, which may ask "
+                                      "for your password. Only Darling has some settings, such as the renderer and DNS."),
+)
+DARLING_VARIANTS = (
+    ("regular", "Regular Darling", "Your distribution's or DarlingHQ's packages."),
+    ("ciderdarling", "QuadraHQ's CiderDarling", "Includes QuadraHQ's threading and graphics changes. "
+                                                "Can need a long source build, and its own first sign-in."),
+)
+PREVIOUS_PAGE = {"appearance": "welcome", "runtime": "appearance", "overview": "runtime"}
+
+
 class SetupWizard(Adw.Bin):
-    """A welcome, installation overview, progress and ready screen."""
+    """Welcome, theme, runtime, installation overview, progress and ready screens."""
 
     def __init__(self, window):
         super().__init__()
         self.window = window
         self.installing = False
         self.install_failed = False
+        self.darling_job = None
+        self.darling_variant = window.settings.get("setup_darling_variant") or core.DARLING_RUNTIME["runtime"]
         _install_style()
         self.add_css_class("setup-wizard")
         toolbar = Adw.ToolbarView()
@@ -60,7 +88,7 @@ class SetupWizard(Adw.Bin):
         header.set_title_widget(Gtk.Label(label="Quadra", css_classes=["heading"]))
         self.back = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=_("Back"), visible=False)
         self.back.add_css_class("flat")
-        self.back.connect("clicked", lambda *_args: self.show("welcome"))
+        self.back.connect("clicked", lambda *_args: self.show(PREVIOUS_PAGE[self.pages.get_visible_child_name()]))
         header.pack_start(self.back)
         header.pack_end(Gtk.Label(label=f"v{__version__}", css_classes=["caption", "dim-label"]))
         toolbar.add_top_bar(header)
@@ -68,6 +96,8 @@ class SetupWizard(Adw.Bin):
         self.pages = Gtk.Stack(transition_type=Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
                                transition_duration=180, vexpand=True)
         self.pages.add_named(self._welcome(), "welcome")
+        self.pages.add_named(self._appearance(), "appearance")
+        self.pages.add_named(self._runtime(), "runtime")
         self.pages.add_named(self._overview(), "overview")
         self.pages.add_named(self._progress_page(), "progress")
         self.pages.add_named(self._ready(), "ready")
@@ -105,14 +135,136 @@ class SetupWizard(Adw.Bin):
         logo = theme.Logo(core.ICONS / "quadrahq-128.png", 88)
         logo.set_halign(Gtk.Align.CENTER)
         body.prepend(logo)
-        body.append(_label("A short setup downloads Roblox and gets it ready to launch. "
-                           "You’ll sign in inside Roblox when you’re done.", centered=True))
-        actions, _button = self._actions("Get started", lambda *_args: self.show("overview"),
+        body.append(_label("A short setup picks a look and the runtime that plays Roblox, then installs "
+                           "them. You’ll sign in inside Roblox when you’re done.", centered=True))
+        actions, _button = self._actions("Get started", lambda *_args: self.show("appearance"),
                                         "Not now", lambda *_args: self.window.dismiss_setup())
         body.append(actions)
         body.append(_label("An independent launcher for Roblox on Linux",
                            classes=("caption", "dim-label"), centered=True))
         return page
+
+    @staticmethod
+    def _choices(options, selected, on_selected):
+        group = Adw.PreferencesGroup()
+        first = None
+        for code, title, description in options:
+            check = Gtk.CheckButton(active=code == selected, valign=Gtk.Align.CENTER)
+            if first is None:
+                first = check
+            else:
+                check.set_group(first)
+            check.connect("toggled", lambda button, chosen=code: button.get_active() and on_selected(chosen))
+            row = Adw.ActionRow(title=_(title), subtitle=_(description), activatable_widget=check)
+            row.add_prefix(check)
+            group.add(row)
+        return group
+
+    def _appearance(self):
+        page, body = self._page("Choose a look", "It applies right away. You can change it later in Settings.",
+                                "applications-graphics-symbolic")
+        current = self.window.settings.get("launcher_appearance", "gnome")
+        body.append(self._choices(APPEARANCES, current, self._appearance_selected))
+        actions, _button = self._actions("Continue", lambda *_args: self.show("runtime"))
+        body.append(actions)
+        return page
+
+    def _appearance_selected(self, code):
+        page = self.window.settings_page
+        page.appearance_row.set_selected(page.appearance_codes.index(code))
+
+    def _runtime(self):
+        page, body = self._page("Choose how Roblox runs", "The runtime runs the macOS Roblox client on Linux. "
+                                "You can switch later in Settings → Environment.", "applications-system-symbolic")
+        current = "rosemary" if self.window.rosemary_selected() else "darling"
+        body.append(self._choices(RUNTIMES, current, self._runtime_selected))
+        self.rosemary_sources = self._rosemary_source_group()
+        self.rosemary_sources.set_visible(current == "rosemary")
+        body.append(self.rosemary_sources)
+        self.darling_variants = self._choices(DARLING_VARIANTS, self.darling_variant, self._darling_variant_selected)
+        self.darling_variants.set_title(_("Which Darling"))
+        self.darling_variants.set_visible(current == "darling" and not darling_runtime.is_bundled())
+        body.append(self.darling_variants)
+        actions, self.runtime_continue = self._actions("Continue", lambda *_args: self.show("overview"))
+        body.append(actions)
+        self._show_rosemary_source()
+        return page
+
+    def _runtime_selected(self, code):
+        self.window.settings_page.backend_row.set_selected(1 if code == "rosemary" else 0)
+        self.rosemary_sources.set_visible(code == "rosemary")
+        self.darling_variants.set_visible(code == "darling" and not darling_runtime.is_bundled())
+        self._show_rosemary_source()
+
+    def _rosemary_source_group(self):
+        group = Adw.PreferencesGroup(title=_("Which Rosemary"))
+        chosen = self.window.settings_page._chosen_rosemary_program()
+        quadra_programs = {str(program) for _name, program in rosemary_runtime.quadra_runners()}
+        self.own_rosemary = bool(chosen) and chosen not in quadra_programs
+        self.quadra_rosemary_row = Adw.SwitchRow(
+            title=_("Use Quadra’s Rosemary"),
+            subtitle=_("Quadra downloads and updates its own build, which adds VR. "
+                       "Turn it off to use a Rosemary you installed yourself."),
+            active=not self.own_rosemary,
+        )
+        self.quadra_rosemary_row.connect("notify::active", self._quadra_rosemary_toggled)
+        group.add(self.quadra_rosemary_row)
+        self.own_rosemary_row = Adw.ComboRow(title=_("Your Rosemary"), use_subtitle=False)
+        self._own_rosemary_runners = []
+        self._own_rosemary_handler = self.own_rosemary_row.connect("notify::selected", self._own_rosemary_selected)
+        group.add(self.own_rosemary_row)
+        self.add_own_rosemary_row = Adw.ActionRow(
+            title=_("Add your own Rosemary"),
+            subtitle=_("Pick a rosemary program you built or downloaded"),
+        )
+        browse = Gtk.Button(label=_("Browse…"), valign=Gtk.Align.CENTER)
+        browse.connect("clicked", lambda *_args: self.window.settings_page._choose_rosemary_runner(
+            self._show_rosemary_source))
+        self.add_own_rosemary_row.add_suffix(browse)
+        self.add_own_rosemary_row.set_activatable_widget(browse)
+        group.add(self.add_own_rosemary_row)
+        return group
+
+    def _quadra_rosemary_toggled(self, row, _pspec):
+        self.own_rosemary = not row.get_active()
+        page = self.window.settings_page
+        if not self.own_rosemary:
+            self.window.set_setting("rosemary_program", "")
+            page.rosemary_source_row.set_selected(page._rosemary_sources.index("quadra"))
+            page.refresh_rosemary()
+        self._show_rosemary_source()
+
+    def _own_rosemary_selected(self, row, _pspec):
+        self.window.set_setting("rosemary_program", self._own_rosemary_runners[row.get_selected()].program)
+        self.window.settings_page.refresh_rosemary()
+        self._show_rosemary_source()
+
+    def _show_rosemary_source(self):
+        page = self.window.settings_page
+        runners = rosemary_runtime.user_runner_list(self.window.settings)
+        programs = [runner.program for runner in runners]
+        chosen = page._chosen_rosemary_program()
+        if self.own_rosemary and chosen not in programs and programs:
+            chosen = programs[0]
+            self.window.set_setting("rosemary_program", chosen)
+            page.refresh_rosemary()
+        with self.own_rosemary_row.handler_block(self._own_rosemary_handler):
+            if runners != self._own_rosemary_runners:
+                self._own_rosemary_runners = runners
+                self.own_rosemary_row.set_model(Gtk.StringList.new([runner.label for runner in runners]))
+            if chosen in programs:
+                self.own_rosemary_row.set_selected(programs.index(chosen))
+        found = chosen in programs
+        self.own_rosemary_row.set_subtitle(
+            chosen if found else _("None found. Install Rosemary with Butter or put it on PATH, or browse for it below."))
+        self.own_rosemary_row.set_visible(self.own_rosemary)
+        self.add_own_rosemary_row.set_visible(self.own_rosemary)
+        waiting_for_own = self.window.rosemary_selected() and self.own_rosemary and not found
+        self.runtime_continue.set_sensitive(not waiting_for_own)
+
+    def _darling_variant_selected(self, code):
+        self.darling_variant = code
+        self.window.set_setting("setup_darling_variant", code)
 
     @staticmethod
     def _step(number, title, description):
@@ -126,26 +278,30 @@ class SetupWizard(Adw.Bin):
 
     def _overview(self):
         page, body = self._page("Here’s what happens next", "Everything you need to start playing, in one place.")
-        steps = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        steps.append(self._step(1, "Download Roblox", "Get the official macOS client directly from Roblox."))
-        steps.append(self._step(2, "Prepare Darling", "Darling runs macOS apps on Linux. "
-                                "Quadra prepares the files Roblox needs."))
-        steps.append(self._step(3, "Make it yours", "Sign in to Roblox, then choose your graphics, "
-                                "mouse and launcher preferences in Settings."))
-        body.append(steps)
+        self.rosemary_steps = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.download_rosemary_step = self._step(1, "Download Rosemary", "Rosemary runs macOS apps on Linux. "
+                                                 "Quadra downloads it and checks it.")
+        self.rosemary_steps.append(self.download_rosemary_step)
+        self.own_rosemary_step = self._step(1, "Use your Rosemary", "Rosemary runs macOS apps on Linux. Quadra runs "
+                                            "the one you chose and leaves updating it to you.")
+        self.rosemary_steps.append(self.own_rosemary_step)
+        self.rosemary_steps.append(self._step(2, "Download Roblox", "Get the official macOS client directly from Roblox."))
+        self.rosemary_steps.append(self._step(3, "Make it yours", "Sign in to Roblox, then choose your graphics, "
+                                              "mouse and launcher preferences in Settings."))
+        body.append(self.rosemary_steps)
+        self.darling_steps = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.darling_steps.append(self._step(1, "Install Darling", "A terminal opens to install Darling and the tools "
+                                             "it needs. It may ask for your password. Quadra restarts when it is done."))
+        self.darling_steps.append(self._step(2, "Download Roblox", "Get the official macOS client directly from Roblox, "
+                                             "and prepare the files it needs in Darling."))
+        self.darling_steps.append(self._step(3, "Make it yours", "Sign in to Roblox, then choose your graphics, "
+                                             "mouse and launcher preferences in Settings."))
+        body.append(self.darling_steps)
 
         folders = Gtk.Expander(label=_("Where your files go"))
-        locations = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=10,
-                            margin_start=12, margin_end=12)
-        for title, path in (("Roblox and its downloads", core.DATA_DIR),
-                            ("Darling’s app environment", core.DARLING_PREFIX),
-                            ("Launcher settings", core.CONFIG_DIR)):
-            locations.append(_label(title, classes=("caption", "dim-label")))
-            label = Gtk.Label(label=str(path), wrap=True, xalign=0, selectable=True,
-                              css_classes=["setup-path"])
-            label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-            locations.append(label)
-        folders.set_child(locations)
+        self.locations = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=10,
+                                 margin_start=12, margin_end=12)
+        folders.set_child(self.locations)
         body.append(folders)
         self.overview_note = _label("You can change launcher preferences at any time.",
                                     classes=("caption", "dim-label"), centered=True)
@@ -153,6 +309,22 @@ class SetupWizard(Adw.Bin):
         actions, self.install_button = self._actions("Install Roblox", self._start_install)
         body.append(actions)
         return page
+
+    def _show_locations(self):
+        while child := self.locations.get_first_child():
+            self.locations.remove(child)
+        if self.window.rosemary_selected():
+            folders = (("Rosemary and Roblox", user_directory("DATA")),
+                       ("Rosemary’s app environment", rosemary_runtime.prefix_path(self.window.settings)))
+        else:
+            folders = (("Roblox and its downloads", core.DATA_DIR),
+                       ("Darling’s app environment", core.DARLING_PREFIX))
+        for title, path in (*folders, ("Launcher settings", core.CONFIG_DIR)):
+            self.locations.append(_label(title, classes=("caption", "dim-label")))
+            label = Gtk.Label(label=str(path), wrap=True, xalign=0, selectable=True,
+                              css_classes=["setup-path"])
+            label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            self.locations.append(label)
 
     def _progress_page(self):
         page, body = self._page("Getting Roblox ready", "This can take a few minutes. "
@@ -167,7 +339,7 @@ class SetupWizard(Adw.Bin):
                                css_classes=["setup-note", "card"])
         body.append(self.error)
         self.error_actions, self.retry_button = self._actions(
-            "Try again", self._start_install, "Back", lambda *_args: self.show("overview"))
+            "Try again", self._start_install, "Back", lambda *_args: self.show("runtime"))
         self.error_actions.set_visible(False)
         body.append(self.error_actions)
         return page
@@ -194,17 +366,44 @@ class SetupWizard(Adw.Bin):
 
     def show(self, name):
         self.pages.set_visible_child_name(name)
-        self.back.set_visible(name == "overview")
+        self.back.set_visible(name in PREVIOUS_PAGE)
         if name == "overview":
-            installed = bool(core.installed_version())
-            self.install_button.set_label(_("Continue") if installed else _("Install Roblox"))
+            rosemary = self.window.rosemary_selected()
+            self.rosemary_steps.set_visible(rosemary)
+            self.download_rosemary_step.set_visible(not self.own_rosemary)
+            self.own_rosemary_step.set_visible(self.own_rosemary)
+            self.darling_steps.set_visible(not rosemary)
+            self._show_locations()
+            installed = self.window.client_installed()
+            if installed:
+                self.install_button.set_label(_("Continue"))
+            elif rosemary or self._darling_ready():
+                self.install_button.set_label(_("Install Roblox"))
+            else:
+                self.install_button.set_label(_("Install Darling"))
             self.overview_note.set_label(_("Roblox is already installed. Your settings and sign-in are kept.")
                                          if installed else _("You can change launcher preferences at any time."))
+
+    def _darling_ready(self):
+        if darling_runtime.is_bundled():
+            return True
+        return core.DARLING_RUNTIME["runtime"] == self.darling_variant and not core.missing_tools()
+
+    def continue_install(self):
+        if self.window.rosemary_selected() or self._darling_ready():
+            self._start_install()
+            return False
+        self.show("progress")
+        self._finished(RuntimeError(_("Darling’s installer finished, but Quadra cannot find {runtime} with the "
+                                      "tools it needs. Check the terminal’s output, then try again.",
+                                      runtime=dict((code, _(title)) for code, title, _text in DARLING_VARIANTS)
+                                      [self.darling_variant])))
+        return False
 
     def _start_install(self, *_args):
         if self.installing:
             return
-        if core.installed_version() and not self.install_failed:
+        if self.window.client_installed() and not self.install_failed:
             self.show("ready")
             return
         self.installing = True
@@ -213,11 +412,106 @@ class SetupWizard(Adw.Bin):
         self.error_actions.set_visible(False)
         self.progress.set_fraction(0)
         self.spinner.set_spinning(True)
+        if self.window.rosemary_selected():
+            self._install_rosemary()
+        elif self._darling_ready():
+            self._install_darling_client()
+        else:
+            self._install_darling()
+
+    def _install_rosemary(self):
+        self.status.set_label(_("Checking the latest Roblox version…") if self.own_rosemary
+                              else _("Downloading Rosemary…"))
+        if not self.window.begin("installing Rosemary"):
+            self._finished(RuntimeError(_("Another operation is in progress. Wait for it to finish, then try again.")))
+            return
+        settings = self.window.settings
+        needs_quadra_rosemary = not self.own_rosemary and not rosemary_runtime.quadra_runners()
+        rosemary_share = 0.4 if needs_quadra_rosemary else 0.0
+
+        def report(fraction, text):
+            GLib.idle_add(self._progress, fraction, text)
+
+        def report_client(fraction, text):
+            report(rosemary_share + (1 - rosemary_share) * fraction, text)
+
+        def install():
+            error = None
+            try:
+                if needs_quadra_rosemary:
+                    rosemary_install.install_latest(lambda fraction, text: report(rosemary_share * fraction, text),
+                                                    source="quadra")
+                rosemary_runtime.ensure_ready(settings, report_client)
+            except Exception as failure:
+                error = failure
+            GLib.idle_add(self._rosemary_installed, error)
+
+        threading.Thread(target=install, daemon=True).start()
+
+    def _rosemary_installed(self, error):
+        self.window.end(resume_pending=False)
+        self.window.settings_page.refresh_rosemary()
+        self._finished(error)
+        return False
+
+    def _install_darling(self):
+        from .ui import system
+        self.status.set_label(_("Finish installing Darling in the terminal window. It may ask for your password."))
+        self.progress.pulse()
+        release = self.window.cider_release if self.darling_variant == "ciderdarling" else None
+        try:
+            self.darling_job = runtime_install.Installation.create(
+                core.PROJECT, self.darling_variant, core.CACHE_DIR, release=release, with_system_tools=True)
+            if not system._launch_runtime_terminal(self.window, self.darling_job.command):
+                raise RuntimeError(_("Could not open an installation terminal."))
+        except (GLib.Error, OSError, RuntimeError, ValueError) as error:
+            self._close_darling_job()
+            self._finished(error)
+            return
+        GLib.timeout_add(1000, self._watch_darling_install)
+
+    def _watch_darling_install(self):
+        from .ui import system
+        job = self.darling_job
+        try:
+            status = job.poll()
+        except (OSError, RuntimeError, ValueError) as error:
+            self._close_darling_job()
+            self._finished(error)
+            return False
+        if status is None:
+            self.progress.pulse()
+            return True
+        tail = job.log_tail(40)
+        self._close_darling_job()
+        if status != 0:
+            message = _("Darling’s installation failed or was cancelled. See the terminal for details.")
+            if tail:
+                message += "\n\n" + _("End of the build log:") + "\n" + tail
+            self._finished(RuntimeError(message))
+            return False
+        self.status.set_label(_("Darling is installed. Restarting Quadra…"))
+        self.window.settings_page.flush()
+        try:
+            system._restart_launcher("continue-setup")
+        except OSError as error:
+            self._finished(error)
+        return False
+
+    def _close_darling_job(self):
+        if self.darling_job is not None:
+            try:
+                self.darling_job.close()
+            except OSError:
+                pass
+            self.darling_job = None
+
+    def _install_darling_client(self):
         self.status.set_label(_("Checking the latest Roblox version…"))
         missing = core.missing_tools()
         if missing:
             self._finished(RuntimeError(_("Required programs are missing: {programs}. "
-                                         "Run the Quadra installer to finish installing them, then try again.",
+                                         "Choose Darling again to install them, then try again.",
                                          programs=", ".join(missing))))
             return
         accepted = self.window.settings_page.check_updates(

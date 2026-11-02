@@ -33,7 +33,7 @@ window = Gtk.Window()
 project = base / "Quadra %f ' $() directory"
 project.mkdir()
 arguments = base / "arguments"
-installer = project / "install.sh"
+installer = project / "install-runtime.sh"
 installer.write_text('#!/bin/bash\n[[ -t 0 && -t 1 ]] || exit 41\n'
                      'test -r /dev/tty || exit 42\n'
                      'printf "%s\\n" "$@" > ' + shlex.quote(str(arguments)) + '\nexit 0\n')
@@ -63,7 +63,7 @@ try:
                 if time.monotonic() > deadline:
                     raise AssertionError("Terminal did not finish the fake installer")
                 time.sleep(.05)
-            expected = ["--install-runtime", "--darling", "ciderdarling", "--pinned-runtime"]
+            expected = ["--darling", "ciderdarling", "--install-runtime", "--pinned-runtime"]
             if release:
                 expected += ["--runtime-release", str(job.directory / "release.json")]
                 assert job.target_revision == release['source_revision']

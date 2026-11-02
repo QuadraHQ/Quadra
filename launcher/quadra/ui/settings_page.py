@@ -1043,6 +1043,7 @@ class SettingsPage(Adw.Bin):
             window.rosemary_selected()
             and not window.rosemary_ready()
             and not window.busy
+            and not window.setup_active
         ):
             self._install_rosemary_client()
 
@@ -1339,6 +1340,7 @@ class SettingsPage(Adw.Bin):
             not rosemary_runtime.quadra_runners(kind)
             and not self._chosen_rosemary_program()
             and not window.busy
+            and not window.setup_active
         ):
             self._install_rosemary()
 
@@ -1444,7 +1446,7 @@ class SettingsPage(Adw.Bin):
         self.window.set_setting("rosemary_program", self._selected_rosemary_runner().program)
         self.refresh_rosemary()
 
-    def _choose_rosemary_runner(self):
+    def _choose_rosemary_runner(self, on_added=lambda: None):
         dialog = Gtk.FileChooserNative.new(
             _("Choose a Rosemary program"),
             self.window,
@@ -1456,8 +1458,8 @@ class SettingsPage(Adw.Bin):
         def on_response(chooser, response):
             file = chooser.get_file() if response == Gtk.ResponseType.ACCEPT else None
             chooser.destroy()
-            if file is not None and file.get_path():
-                self._add_rosemary_runner(file.get_path())
+            if file is not None and file.get_path() and self._add_rosemary_runner(file.get_path()):
+                on_added()
 
         dialog.connect("response", on_response)
         dialog.show()
@@ -1469,12 +1471,13 @@ class SettingsPage(Adw.Bin):
                 _("Rosemary"),
                 _("{path} is not an executable file.", path=program),
             )
-            return
+            return False
         window = self.window
         added = [p for p in window.settings.get("rosemary_runners") or [] if p != program]
         window.set_setting("rosemary_runners", [*added, program])
         window.set_setting("rosemary_program", program)
         self.refresh_rosemary()
+        return True
 
     def _remove_rosemary_runner(self):
         window = self.window

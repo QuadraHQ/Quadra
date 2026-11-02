@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Pin a CiderDarling revision in install.sh, with its prebuilt archives.
+"""Pin a CiderDarling revision in install-runtime.sh, with its prebuilt archives.
 
   packaging/pin-ciderdarling.py <40-hex revision>
 
 Reads the manifests of CiderDarling's CI release bin-<12 hex digits> and
 writes the revision, its patch-series hash and the SHA-256 of each prebuilt
-archive into install.sh (a flavor without an archive installs from source),
+archive into install-runtime.sh (a flavor without an archive installs from source),
 updates the pin in docs/DARLING_RUNTIMES.md and refreshes the website copy
 of the installer. Nothing is committed.
 """
@@ -36,7 +36,7 @@ def manifest(revision, flavor):
 def replace(text, name, value):
     pattern = re.compile(rf"^{name}=.*$", re.M)
     if len(pattern.findall(text)) != 1:
-        sys.exit(f"install.sh must assign {name} exactly once")
+        sys.exit(f"install-runtime.sh must assign {name} exactly once")
     return pattern.sub(f"{name}={value}", text)
 
 
@@ -55,7 +55,7 @@ def main():
                      or not re.fullmatch(r"[0-9a-f]{64}", data.get("archive_sha256", ""))):
             sys.exit(f"The {flavor} manifest does not describe this revision")
 
-    installer = ROOT / "install.sh"
+    installer = ROOT / "install-runtime.sh"
     text = installer.read_text()
     old = re.search(r"^CIDER_DARLING_REVISION=([0-9a-f]{40})$", text, re.M).group(1)
     old_series = re.search(r"^CIDER_DARLING_MANIFEST=([0-9a-f]{64})$", text, re.M).group(1)
@@ -71,7 +71,7 @@ def main():
         state = f"{found[flavor]['archive_bytes'] / 1048576:.0f} MiB, glibc {found[flavor]['min_glibc']}+" \
             if found[flavor] else "none: source build"
         print(f"{flavor}: {state}")
-    print(f"Pinned CiderDarling {revision[:12]} in install.sh; review and commit.")
+    print(f"Pinned CiderDarling {revision[:12]} in install-runtime.sh; review and commit.")
 
 
 if __name__ == "__main__":

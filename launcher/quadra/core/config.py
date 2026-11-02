@@ -84,6 +84,7 @@ DEFAULT_SETTINGS = {
     # Which macOS translation layer runs Roblox: "rosemary" (the default for a new install) or "darling"
     # (outdated). load_settings keeps an install that predates the choice, and a bundled one, on Darling.
     "runtime_backend": "rosemary",
+    "setup_darling_variant": "",
     "rosemary_program": "",
     "rosemary_runners": [],
     # Which Rosemary Quadra installs: "quadra" (its own build, adds VR) or "upstream" (the regular one).

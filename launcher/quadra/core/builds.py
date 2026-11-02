@@ -150,13 +150,12 @@ def build_metal():
 
 def missing_tools():
     """Programs the launcher needs that are not installed."""
-    # needed = {DARLING_EXECUTABLE: "darling", "unzip": "unzip"}
-    needed = {"unzip": "unzip"}
+    needed = {locations.DARLING_EXECUTABLE: "darling", "unzip": "unzip"}
     if not locations.PREBUILT_SHIM:
         needed.update({"clang": "clang", "ld.lld": "lld"})
     missing = [
         package for program, package in needed.items() if not shutil.which(program)
     ]
-    # if not DARLING_SYSROOT.is_dir() and "darling" not in missing:
-    #     missing.append(f"darling ({DARLING_SYSROOT})")
+    if not locations.DARLING_SYSROOT.is_dir() and "darling" not in missing:
+        missing.append(f"darling ({locations.DARLING_SYSROOT})")
     return missing

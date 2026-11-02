@@ -32,7 +32,7 @@ install -m644 "$source_root/branding/"*.png "$source_root/branding/"*.svg "$shar
 install -m644 "$source_root/branding/quadrahq.webp" "$share/branding/"
 install -m644 "$source_root/patch_startup_throttle.py" "$share/"
 install -m644 "$source_root/README.md" "$share/"
-install -m755 "$source_root/install.sh" "$share/"
+install -m755 "$source_root/install-runtime.sh" "$share/"
 install -m755 "$build_dir/libQuadraShims.dylib" \
   "$build_dir/libquadra-wayland.so" "$shim/"
 # Studio's Vulkan fix: optional, built only where the Vulkan headers are installed.

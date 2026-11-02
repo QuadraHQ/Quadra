@@ -488,7 +488,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         elif page in ("flags", "env", "m2vk", "roblox", "vr"):
             self.stack.set_visible_child_name("settings")
             self.settings_page.set_tab(page)
-        else:
+        elif self.stack.get_child_by_name(page) is not None:
             self.stack.set_visible_child_name(page)
 
         # Official Libadwaita Split View layout
@@ -566,13 +566,15 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.appearance_layer = theme.AppearanceLayer(self.wallpaper)
         self.set_content(self.appearance_layer)
         self.apply_launcher_appearance()
-        if page == "setup" or (
+        if page in ("setup", "continue-setup") or (
             page
             not in ("settings", "ciderdarling", "env", "roblox", "flags")
-            and not core.installed_version()
+            and not self.client_installed()
             and not self.settings.get("setup_complete", False)
         ):
             self.show_setup()
+            if page == "continue-setup":
+                GLib.idle_add(self.setup.continue_install)
         else:
             self.setup_active = False
             self.content_stack.set_visible_child_name("launcher")

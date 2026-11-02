@@ -7,7 +7,7 @@ import urllib.request
 
 from .. import __version__
 from ..i18n import _
-from . import builds, locations
+from . import builds, config, locations
 
 __all__ = [
     "REPO_URL",
@@ -62,7 +62,8 @@ def _git(*args, input=None):
 def update_launcher(progress=None):
     """Updates Quadra the way install.sh does: pulls the checkout
     (fast-forward only, so a failed update never leaves a half merge),
-    rebuilds the shim and reinstalls the menu entries. Returns (True,
+    rebuilds Darling's shim when Darling is chosen and reinstalls the menu
+    entries. Returns (True,
     message), or (False, release page) when this is not a git checkout
     (Flatpak, packages)."""
     if not (locations.PROJECT / ".git").is_dir():
@@ -114,11 +115,12 @@ def update_launcher(progress=None):
                 )
             )
 
-    if progress:
-        progress(0.6, _("Building shim…"))
-    ok, output = builds.build_shim()
-    if not ok:
-        raise RuntimeError(_("Could not build the shim:\n{output}", output=output))
+    if config.load_settings().get("runtime_backend") == "darling":
+        if progress:
+            progress(0.6, _("Building shim…"))
+        ok, output = builds.build_shim()
+        if not ok:
+            raise RuntimeError(_("Could not build the shim:\n{output}", output=output))
 
     if progress:
         progress(0.9, _("Updating launcher shortcuts…"))

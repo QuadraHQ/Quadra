@@ -17,10 +17,10 @@ __all__ = [
 ]
 
 
-def _restart_launcher():
+def _restart_launcher(page="settings"):
     # Start the normal entry point without replaying an original Roblox URI.
     # A fresh process loads the selected client, sysroot and prefix together.
-    environment = dict(os.environ, QUADRA_PAGE="settings")
+    environment = dict(os.environ, QUADRA_PAGE=page)
     entry = core.PROJECT / "launcher/quadrahq-launcher"
     if not entry.is_file():
         raise FileNotFoundError(

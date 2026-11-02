@@ -21,7 +21,7 @@ class RuntimeInstallationTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.project = self.root / "Quadra % $() ' space"
         self.project.mkdir()
-        self.installer = self.project / "install.sh"
+        self.installer = self.project / "install-runtime.sh"
         self.installer.write_text("exit 0\n")
         self.arguments = self.root / "arguments"
 
@@ -129,11 +129,16 @@ class RuntimeInstallationTests(unittest.TestCase):
                 self.wait_for(lambda: (job.directory / "result").exists())
                 self.assertEqual(job.poll(), status)
                 self.assertEqual(self.arguments.read_text().splitlines(),
-                                 ["--install-runtime", "--darling", "ciderdarling", "--pinned-runtime"])
+                                 ["--darling", "ciderdarling", "--install-runtime", "--pinned-runtime"])
                 self.assertIsNone(process.poll(), "Terminal must remain open for the build output")
                 job.close()
                 os.write(master, b"\n")
                 self.assertEqual(process.wait(timeout=5), status)
+
+    def test_first_boot_setup_installs_the_tools_and_selects_the_runtime(self):
+        job = Installation.create(self.project, "regular", self.root / "cache", with_system_tools=True)
+        self.addCleanup(job.close)
+        self.assertEqual(job.command[4:], [str(self.installer.resolve()), "regular", str(job.directory)])
 
     def test_late_terminal_after_timeout_does_not_run_installer(self):
         self.installer.write_text('touch ' + shlex.quote(str(self.arguments)) + '\n')
