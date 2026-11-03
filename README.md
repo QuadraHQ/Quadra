@@ -12,36 +12,11 @@
    </a>
  </p>
 
- <p align="center">
-  The Roblox client meant for MacOS, running on Linux through <a href="https://www.darlinghq.org">Darling</a>, a compatability layer for using MacOS applications on Linux.
-
-  improved by aubree.wtf and QuadraHQ maintainers. with patches and more, Mac O' Blox, now Quadra was originally created by narezy. Credits of the base to Quadra go to narezy.
+<p align="center">
+  A bootstrapper for the macOS Roblox Player client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a> or <a href="https://darlinghq.org">Darling</a>, and Roblox Studio via <a href="https://winehq.org">Wine</a>.
 </p>
 
-<h1 align="center">
-A.I. Disclaimer, do not use Quadra if against the usage of A.I.
-</h1>
-
-###   Quadra uses **Generative A.I.** for the maintaining and addition of features for Quadra. Please do NOT complain in the QuadraHQ [Discord server](https://discord.gg/W8jXfngc8z) if you are aginst the usage of Generative A.I.
-
-<h1 align="center">
-  Description
-</h1>
-
-Full graphics* with antialiasing, sound, camera and mouse lock, a session that
-survives restarts, and a small launcher with fast flags. Roblox Studio too, in
-its Windows version through Wine. English and Russian. Quadra is under the GPL v3 license. Do not make Quadra proprietary, nor may any derivatives be closed source.
-Any derivatives must be also under the GPL v3 license, and cannot remove any copyright notices.
-* What we mean by "Full graphics" is that the game is running and largely playable. Due to the nature of OpenGL, we cannot provide maxiumum graphics.
-
-<h1 align="center">
-  Migration from Cider / Mac O' Blox to Quadra
-</h1>
-
-Quadra is the new name for Cider, maintained by **QuadraHQ**. The terminal
-command and native package name are **`quadrahq`**, the desktop ID is
-`org.quadrahq.Quadra`, and the website is
-[quadrahq.org](https://quadrahq.org). The logo stays the same.
+## Migration from Cider / Mac O' Blox to Quadra
 
 The source installer moves `~/.local/share/CiderHQ` (or the older
 `~/.local/share/MacOBlox`) to `~/.local/share/QuadraHQ`. Settings and cache move
@@ -49,157 +24,29 @@ from `ciderhq` (or `macoblox`) to `quadrahq`, and Darling session files move
 from `Library/CiderHQ` (or `Library/MacOBlox`) to `Library/QuadraHQ`. Existing
 Quadra data is never replaced; Cider data takes precedence over MacOBlox data.
 
-The launcher's Python package is `quadra`, the shim is `libQuadraShims.dylib`
-and its settings are `QUADRA_*` variables. Names that the Darling runtime and
-Quadra M2VK read (`CIDER_*`, `MACOBLOX_METAL_*`, CiderDarling's runtime
-identifiers) keep their compatibility names until those projects are renamed.
-The source lives at [QuadraHQ/Quadra](https://github.com/QuadraHQ/Quadra) (formerly
-CiderHQ-org/Cider; the old address redirects) and the Darling runtime at
-[QuadraHQ/CiderDarling](https://github.com/QuadraHQ/CiderDarling).
-
 ## Install
+
+Use the installer below to install or update.
+
+```bash
+curl -fsSL https://quadrahq.org/install.sh | bash
+```
 
 **NixOS (x86_64):** use the [Nix package and NixOS module](packaging/nix/README.md).
 It bundles CiderDarling by default, with regular Darling available as an
 alternative. From a checkout, run `nix run .`; use Nix to install and update
 this version instead of the source installer below.
 
-Every **Latest** version is a source release. Use the installer below to install or update.
-
-If Roblox's public version or client download endpoint returns HTTP 403,
-Quadra retries the same channel/upload through alternate official Roblox
-servers, then its public download cache on `vps.korona.lat`. Login and game
-traffic continue to go directly to Roblox.
-
-```bash
-curl -fsSL https://quadrahq.org/install.sh | bash
-```
-
-The installer only installs the launcher: it downloads Quadra with git and
-adds **Quadra** to the app menu. It needs git, Python 3, GTK 4 and libadwaita
-(PyGObject), installs no packages and does not use sudo. Open Quadra for its
-first-boot screen: pick the launcher's look, then the runtime that plays
-Roblox, and it installs that runtime and Roblox and explains how to sign in.
-Existing Roblox installations open the launcher directly; **Setup guide** in
-its menu reopens the guide.
-
-The first-boot screen offers two runtimes. **Rosemary** is recommended: there
-is nothing to build, and Quadra downloads Rosemary and Roblox in its window.
-**Darling** is outdated and kept for people who still need it. Some settings,
-such as the renderer and DNS, only apply to Darling. Choosing Darling opens a
-terminal that runs `install-runtime.sh` from Quadra's folder: it installs the
-system tools Darling needs (it may ask for your sudo password) and Darling
-itself, then Quadra restarts and downloads Roblox. Switch later with **Run
-Roblox with** in **Settings → Environment**.
-
-Uninstalling keeps Rosemary's files in `~/.local/share/quadrahq` unless you add
-`--purge`.
-
-**Settings → Environment → Interface → Launcher appearance** switches
-immediately between **GNOME (classic)** (the default: the system appearance),
-**Grid** (square controls and a subtle grid background), and **Monochrome ·
-aubree.lat** (pure black, grey outlines, Archivo/JetBrains Mono and a topology
-backdrop; the Quadra logo keeps its colours). The choice is saved and can be
-changed while Roblox is running. An existing install keeps the appearance it
-already saved.
-
-With Darling, the first-boot screen offers **Regular Darling** (the default
-Darling) or **QuadraHQ's CiderDarling**, our Darling variant with threading,
-CPU detection and OpenGL fixes. `install-runtime.sh` also runs by hand:
-
-```bash
-~/.local/share/QuadraHQ/install-runtime.sh --darling ciderdarling
-~/.local/share/QuadraHQ/install-runtime.sh --darling regular
-```
-
-Regular Darling keeps the installed-runtime, distro package and pinned upstream
-download paths. [CiderDarling](https://github.com/QuadraHQ/CiderDarling) installs
-into `/opt/ciderdarling/<revision>` using sudo. On Arch-based systems, and on
-Debian/Ubuntu-based ones with glibc 2.39 or newer (Ubuntu 24.04, Mint 22), the
-installer downloads the pinned revision's prebuilt build from CiderDarling's
-CI releases, checks it against a pinned SHA-256 and installs the libraries it
-uses, in minutes. Elsewhere, when the build does not suit the system's
-libraries, or with `--from-source`, it compiles the pinned source instead; the
-source build always asks for confirmation. Arch users can also
-install `ciderdarling-bin` from the AUR. Its x86_64 build includes OpenGL and
-Metal API stubs.
-Compilation uses the available CPU threads, capped by memory headroom;
-`DARLING_BUILD_JOBS=8` overrides the automatic job count.
-
-CiderDarling uses `~/.ciderdarling` by default; regular Darling uses `~/.darling`.
-Sign in again the first time you use the separate prefix. Switching keeps both
-prefixes and runtime installations available. An explicit `DPREFIX` overrides
-the prefix. The installer saves the client, matching runtime root and prefix
-in `~/.config/quadrahq/runtime.json` (or your XDG config directory) after setup
-succeeds. Restart the launcher after switching. Flatpak continues to use its
-bundled runtime.
-
-Installed runtimes can also be switched in **Settings → Environment → Darling**.
-Choose **DarlingHQ's Darling** or **QuadraHQ's CiderDarling**, then press
-**Apply and restart Quadra**. Close Roblox and wait for launcher operations to
-finish first. The refresh button detects runtimes installed while Quadra was
-open. If CiderDarling is missing, select it and click **Install in terminal**.
-The separate terminal runs the pinned runtime installer, shows build progress
-and handles confirmation and sudo prompts. It stays open when the build
-finishes; Quadra refreshes the choices and you can apply the switch when ready.
-Installing this way keeps the current runtime selection and launcher files.
-Custom prefixes are remembered for both choices. Flatpak keeps this selector
-read-only because its runtime is bundled.
-
-Quadra 0.23 checks for CiderDarling updates automatically at startup and hourly.
-When a complete CI binary release is ready, **Settings → CiderDarling** offers
-**Update in terminal**. The refresh button checks immediately, and automatic
-checks can be disabled in that page. Downloads verify the published checksums;
-the update keeps the prefix and sign-in, and applies after restarting Quadra.
-Each runtime release appears through this update feed without a separate
-Quadra release or manual announcement.
-
-Quadra uses the complete published runtime release, with the revision pinned
-in its runtime installer (`CIDER_DARLING_REVISION` in `install-runtime.sh`) as the fallback
-when no update feed is available. The new version is saved for CiderDarling
-with its prefix unchanged, and the active runtime switches to it only if
-CiderDarling was already active. An
-installation interrupted during `sudo` is detected and removed after asking
-(`--replace-incomplete-runtime` skips the question). Build trees are deleted
-after a successful build; the build log stays in `~/.cache/quadrahq/installer/`.
-
-While CiderDarling is installed, **Settings → CiderDarling** (also the
-*CiderDarling Settings* app menu entry, or `quadrahq --ciderdarling-settings`)
-collects its options: renderer and graphics card (shared with Environment →
-Game), watchdog thread kicks (`QUADRA_KICK=1`, off by default), a runtime trace
-(`CIDER_TRACE_FILE`, a private file in the logs folder), a verbose
-darlingserver log (`DSERVER_LOG_LEVEL=debug`), diagnostics and the prefix
-folder. These apply only while CiderDarling is the active runtime.
-
-Run the same command again to update or uninstall. Updates save local source
-changes in `~/.local/share/QuadraHQ-backups` (or your XDG data directory) and
-keep settings, the runtime and sign-in. Without a terminal, or for scripts, the
-choices are options too:
-
-```bash
-curl -fsSL https://quadrahq.org/install.sh | bash -s -- --uninstall
-```
-
-Arch package recipes for `quadrahq` and `quadrahq-git` are
-in [packaging/aur](packaging/aur/README.md). They build the shim at package
-creation and install system menu entries. The stable recipe is generated from a checksum-verified source archive.
-The new package names still need submission to the AUR.
+**Arch Linux:** Arch package recipes for `quadrahq` and `quadrahq-git` are
+in [packaging/aur](packaging/aur/README.md).
 
 [Native distro packaging](packaging/README.md) also includes a Debian/Ubuntu
 overlay and a Fedora/openSUSE RPM spec, with pinned source preparation and
 build instructions. These recipes require a full Darling package and have
 not yet been built in their target distros.
 
-Installer and launcher updates exclude `website/` and its hosting configuration.
-Maintainers publishing the website should run `bash website/build.sh` after
-editing `install.sh` to refresh its copy at `website/dist/install.sh`.
-
-Uninstalling keeps both runtime installations and their prefixes, which hold
-your Roblox sign-in; `--purge` (or **Uninstall everything** in the menu) deletes
-only the selected prefix.
-
 Works on Arch and its relatives (CachyOS, EndeavourOS, Manjaro), Ubuntu 24.04+,
-Debian 13, Linux Mint 22 and Fedora with Darling built from source.
+Debian 13, Linux Mint 22 and Fedora.
 
 <details>
 <summary>Install by hand</summary>
@@ -248,9 +95,17 @@ git -C ~/.local/share/QuadraHQ reset --hard HEAD
 ```
 </details>
 
-<h1 align="center">
-  Frequently Asked Questions
-</h1>
+## Uninstall
+
+```
+curl -fsSL https://quadrahq.org/install.sh | bash -s -- --uninstall
+```
+
+Uninstalling keeps both runtime installations and their prefixes, which hold
+your Roblox sign-in; `--purge` (or **Uninstall everything** in the menu) deletes
+only the selected prefix.
+
+## FAQ
 
 <details>
 <summary>Hey, this sounds like Gracejuice!</summary>
@@ -662,6 +517,6 @@ is based on, was released by Narezy under the MIT License; that notice is kept i
 [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) fonts in the launcher (SIL OFL) ·
 icons from [Simple Icons](https://simpleicons.org)
 
-<h2 align="center">
-  Quadra© 2026 is under QuadraHQ via the GNU General Public License, and Roblox® is a registered trademarked of Roblox Corporation. Quadra and QuadraHQ is not affiliated with, nor endorsed by Roblox Corporation, and any relatives or Roblox Corporation
-</h2>
+
+> © 2026 QuadraHQ via the GNU General Public License, and Roblox® is a registered trademarked of Roblox Corporation. Quadra and QuadraHQ is not affiliated with, nor endorsed by Roblox Corporation, and any relatives or Roblox Corporation
+
