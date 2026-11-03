@@ -13,7 +13,7 @@
  </p>
 
 <p align="center">
-  The macOS Roblox client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a> or <a href="https://www.darlinghq.org">Darling</a>.
+  A bootstrapper for the macOS Roblox Player client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a> or <a href="https://darlinghq.org">Darling</a>, and Roblox Studio via <a href="https://winehq.org">Wine</a>.
 </p>
 
 ## Migration from Cider / Mac O' Blox to Quadra
