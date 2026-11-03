@@ -22,6 +22,7 @@ The first-launch setup wizard is quadra/setup.py. `ui.NAME` reaches every name
 of these modules, and setting or patching it changes it in the module that
 owns it (see quadra/namespace.py).
 """
+
 from typing import TYPE_CHECKING
 
 import gi
@@ -30,41 +31,56 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from .. import namespace  # noqa: E402
-from . import (  # noqa: E402
-    dialogs,
-    widgets,
-    system,
-    logs_view,
-    play_page,
-    flags_page,
-    studio_page,
-    settings_page,
-    info_page,
-    mods_page,
-    servers_page,
+from .. import namespace
+from . import (
     boot_splash,
-    launcher_window,
+    dialogs,
+    flags_page,
+    info_page,
     launcher_app,
+    launcher_window,
+    logs_view,
+    mods_page,
+    play_page,
+    servers_page,
+    settings_page,
+    studio_page,
+    system,
+    widgets,
 )
 
-namespace.share_names(__name__, [
-    dialogs, widgets, system, logs_view, play_page, flags_page, studio_page, settings_page,
-    info_page, mods_page, servers_page, boot_splash, launcher_window, launcher_app,
-])
+namespace.share_names(
+    __name__,
+    [
+        dialogs,
+        widgets,
+        system,
+        logs_view,
+        play_page,
+        flags_page,
+        studio_page,
+        settings_page,
+        info_page,
+        mods_page,
+        servers_page,
+        boot_splash,
+        launcher_window,
+        launcher_app,
+    ],
+)
 
 if TYPE_CHECKING:  # tells editors and type checkers what ui.NAME is
-    from .dialogs import *  # noqa: F403
-    from .widgets import *  # noqa: F403
-    from .system import *  # noqa: F403
-    from .logs_view import *  # noqa: F403
-    from .play_page import *  # noqa: F403
-    from .flags_page import *  # noqa: F403
-    from .studio_page import *  # noqa: F403
-    from .settings_page import *  # noqa: F403
-    from .info_page import *  # noqa: F403
-    from .mods_page import *  # noqa: F403
-    from .servers_page import *  # noqa: F403
-    from .boot_splash import *  # noqa: F403
-    from .launcher_window import *  # noqa: F403
-    from .launcher_app import *  # noqa: F403
+    from .boot_splash import *
+    from .dialogs import *
+    from .flags_page import *
+    from .info_page import *
+    from .launcher_app import *
+    from .launcher_window import *
+    from .logs_view import *
+    from .mods_page import *
+    from .play_page import *
+    from .servers_page import *
+    from .settings_page import *
+    from .studio_page import *
+    from .system import *
+    from .widgets import *

@@ -7,11 +7,16 @@ authors = [{ name = "frolleks", email = "hello@frolleks.site" }]
 requires-python = ">=3.15"
 dependencies = ["pygobject>=3.58.1"]
 
+[project.scripts]
+quadrahq = "quadra.cli:main"
+
 [build-system]
 requires = ["uv_build>=0.13.7,<0.14.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-root = "launcher"
+module-name = "quadra"
+
 [dependency-groups]
-dev = [
-    "pygobject-stubs>=2.20.0",
-]
+dev = ["pygobject-stubs>=2.20.0"]
