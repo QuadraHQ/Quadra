@@ -44,3 +44,5 @@ __pycache__/
 
 # Private VPS services and their local configuration
 /services/
+
+.direnv
