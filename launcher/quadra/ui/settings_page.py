@@ -92,10 +92,14 @@ class SettingsPage(Adw.Bin):
                 "M2VK, web sign-in)."
             ),
         )
+        rosemary_bundled = bool(backends.bundled_rosemary())
         self.backend_row = widgets.ComboRow(
             title=_("Run Roblox with"),
             model=Gtk.StringList.new(["Darling", "Rosemary"]),
+            sensitive=not rosemary_bundled,
         )
+        if rosemary_bundled:
+            self.backend_row.set_subtitle(_("Nix manages Rosemary. Update or switch it through your Nix configuration."))
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
         self._backend_handler = self.backend_row.connect(
             "notify::selected", self._backend_selected
@@ -961,6 +965,7 @@ class SettingsPage(Adw.Bin):
         )
         window.watch_setting("rosemary_source", self._show_rosemary_source)
         program.add(self.rosemary_source_row)
+        rosemary_bundled = bool(backends.bundled_rosemary())
         self.rosemary_runner_row = Adw.ComboRow(title=_("Rosemary runner"), use_subtitle=False)
         self._rosemary_runners = []
         self._runner_selected_handler = self.rosemary_runner_row.connect(
@@ -994,6 +999,11 @@ class SettingsPage(Adw.Bin):
         add_runner.add_suffix(browse)
         add_runner.set_activatable_widget(browse)
         program.add(add_runner)
+        if rosemary_bundled:
+            program.set_description(_("Nix manages Rosemary. Update or switch it through your Nix configuration."))
+            for row in (self.rosemary_source_row, self.rosemary_install_button, add_runner):
+                row.set_visible(False)
+            self.rosemary_runner_row.set_sensitive(False)
         prefix = Adw.EntryRow(title=_("Prefix folder (empty: Quadra's own)"))
         prefix.set_text(settings.get("rosemary_prefix", ""))
         prefix.set_show_apply_button(True)

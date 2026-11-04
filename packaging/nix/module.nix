@@ -15,15 +15,16 @@ in
       type = lib.types.package;
       default = flake.packages.x86_64-linux.quadrahq;
       defaultText = lib.literalExpression "quadra.packages.x86_64-linux.quadrahq";
-      description = "Quadra package, including its pinned Darling runtime.";
+      description = "Quadra package, including its pinned runtime.";
     };
     runtime = lib.mkOption {
       type = lib.types.enum [
         "ciderdarling"
         "regular"
+        "rosemary"
       ];
       default = "ciderdarling";
-      description = "Bundled Darling runtime. Each variant keeps its own prefix and sign-in.";
+      description = "Bundled runtime: CiderDarling, regular Darling, or Rosemary without Darling. Each keeps its own prefix and sign-in.";
     };
     withStudio = lib.mkEnableOption "Wine for Roblox Studio";
   };

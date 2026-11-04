@@ -3,6 +3,43 @@
   writeShellScript,
   quadrahq,
 }:
+let
+  darlingCheck = ''
+    export DPREFIX="$test_root/prefix"
+    export QUADRA_PID1_DYLIB=${quadrahq.payload}/lib/quadrahq/launchd_pid1.dylib
+    export LIBGL_ALWAYS_SOFTWARE=1
+    command=(env LD_PRELOAD=${quadrahq.payload}/lib/quadrahq/darling-noroot.so /usr/bin/darling)
+    cleanup() {
+      status=$?
+      timeout 10 "''${command[@]}" shutdown >/dev/null 2>&1 || true
+      if [[ $status == 0 ]]; then
+        rm -rf -- "$test_root"
+      else
+        printf 'Runtime check failed; prefix retained at %s\n' "$test_root" >&2
+      fi
+    }
+    trap cleanup EXIT
+    ${quadrahq.payload}/bin/quadrahq --hardware-report --help >/dev/null
+    timeout 45 "''${command[@]}" shell /bin/echo "Quadra ${quadrahq.runtime} guest shell: PASS"
+  '';
+  rosemaryCheck = ''
+    rosemary=${quadrahq.rosemary}/bin/rosemary
+    cleanup() {
+      status=$?
+      if [[ $status == 0 ]]; then
+        rm -rf -- "$test_root"
+      else
+        printf 'Runtime check failed; prefix retained at %s\n' "$test_root" >&2
+      fi
+    }
+    trap cleanup EXIT
+    ${quadrahq.payload}/bin/quadrahq --hardware-report --help >/dev/null
+    "$rosemary" --version
+    timeout 120 "$rosemary" prefix create "$test_root/prefix" --no-base >/dev/null
+    test -f "$test_root/prefix/.rosemary/state.yaml"
+    echo "Quadra rosemary prefix: PASS"
+  '';
+in
 buildFHSEnv (
   quadrahq.args
   // {
@@ -14,22 +51,7 @@ buildFHSEnv (
       export XDG_CONFIG_HOME="$test_root/config"
       export XDG_CACHE_HOME="$test_root/cache"
       export XDG_DATA_HOME="$test_root/data"
-      export DPREFIX="$test_root/prefix"
-      export QUADRA_PID1_DYLIB=${quadrahq.payload}/lib/quadrahq/launchd_pid1.dylib
-      export LIBGL_ALWAYS_SOFTWARE=1
-      command=(env LD_PRELOAD=${quadrahq.payload}/lib/quadrahq/darling-noroot.so /usr/bin/darling)
-      cleanup() {
-        status=$?
-        timeout 10 "''${command[@]}" shutdown >/dev/null 2>&1 || true
-        if [[ $status == 0 ]]; then
-          rm -rf -- "$test_root"
-        else
-          printf 'Runtime check failed; prefix retained at %s\n' "$test_root" >&2
-        fi
-      }
-      trap cleanup EXIT
-      ${quadrahq.payload}/bin/quadrahq --hardware-report --help >/dev/null
-      timeout 45 "''${command[@]}" shell /bin/echo "Quadra ${quadrahq.runtime} guest shell: PASS"
+      ${if quadrahq.runtime == "rosemary" then rosemaryCheck else darlingCheck}
     '';
   }
 )

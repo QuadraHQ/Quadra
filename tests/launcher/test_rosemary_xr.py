@@ -109,6 +109,17 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(xr.VrUnavailable, "no sysroot"):
             xr.ensure_dylib(self.core, failing)
 
+    def test_a_prebuilt_library_is_used_without_building(self):
+        prebuilt = Path(self.tmp.name) / "libQuadraVR.dylib"
+        prebuilt.write_bytes(b"dylib")
+        calls = []
+        with mock.patch.dict(os.environ, {xr.PREBUILT_DYLIB: str(prebuilt)}):
+            self.assertEqual(xr.ensure_dylib(self.core, self.runner_that_builds(calls)), prebuilt)
+            prebuilt.unlink()
+            with self.assertRaisesRegex(xr.VrUnavailable, "missing"):
+                xr.ensure_dylib(self.core, self.runner_that_builds(calls))
+        self.assertEqual(calls, [])
+
     def test_missing_script_is_a_clear_error(self):
         (self.core.PROJECT / "rosemary" / "vr" / "build_rosemary_vr.sh").unlink()
         with self.assertRaisesRegex(xr.VrUnavailable, "build script"):

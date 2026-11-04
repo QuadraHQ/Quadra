@@ -4,8 +4,11 @@ The settings pages are the same for both; a setting that only one runtime
 reads is greyed out and tagged when the other is chosen, so nothing silently
 does nothing. A feature is added to a runtime here once it is implemented."""
 
+import os
+
 DARLING = "darling"
 ROSEMARY = "rosemary"
+BUNDLED_ROSEMARY = "QUADRA_BUNDLED_ROSEMARY"
 
 FEATURES = {
     DARLING: {"darling", "mods", "dns", "telemetry", "cpu_limit", "renderer", "m2vk", "vr", "input", "throttle",
@@ -20,6 +23,11 @@ NAMES = {DARLING: "Darling", ROSEMARY: "Rosemary"}
 
 def supports(runtime, feature):
     return feature in FEATURES.get(runtime, ())
+
+
+def bundled_rosemary(environment=None):
+    env = os.environ if environment is None else environment
+    return env.get(BUNDLED_ROSEMARY, "").strip() or None
 
 
 def other_runtimes(feature):

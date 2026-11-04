@@ -17,7 +17,7 @@ rustPlatform.buildRustPackage {
   };
   cargoLock = {
     lockFile = ../../darling/metal-vulkan/host/Cargo.lock;
-    outputHashes."metal2vulkan-0.2.0" = "sha256-QlXc6HmuFFLqKUxdHNybe5s4BxHLur2Rh/37s/br/0A=";
+    outputHashes."metal2vulkan-0.2.0" = "sha256-5eOiKO2xxU2XY6Wyrc/PZpPb0EiMwZkPx8u9vnCkFgU=";
   };
   # importCargoLock puts each git workspace crate in a versioned directory.
   # The translator's build script reads its AIR sibling's sources to compute

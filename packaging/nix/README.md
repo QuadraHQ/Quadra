@@ -1,8 +1,9 @@
 # NixOS
 
 The flake builds Quadra for **x86_64-linux**, including the launcher, shim,
-native Wayland helper, Metal bridge and a pinned Darling runtime.
-**CiderDarling is the default**. Regular Darling is available too.
+native Wayland helper, Metal bridge and a pinned runtime.
+**CiderDarling is the default**. Regular Darling is available too, and so is
+Rosemary, which runs Roblox without Darling.
 Roblox downloads on first setup; settings, downloads and sign-in stay in
 your writable user directories.
 
@@ -31,6 +32,7 @@ From a checkout:
 ```bash
 nix run .                              # CiderDarling
 nix run .#quadrahq-regular              # Regular Darling
+nix run .#quadrahq-rosemary             # Rosemary, without Darling
 nix build .                            # ./result/bin/quadrahq
 nix profile add .#quadrahq              # Install with menu and URI handlers
 ```
@@ -60,7 +62,7 @@ Add Quadra to your system flake inputs, then import its module:
         {
           programs.quadrahq = {
             enable = true;
-            runtime = "ciderdarling"; # Or "regular"
+            runtime = "ciderdarling"; # Or "regular" or "rosemary"
             # withStudio = true;     # Also include Wine for Roblox Studio
           };
         }
@@ -83,12 +85,13 @@ xdg.mime.defaultApplications = {
 For Home Manager, add `quadra.packages.x86_64-linux.quadrahq` to
 `home.packages` and enable graphics in the host's NixOS configuration.
 The flake also exports `overlays.default`; the resulting `pkgs.quadrahq`
-accepts `.override { runtime = "regular"; withStudio = true; }`.
+accepts `.override { runtime = "rosemary"; withStudio = true; }`.
 
 ## Runtime selection and updates
 
 CiderDarling uses `~/.ciderdarling`, and regular Darling uses `~/.darling`.
-Set `DPREFIX` to use a different prefix. Close Roblox and Darling before
+Set `DPREFIX` to use a different prefix. Rosemary keeps its prefix in
+Quadra's data folder, or the prefix folder chosen in Settings → Environment. Close Roblox and Darling before
 changing runtimes. Nix ignores a saved native runtime selection without
 rewriting it, so an old `/opt` installation or a garbage-collected store
 path cannot replace the package's bundled runtime.
@@ -96,6 +99,10 @@ path cannot replace the package's bundled runtime.
 CiderDarling's graphics, threading and diagnostics settings remain available.
 Runtime selection, downloads and rollback use your Nix configuration;
 the launcher's runtime installer and updater are disabled for this package.
+The Rosemary package ships Quadra's Rosemary build (it adds VR) and runs
+only Rosemary: the runtime choice is locked, and the launcher neither
+downloads nor updates Rosemary. A Rosemary program chosen earlier in Settings
+is ignored without being removed from your settings.
 Update the `quadra` input with `nix flake update quadra`, then rebuild your
 system. Use NixOS generations or Nix profile rollback to restore an earlier
 package and its matching runtime. Prefix data is retained across upgrades.
@@ -115,12 +122,14 @@ tools through `install-runtime.sh` in a terminal.
 
 ## Maintainers
 
-Run `nix flake check -L` to build both runtime variants. Their native payloads
+Run `nix flake check -L` to build all three runtime variants. Their native payloads
 compile the shim and guest frameworks against the bundled SDK, build the
 locked Rust Metal host, and validate desktop entries.
 
-Run `nix run .#check-runtime` and `nix run .#check-runtime-regular` to check
-each packaged launcher and start a guest shell in a disposable prefix.
+Run `nix run .#check-runtime`, `nix run .#check-runtime-regular` and
+`nix run .#check-runtime-rosemary` to check each packaged launcher. The Darling
+checks start a guest shell and the Rosemary check creates a prefix, each in a
+disposable folder.
 Successful checks shut down Darling and delete their temporary data; failed
 checks keep the prefix for inspection. CI runs both checks after building.
 
@@ -128,6 +137,10 @@ checks keep the prefix for inspection. CI runs both checks after building.
 patch manifest from a complete published runtime release. Update all three
 values together, verify its runtime metadata, and build both variants before
 shipping. Regular Darling reads the existing pins from `install-runtime.sh`.
+Its `rosemary` entry pins a release of Quadra's Rosemary build: set
+`version`, and set `sha256` to the AppImage's line in that release's
+`SHA256SUMS`. The Rosemary package still builds against CiderDarling's SDK
+(for the shim and the VR library), but does not include Darling.
 The Rust git dependency hash is in `metal-host.nix`; update it together with
 the Metal host's `Cargo.lock`. `nix flake update nixpkgs` updates the build
 and runtime libraries.

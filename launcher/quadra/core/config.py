@@ -2,6 +2,7 @@
 
 import json
 
+from .. import backends
 from ..darling.runtime import is_bundled
 from . import files, locations
 
@@ -204,6 +205,8 @@ def load_settings():
             valid = default is None or isinstance(value, type(default))
         if valid:
             settings[key] = value
+    if backends.bundled_rosemary():
+        settings["runtime_backend"] = backends.ROSEMARY
     return settings
 
 
