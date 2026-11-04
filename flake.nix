@@ -1,5 +1,5 @@
 {
-  description = "Quadra Roblox launcher with a bundled Darling runtime";
+  description = "Quadra Roblox launcher with a bundled Darling or Rosemary runtime";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -23,6 +23,7 @@
         inherit quadrahq;
         default = quadrahq;
         quadrahq-regular = quadrahq.override { runtime = "regular"; };
+        quadrahq-rosemary = quadrahq.override { runtime = "rosemary"; };
       };
 
       apps.${system} = {
@@ -33,6 +34,7 @@
         };
         check-runtime = runtimeCheck quadrahq;
         check-runtime-regular = runtimeCheck self.packages.${system}.quadrahq-regular;
+        check-runtime-rosemary = runtimeCheck self.packages.${system}.quadrahq-rosemary;
       };
 
       overlays.default = final: prev: {
@@ -44,6 +46,7 @@
       checks.${system} = {
         inherit quadrahq;
         regular = self.packages.${system}.quadrahq-regular;
+        rosemary = self.packages.${system}.quadrahq-rosemary;
       };
 
       devShells.${system} = rec {

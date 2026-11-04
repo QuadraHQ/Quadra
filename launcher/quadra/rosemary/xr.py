@@ -19,6 +19,7 @@ from .. import vr
 from ..i18n import _
 
 FORCE_VARIABLE = b"ROSEMARY_DYLD_INSERT_FORCE"
+PREBUILT_DYLIB = "QUADRA_ROSEMARY_VR_DYLIB"
 SOURCES = ("vr/vr_device.c", "vr/vr_xr.c", "vr/vr_xr.h", "vr/vr_openxr.h", "rosemary/vr/rosemary_glue.c")
 # Roblox's OpenGL renderer: the VR device attaches to DeviceGL, not Metal.
 OPENGL_FLAGS = {"FFlagDebugGraphicsPreferOpenGL": "True", "FFlagDebugGraphicsDisableMetal": "True"}
@@ -90,6 +91,11 @@ def _stale(core):
 
 def ensure_dylib(core, runner=subprocess.run):
     """Build libQuadraVR.dylib when it is missing or older than its sources."""
+    prebuilt = os.environ.get(PREBUILT_DYLIB, "").strip()
+    if prebuilt:
+        if not os.path.isfile(prebuilt):
+            raise VrUnavailable(_("The VR library {path} is missing.").format(path=prebuilt))
+        return Path(prebuilt)
     with _build_lock:
         if not _stale(core):
             return dylib_path(core)

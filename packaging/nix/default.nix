@@ -18,8 +18,18 @@
   runtime ? "ciderdarling",
   withStudio ? false,
 }:
+assert lib.assertMsg (builtins.elem runtime [
+  "ciderdarling"
+  "regular"
+  "rosemary"
+]) "Unknown runtime: ${runtime}";
 let
-  darling = callPackage ./darling.nix { inherit runtime; };
+  rosemaryOnly = runtime == "rosemary";
+  cider = runtime == "ciderdarling";
+  darling = callPackage ./darling.nix {
+    runtime = if rosemaryOnly then "ciderdarling" else runtime;
+  };
+  rosemary = callPackage ./rosemary.nix { };
   metalHost = callPackage ./metal-host.nix { };
   python = python3.withPackages (p: [
     p.pygobject3
@@ -34,6 +44,7 @@ let
       fileset = lib.fileset.unions [
         ../../darling
         ../../vr
+        ../../rosemary
         ../../build_debug_shim.sh
         ../../patch_startup_throttle.py
         ../../install-runtime.sh
@@ -69,7 +80,7 @@ let
     # Mach-O files are cross compiled against Darling's SDK. The host clang
     # wrapper injects Linux flags, so use unwrapped clang for Darwin only.
     postPatch = ''
-      substituteInPlace build_debug_shim.sh darling/metal-vulkan/build.sh \
+      substituteInPlace build_debug_shim.sh darling/metal-vulkan/build.sh rosemary/vr/build_rosemary_vr.sh \
         --replace-fail 'clang -target' '${llvmPackages.clang-unwrapped}/bin/clang -target'
     '';
     buildPhase = ''
@@ -77,6 +88,7 @@ let
       export DARLING_SYSROOT=${darling}/libexec/darling
       export QUADRA_BUILD_DIR="$PWD/native-build"
       bash build_debug_shim.sh
+      bash rosemary/vr/build_rosemary_vr.sh
       QUADRA_METAL_HOST_LIBRARY=${metalHost}/lib/libquadra_metal_host.so bash packaging/build-metal.sh
       $CC -shared -fPIC -O2 -DQUADRA_NIX_STORE flatpak/darling-noroot.c -ldl -o native-build/darling-noroot.so
       ${llvmPackages.clang-unwrapped}/bin/clang -target x86_64-apple-darwin -fuse-ld=lld \
@@ -89,8 +101,9 @@ let
       bash packaging/install-payload.sh "$PWD" "$PWD/native-build" "$PWD/stage" /usr/lib
       mkdir -p "$out"
       cp -a stage/usr/. "$out/"
-      install -m755 native-build/darling-noroot.so native-build/launchd_pid1.dylib "$out/lib/quadrahq/"
-      ${lib.optionalString (runtime == "ciderdarling") ''
+      install -m755 native-build/darling-noroot.so native-build/launchd_pid1.dylib \
+        native-build/libQuadraVR.dylib "$out/lib/quadrahq/"
+      ${lib.optionalString cider ''
         install -m644 packaging/org.quadrahq.Quadra.CiderDarling.desktop "$out/share/applications/"
       ''}
       runHook postInstall
@@ -99,9 +112,15 @@ let
       makeWrapper ${python}/bin/python3 "$out/bin/quadrahq" \
         --add-flags "$out/share/quadrahq/launcher/quadrahq-launcher" \
         --set QUADRA_PREBUILT_SHIM "$out/lib/quadrahq/shim" \
-        --set QUADRA_BUNDLED_DARLING ${darling} \
+        ${
+          if rosemaryOnly then
+            "--set QUADRA_BUNDLED_ROSEMARY ${rosemary}/bin/rosemary"
+          else
+            "--set QUADRA_BUNDLED_DARLING ${darling}"
+        } \
         --set QUADRA_NOROOT_LIB "$out/lib/quadrahq/darling-noroot.so" \
         --set QUADRA_PID1_DYLIB "$out/lib/quadrahq/launchd_pid1.dylib" \
+        --set QUADRA_ROSEMARY_VR_DYLIB "$out/lib/quadrahq/libQuadraVR.dylib" \
         "''${gappsWrapperArgs[@]}"
     '';
     doInstallCheck = true;
@@ -159,20 +178,23 @@ buildFHSEnv {
       p.desktop-file-utils
       p.procps
       p.pciutils
+      p.openxr-loader
     ]
     ++ lib.optional withStudio p.wineWow64Packages.stable;
   multiArch = false;
   # The guest root contains symlinks such as /Volumes/SystemRoot -> /.
   # Mount it after the FHS merge, which otherwise follows guest symlinks.
   # Darling's no-overlay copy uses lstat, so the root must be a real directory.
-  extraBuildCommands = ''
-    mkdir -p "$out${if runtime == "ciderdarling" then darling.fhsPrefix else "/usr/libexec/darling"}"
+  extraBuildCommands = lib.optionalString (!rosemaryOnly) ''
+    mkdir -p "$out${if cider then darling.fhsPrefix else "/usr/libexec/darling"}"
     for program in ${darling}/bin/*; do
       ln -s "$program" "$out/usr/bin/$(basename "$program")"
     done
   '';
   extraBwrapArgs =
-    if runtime == "ciderdarling" then
+    if rosemaryOnly then
+      [ ]
+    else if cider then
       [
         "--ro-bind ${darling} ${darling.fhsPrefix}"
       ]
@@ -193,6 +215,7 @@ buildFHSEnv {
   passthru = {
     inherit
       darling
+      rosemary
       payload
       metalHost
       runtime

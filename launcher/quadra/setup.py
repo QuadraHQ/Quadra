@@ -9,7 +9,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk, Pango  # noqa: E402
 
-from . import __version__, core, theme  # noqa: E402
+from . import __version__, backends, core, theme  # noqa: E402
 from .darling import runtime as darling_runtime  # noqa: E402
 from .darling import runtime_install  # noqa: E402
 from .i18n import _  # noqa: E402
@@ -81,6 +81,7 @@ class SetupWizard(Adw.Bin):
         self.install_failed = False
         self.darling_job = None
         self.darling_variant = window.settings.get("setup_darling_variant") or core.DARLING_RUNTIME["runtime"]
+        self.rosemary_bundled = bool(backends.bundled_rosemary())
         _install_style()
         self.add_css_class("setup-wizard")
         toolbar = Adw.ToolbarView()
@@ -88,7 +89,7 @@ class SetupWizard(Adw.Bin):
         header.set_title_widget(Gtk.Label(label="Quadra", css_classes=["heading"]))
         self.back = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=_("Back"), visible=False)
         self.back.add_css_class("flat")
-        self.back.connect("clicked", lambda *_args: self.show(PREVIOUS_PAGE[self.pages.get_visible_child_name()]))
+        self.back.connect("clicked", lambda *_args: self.show(self._previous_page(self.pages.get_visible_child_name())))
         header.pack_start(self.back)
         header.pack_end(Gtk.Label(label=f"v{__version__}", css_classes=["caption", "dim-label"]))
         toolbar.add_top_bar(header)
@@ -165,7 +166,7 @@ class SetupWizard(Adw.Bin):
                                 "applications-graphics-symbolic")
         current = self.window.settings.get("launcher_appearance", "gnome")
         body.append(self._choices(APPEARANCES, current, self._appearance_selected))
-        actions, _button = self._actions("Continue", lambda *_args: self.show("runtime"))
+        actions, _button = self._actions("Continue", lambda *_args: self.show(self._page_after_appearance()))
         body.append(actions)
         return page
 
@@ -280,6 +281,9 @@ class SetupWizard(Adw.Bin):
         self.own_rosemary_step = self._step(1, "Use your Rosemary", "Rosemary runs macOS apps on Linux. Quadra runs "
                                             "the one you chose and leaves updating it to you.")
         self.rosemary_steps.append(self.own_rosemary_step)
+        self.bundled_rosemary_step = self._step(1, "Rosemary is included", "Rosemary runs macOS apps on Linux. "
+                                                "Nix installs and updates it with Quadra.")
+        self.rosemary_steps.append(self.bundled_rosemary_step)
         self.rosemary_steps.append(self._step(2, "Download Roblox", "Get the official macOS client directly from Roblox."))
         self.rosemary_steps.append(self._step(3, "Make it yours", "Sign in to Roblox, then choose your graphics, "
                                               "mouse and launcher preferences in Settings."))
@@ -334,7 +338,7 @@ class SetupWizard(Adw.Bin):
                                css_classes=["setup-note", "card"])
         body.append(self.error)
         self.error_actions, self.retry_button = self._actions(
-            "Try again", self._start_install, "Back", lambda *_args: self.show("runtime"))
+            "Try again", self._start_install, "Back", lambda *_args: self.show(self._previous_page("overview")))
         self.error_actions.set_visible(False)
         body.append(self.error_actions)
         return page
@@ -359,14 +363,24 @@ class SetupWizard(Adw.Bin):
                            classes=("caption", "dim-label"), centered=True))
         return page
 
+    def _page_after_appearance(self):
+        return "overview" if self.rosemary_bundled else "runtime"
+
+    def _previous_page(self, name):
+        previous = PREVIOUS_PAGE[name]
+        if previous == "runtime" and self.rosemary_bundled:
+            return PREVIOUS_PAGE[previous]
+        return previous
+
     def show(self, name):
         self.pages.set_visible_child_name(name)
         self.back.set_visible(name in PREVIOUS_PAGE)
         if name == "overview":
             rosemary = self.window.rosemary_selected()
             self.rosemary_steps.set_visible(rosemary)
-            self.download_rosemary_step.set_visible(not self.own_rosemary)
-            self.own_rosemary_step.set_visible(self.own_rosemary)
+            self.bundled_rosemary_step.set_visible(self.rosemary_bundled)
+            self.download_rosemary_step.set_visible(not self.rosemary_bundled and not self.own_rosemary)
+            self.own_rosemary_step.set_visible(not self.rosemary_bundled and self.own_rosemary)
             self.darling_steps.set_visible(not rosemary)
             self._show_locations()
             installed = self.window.client_installed()
@@ -415,13 +429,14 @@ class SetupWizard(Adw.Bin):
             self._install_darling()
 
     def _install_rosemary(self):
-        self.status.set_label(_("Checking the latest Roblox version…") if self.own_rosemary
+        uses_installed_rosemary = self.own_rosemary or self.rosemary_bundled
+        self.status.set_label(_("Checking the latest Roblox version…") if uses_installed_rosemary
                               else _("Downloading Rosemary…"))
         if not self.window.begin("installing Rosemary"):
             self._finished(RuntimeError(_("Another operation is in progress. Wait for it to finish, then try again.")))
             return
         settings = self.window.settings.snapshot()
-        needs_quadra_rosemary = not self.own_rosemary and not rosemary_runtime.quadra_runners()
+        needs_quadra_rosemary = not uses_installed_rosemary and not rosemary_runtime.quadra_runners()
         rosemary_share = 0.4 if needs_quadra_rosemary else 0.0
 
         def report(fraction, text):

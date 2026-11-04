@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from . import client as rosemary_client
+from .. import backends
 from ..paths import user_directory
 
 log = logging.getLogger("quadra.rosemary")
@@ -173,6 +174,12 @@ def is_runnable(program):
 def find_rosemary(settings):
     """The Rosemary program: the one chosen in settings, else Quadra's own
     newest runner, else Butter's newest, else the one on PATH."""
+    bundled = backends.bundled_rosemary()
+    if bundled:
+        path = Path(bundled)
+        if not is_runnable(path):
+            raise RosemaryError(f"{backends.BUNDLED_ROSEMARY} points to {path}, which is not an executable file.")
+        return path
     chosen = (settings.get("rosemary_program") or "").strip()
     if chosen:
         path = Path(chosen).expanduser()

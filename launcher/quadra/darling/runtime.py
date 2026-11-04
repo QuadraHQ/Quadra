@@ -6,6 +6,7 @@ import re
 import shutil
 import tempfile
 
+from .. import backends
 from ..paths import user_directory
 
 VARIANTS = ("regular", "ciderdarling")
@@ -20,7 +21,8 @@ INSTALLER = Path(__file__).resolve().parents[3] / "install-runtime.sh"
 def is_bundled(environment=None):
     """Whether the package owns the client, sysroot and runtime updates."""
     env = os.environ if environment is None else environment
-    return bool(env.get("FLATPAK_ID") or env.get("QUADRA_BUNDLED_DARLING"))
+    return bool(env.get("FLATPAK_ID") or env.get("QUADRA_BUNDLED_DARLING")
+                or backends.bundled_rosemary(env))
 
 
 def _validate_selection(data):

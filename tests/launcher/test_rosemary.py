@@ -12,6 +12,7 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+from quadra import backends
 from quadra.rosemary import client
 from quadra.rosemary import install as installer
 from quadra.rosemary import runtime
@@ -146,6 +147,16 @@ class RuntimeTests(unittest.TestCase):
         (runner / "bin" / "rosemary").chmod(0o755)
         (runner / "runner.toml").write_text('name = "Rosemary 1"\nexecutable = "bin/rosemary"\ntag = "v0.5.0"\n')
         self.assertEqual(runtime.runners()[0][1], runner / "bin" / "rosemary")
+
+    def test_a_bundled_rosemary_wins_over_the_chosen_program(self):
+        bundled = self.root / "bundled-rosemary"
+        bundled.write_text(FAKE)
+        bundled.chmod(0o755)
+        with mock.patch.dict(os.environ, {backends.BUNDLED_ROSEMARY: str(bundled)}):
+            self.assertEqual(runtime.find_rosemary(self.settings), bundled)
+        with mock.patch.dict(os.environ, {backends.BUNDLED_ROSEMARY: str(self.root / "missing")}), \
+                self.assertRaisesRegex(runtime.RosemaryError, backends.BUNDLED_ROSEMARY):
+            runtime.find_rosemary(self.settings)
 
     def test_runner_list_offers_found_and_added_runners_once(self):
         runner = self.root / "xdg" / "butter" / "runners" / "r1"

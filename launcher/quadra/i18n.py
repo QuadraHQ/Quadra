@@ -232,6 +232,8 @@ RU = {
     "Apply and restart Quadra": "Применить и перезапустить Quadra",
     "Refresh installed runtimes": "Обновить список установленных сред",
     "Flatpak uses its bundled Darling runtime.": "Flatpak использует встроенную среду Darling.",
+    "Nix manages Rosemary. Update or switch it through your Nix configuration.":
+        "Rosemary управляет Nix. Обновить или сменить его можно в конфигурации Nix.",
     "Install this runtime with Quadra's installer before switching.":
         "Перед переключением установите эту среду через установщик Quadra.",
     "Could not inspect installed runtimes": "Не удалось проверить установленные среды",
@@ -858,6 +860,8 @@ ZH_CN = {
     "Apply and restart Quadra": "应用并重启 Quadra",
     "Refresh installed runtimes": "刷新已安装的运行时",
     "Flatpak uses its bundled Darling runtime.": "Flatpak 使用其自带的 Darling 运行时。",
+    "Nix manages Rosemary. Update or switch it through your Nix configuration.":
+        "Rosemary 由 Nix 管理。请通过 Nix 配置更新或切换它。",
     "Install this runtime with Quadra's installer before switching.": "切换前请使用 Quadra 的安装程序安装此运行时。",
     "Could not inspect installed runtimes": "无法检查已安装的运行时",
     "Runtime saved. Close and reopen Quadra to apply it.": "运行时已保存。关闭并重新打开 Quadra 以应用。",
