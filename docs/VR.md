@@ -16,9 +16,14 @@ device. Everything else is Roblox's code.
 `DeviceGL` has the slot already:
 
 ```
-DeviceVR *DeviceGL::getVR()   { return vr && vrEnabled ? vr : nullptr; }  // +0x278, +0x280
+DeviceVR *DeviceGL::getVR()   { return vr && vrEnabled ? vr : nullptr; }  // +0x268, +0x270 in 0.746
 void      DeviceGL::setVR(bool on) { vrEnabled = on; }
 ```
+
+The two offsets are read from this code. `getVR` and `setVR` are adjacent
+vtable slots, found by their code among slots 16 to 40: they were 17 and 18
+up to 0.745, and 19 and 20 from 0.746, where Roblox added two methods before
+them.
 
 `DeviceGL::beginFrame` calls `vr->beginFrame()` and `DeviceGL::present`
 calls `vr->endFrame()`; present swaps the game window only when the device's

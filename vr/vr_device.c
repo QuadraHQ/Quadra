@@ -66,8 +66,10 @@ extern int mach_timebase_info(unsigned int info[2]);
 #define VR_SLOT_SET_DISPLAY_RATE 38
 #define GL_SLOT_BEGIN_FRAME 13
 #define GL_SLOT_MAIN_FRAMEBUFFER 15
-#define GL_SLOT_GET_VR 17
-#define GL_SLOT_SET_VR 18
+/* getVR and setVR sit next to each other; they moved from slots 17 and 18 to
+ * 19 and 20 in 0.746, so they are found by their code within this range. */
+#define GL_SLOT_VR_FIRST 16
+#define GL_SLOT_VR_LAST 40
 /* DeviceVR state (getState copies 0x138 bytes), as filled by the Quest
  * OpenXrDevice of the same release: */
 #define STATE_SIZE 0x138
@@ -103,6 +105,7 @@ static void (*vr_debug_construct)(void *, int, int, void *);
 static void *(*vr_gl_begin_frame)(void *); /* returns the frame's DeviceContext */
 static void (*vr_gl_set_vr)(void *, int);
 static unsigned int vr_device_offset, vr_enabled_offset;
+static int vr_gl_get_vr_slot; /* setVR is the next slot */
 static volatile unsigned char *vr_emulator_flag;
 static int vr_eye_size = 1024;
 static int vr_openxr;
@@ -297,22 +300,28 @@ static void **vr_rtti_vtable(const VrImage *image, const char *mangled) {
 
 /* DeviceGL::getVR and setVR as described above; read the member offsets
  * from the instructions instead of assuming them. */
-static int vr_check_gl_device(void) {
+static int vr_check_gl_device(const VrImage *image) {
     static const unsigned char get_head[] = {0x55, 0x48, 0x89, 0xe5, 0x48, 0x8b, 0x8f};
     static const unsigned char get_mid[] = {0x31, 0xc0, 0x48, 0x85, 0xc9, 0x74, 0x0b, 0x80, 0xbf};
     static const unsigned char get_tail[] = {0x00, 0x48, 0x0f, 0x45, 0xc1, 0x5d, 0xc3};
     static const unsigned char set_head[] = {0x55, 0x48, 0x89, 0xe5, 0x40, 0x88, 0xb7};
     static const unsigned char set_tail[] = {0x5d, 0xc3};
-    const unsigned char *get = vr_gl_vtable[GL_SLOT_GET_VR];
-    const unsigned char *set = vr_gl_vtable[GL_SLOT_SET_VR];
-    if (!vr_bytes(get, get_head, sizeof get_head) || !vr_bytes(get + 11, get_mid, sizeof get_mid) ||
-        !vr_bytes(get + 24, get_tail, sizeof get_tail) ||
-        !vr_bytes(set, set_head, sizeof set_head) || !vr_bytes(set + 11, set_tail, sizeof set_tail))
-        return 0;
+    const unsigned char *get = 0;
+    for (int slot = GL_SLOT_VR_FIRST; slot < GL_SLOT_VR_LAST && !get; ++slot) {
+        const unsigned char *candidate = vr_gl_vtable[slot], *set = vr_gl_vtable[slot + 1];
+        if (!vr_inside(&image->text, candidate, 31) || !vr_inside(&image->text, set, 13) ||
+            !vr_bytes(candidate, get_head, sizeof get_head) || !vr_bytes(candidate + 11, get_mid, sizeof get_mid) ||
+            !vr_bytes(candidate + 24, get_tail, sizeof get_tail) ||
+            !vr_bytes(set, set_head, sizeof set_head) || !vr_bytes(set + 11, set_tail, sizeof set_tail) ||
+            vr_u32(set + 7) != vr_u32(candidate + 20))
+            continue;
+        get = candidate;
+        vr_gl_get_vr_slot = slot;
+    }
+    if (!get) return 0;
     vr_device_offset = vr_u32(get + 7);
     vr_enabled_offset = vr_u32(get + 20);
-    if (vr_u32(set + 7) != vr_enabled_offset || vr_device_offset > 0x10000 || vr_enabled_offset > 0x10000)
-        return 0;
+    if (vr_device_offset > 0x10000 || vr_enabled_offset > 0x10000) return 0;
     /* beginFrame must be the method that calls vr->beginFrame:
      * mov rdi, [rbx + device]; ...; call [rax + 0xd8]. */
     const unsigned char *begin = vr_gl_vtable[GL_SLOT_BEGIN_FRAME];
@@ -704,7 +713,7 @@ static void vr_attach(void *device, int width, int height) {
     }
     *(void **)((unsigned char *)device + vr_device_offset) = object;
     *((unsigned char *)device + vr_enabled_offset) = 1;
-    void *reported = ((void *(*)(void *))vr_gl_vtable[GL_SLOT_GET_VR])(device);
+    void *reported = ((void *(*)(void *))vr_gl_vtable[vr_gl_get_vr_slot])(device);
     vr_logf2("[Quadra VR] Attached the client's DebugDeviceVR (%lux%lu per eye)\n",
              (unsigned long)width, (unsigned long)height);
     vr_log(reported == object ? "[Quadra VR] Graphics device reports the VR device\n"
@@ -816,7 +825,7 @@ __attribute__((constructor)) static void vr_install(void) {
     if (vr_bytes(state_copy + 9, get_state, sizeof get_state) &&
         vr_bytes(state_copy + 13, get_state_size, sizeof get_state_size))
         vr_state_offset = state_copy[12];
-    if (!vr_state_offset || !vr_check_gl_device() || !vr_find_debug_constructor(&image)) {
+    if (!vr_state_offset || !vr_check_gl_device(&image) || !vr_find_debug_constructor(&image)) {
         vr_log("[Quadra VR] Unavailable: unsupported client graphics device or VR emulator\n");
         return;
     }
@@ -827,9 +836,9 @@ __attribute__((constructor)) static void vr_install(void) {
         if (!vr_emulator_flag) vr_log("[Quadra VR] Emulator mirror flag not found; continuing without it\n");
     }
     vr_gl_begin_frame = (void *(*)(void *))vr_gl_vtable[GL_SLOT_BEGIN_FRAME];
-    vr_gl_set_vr = (void (*)(void *, int))vr_gl_vtable[GL_SLOT_SET_VR];
+    vr_gl_set_vr = (void (*)(void *, int))vr_gl_vtable[vr_gl_get_vr_slot + 1];
     if (!vr_patch_slot(&image, &vr_gl_vtable[GL_SLOT_BEGIN_FRAME], (void *)vr_gl_begin_frame_hook) ||
-        !vr_patch_slot(&image, &vr_gl_vtable[GL_SLOT_SET_VR], (void *)vr_gl_set_vr_hook)) {
+        !vr_patch_slot(&image, &vr_gl_vtable[vr_gl_get_vr_slot + 1], (void *)vr_gl_set_vr_hook)) {
         vr_log("[Quadra VR] Unavailable: graphics vtable is not writable\n");
         return;
     }

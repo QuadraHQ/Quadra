@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+
+## 0.43.1 — 2026-11-04
+
+- Fix VR on Roblox 0.746, which said "Unavailable: unsupported client graphics device or VR emulator". Roblox added
+  two methods to its graphics device, which moved the VR device's getVR and setVR two slots down; Quadra now finds
+  them by their code, so 0.745 and 0.746 both work.
+- The launcher handles signals through `GLib.unix_signal_add` again instead of `GLibUnix`, which some distributions'
+  GLib bindings do not provide.
+
 ## 0.43.0 — 2026-11-04
 
 - The launcher's state is one observable store shared by the pages (`core/state.py`). Settings, the Play page, the

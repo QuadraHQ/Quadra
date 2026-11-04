@@ -1,3 +1,10 @@
+quadrahq (0.43.1-1) unstable; urgency=medium
+
+  * Fix VR on Roblox 0.746: Roblox moved the graphics device's getVR and setVR methods, and Quadra now finds them by their code.
+  * The launcher handles signals through GLib.unix_signal_add again instead of GLibUnix, which some distributions do not provide.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Wed, 04 Nov 2026 17:58:07 -0600
+
 quadrahq (0.43.0-1) unstable; urgency=medium
 
   * The launcher's pages share one state, so settings, the Play page, the tray and the Studio page stay in step.

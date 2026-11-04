@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.43.0
+%global upstream_version 0.43.1
 Name:           quadrahq
-Version:        0.43.0
+Version:        0.43.1
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,10 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Wed Nov 04 2026 Quadra maintainers <noreply@aubree.wtf> - 0.43.1-1
+- Fix VR on Roblox 0.746: Roblox moved the graphics device's getVR and setVR methods, and Quadra now finds them by their code.
+- The launcher handles signals through GLib.unix_signal_add again instead of GLibUnix, which some distributions do not provide.
+
 * Wed Nov 04 2026 Quadra maintainers <noreply@aubree.wtf> - 0.43.0-1
 - The launcher's pages share one state, so settings, the Play page, the tray and the Studio page stay in step.
 - The Play page shows the renderer in use, including with Rosemary's Force OpenGL switch off.
