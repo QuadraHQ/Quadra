@@ -235,6 +235,30 @@ class GameLookupTests(unittest.TestCase):
         self.assertTrue(seen[0]["loading"])
 
 
+    def test_a_game_saved_without_an_icon_gets_one_straight_away(self):
+        self.api.icon_state = "Pending"
+        discord.fetch_game_info(1)
+        self.api.icon_state = "Completed"
+        directory = tempfile.mkdtemp(prefix="quadra-log-")
+        self.addCleanup(shutil.rmtree, directory, True)
+        log_path = Path(directory) / "roblox.log"
+        log_path.write_text("[FLog::Output] ! Joining game 'abc' place 1 at 10.0.0.1\n")
+        seen = []
+        changed = threading.Condition()
+
+        def on_change(info, _generation):
+            with changed:
+                seen.append(info)
+                changed.notify_all()
+
+        tracker = discord.GameActivityTracker(str(log_path), on_change)
+        self.addCleanup(tracker.stop)
+        with changed:
+            self.assertTrue(changed.wait_for(lambda: seen and seen[-1]["icon_url"], 5))
+        self.assertIsNone(seen[0]["icon_url"])
+        self.assertEqual(seen[-1]["icon_url"], self.api.icon)
+
+
 class ActivityTextTests(unittest.TestCase):
     def test_text_fits_discord_limits(self):
         activity = discord.DiscordRPC._activity(details="x" * 200, state="A", large_text="Q")

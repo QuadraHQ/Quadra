@@ -370,7 +370,8 @@ class GameActivityTracker:
         shown = _cached_game_info(place_id)
         failures = 0
         while True:
-            if shown is not None or failures > self._QUICK_RETRIES:
+            complete = shown is not None and bool(shown.get("icon_url"))
+            if complete or failures > self._QUICK_RETRIES:
                 pause = self._LOOKUP_SECONDS
             else:
                 pause = 0.5 + failures * 0.5 if failures else 0.0
@@ -392,7 +393,7 @@ class GameActivityTracker:
                 if found is None:
                     failures += 1
                     continue
-                failures = 0
+                failures = 0 if found.get("icon_url") else failures + 1
                 universe_id = found["universe_id"]
                 if found != shown:
                     self._generation += 1
