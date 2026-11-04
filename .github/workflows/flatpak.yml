@@ -1,0 +1,44 @@
+name: Flatpak
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'flatpak/**'
+      - 'launcher/**'
+      - 'darling/**'
+      - 'vr/**'
+      - 'branding/**'
+      - 'packaging/*.desktop'
+      - 'build_debug_shim.sh'
+      - 'patch_startup_throttle.py'
+      - 'README.md'
+      - 'LICENSE'
+      - 'LICENSES/**'
+      - '.github/workflows/flatpak.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: flatpak/org.quadrahq.Quadra.yml
+          bundle: quadra.flatpak
+          build-dir: flatpak/build-dir
+          repo-dir: flatpak/repo
+          cache-key: flatpak-builder-${{ hashFiles('flatpak/org.quadrahq.Quadra.yml', 'flatpak/launcher-ui.json') }}
