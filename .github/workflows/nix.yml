@@ -11,6 +11,7 @@ on:
       - 'launcher/**'
       - 'darling/**'
       - 'vr/**'
+      - 'rosemary/**'
       - 'flatpak/darling-noroot.c'
       - 'flatpak/launchd_pid1.c'
       - '*.sh'
@@ -22,13 +23,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
-      - name: Build CiderDarling and regular Darling packages
+      - name: Build the CiderDarling, regular Darling and Rosemary packages
         run: nix flake check --print-build-logs
-      - name: Run guest shells in disposable prefixes
+      - name: Check each runtime in a disposable prefix
         run: |
           nix run .#check-runtime
           nix run .#check-runtime-regular
+          nix run .#check-runtime-rosemary
