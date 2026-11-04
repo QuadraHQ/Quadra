@@ -4,7 +4,7 @@ import os
 import signal
 import threading
 
-from gi.repository import Adw, Gdk, Gio, GLib, GLibUnix, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from .. import core, tray
 from .. import uri as uri_handoff
@@ -222,7 +222,7 @@ def main(page=None, open_settings=False):
     for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         if number == signal.SIGHUP and signal.getsignal(number) == signal.SIG_IGN:
             continue  # started with nohup: closing the terminal must not end the game
-        GLibUnix.signal_add(
+        GLib.unix_signal_add(
             GLib.PRIORITY_DEFAULT, number, application.stop_from_signal, number
         )
     return application.run(None)
