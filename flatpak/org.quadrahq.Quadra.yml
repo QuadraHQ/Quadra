@@ -1,7 +1,7 @@
 app-id: org.quadrahq.Quadra
-runtime: org.freedesktop.Platform
-runtime-version: '26.08'
-sdk: org.freedesktop.Sdk
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.llvm22
 command: quadrahq
@@ -25,10 +25,11 @@ finish-args:
   - --device=dri
   # Roblox asks the GPU driver for VRAM through sysfs (host_vram_bytes).
   - --filesystem=/sys/class/drm:ro
+  - --filesystem=xdg-run/discord-ipc-0
+  - --filesystem=xdg-run/app/com.discordapp.Discord:create
+  - --filesystem=xdg-run/app/com.discordapp.DiscordCanary:create
+  - --filesystem=xdg-run/.flatpak/dev.vencord.Vesktop:create
 modules:
-  # Freedesktop supplies the graphics/audio stack. Bundle the launcher UI
-  # libraries instead of inheriting GNOME 50's 25.08 graphics extensions.
-  - launcher-ui.json
   - name: darling
     buildsystem: simple
     build-commands:
@@ -66,8 +67,10 @@ modules:
       - python3 -m compileall -q -d /app/share/quadrahq/launcher /app/share/quadrahq/launcher
       - install -Dm755 flatpak/quadrahq.sh /app/bin/quadrahq
       - for size in 16 22 24 32 48 64 128 256 512 1024; do
-          install -Dm644 "branding/icons/quadrahq-$size.png" "/app/share/icons/hicolor/${size}x${size}/apps/org.quadrahq.Quadra.png";
           install -Dm644 "branding/icons/quadrahq-$size.png" "/app/share/icons/hicolor/${size}x${size}/apps/quadrahq.png";
+          done
+      - for size in 16 22 24 32 48 64 128 256 512; do
+          install -Dm644 "branding/icons/quadrahq-$size.png" "/app/share/icons/hicolor/${size}x${size}/apps/org.quadrahq.Quadra.png";
           done
       - install -d /app/share/applications
       - sed 's/^Icon=.*/Icon=org.quadrahq.Quadra/' packaging/org.quadrahq.Quadra.desktop

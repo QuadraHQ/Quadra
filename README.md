@@ -479,15 +479,15 @@ flatpak install --user MacOBlox-0.19-x86_64.flatpak
 ```
 
 It keeps its own Darling prefix, so sign in to Roblox again there. Roblox Studio
-is not in the Flatpak yet. The current experimental recipe uses Freedesktop
-26.08 and bundles GTK 4, libadwaita, Adwaita icons, PyGObject and WebKitGTK.
-Vulkan rendering is disabled in the UI libraries; Roblox keeps its renderer
-setting. Graphics drivers and Vulkan layer extensions must match 26.08.
-Building the UI libraries, especially WebKitGTK, takes considerably longer
-than the previous GNOME runtime recipe. To build it yourself:
+is not in the Flatpak yet. The current experimental recipe uses the GNOME 51
+runtime, which supplies GTK 4, libadwaita, Adwaita icons, PyGObject and
+WebKitGTK on top of Freedesktop 26.08. The launcher draws with OpenGL rather
+than Vulkan (set `GSK_RENDERER` to override it); Roblox keeps its renderer
+setting. Graphics drivers and Vulkan layer extensions must match 26.08. To
+build it yourself:
 
 ```bash
-flatpak install --user flathub org.flatpak.Builder org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.llvm22//26.08
+flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.llvm22//26.08
 cd Quadra/flatpak
 flatpak run --env=FLATPAK_USER_DIR=$HOME/.local/share/flatpak --command=flatpak-builder org.flatpak.Builder --user --install --force-clean build-dir org.quadrahq.Quadra.yml
 ```
