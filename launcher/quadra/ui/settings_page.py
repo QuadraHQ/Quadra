@@ -16,8 +16,18 @@ from . import dialogs, flags_page, system, widgets
 
 __all__ = [
     "DNS_CHOICES",
+    "ROSEMARY_SETTINGS",
     "SettingsPage",
 ]
+
+ROSEMARY_SETTINGS = (
+    "runtime_backend",
+    "rosemary_source",
+    "rosemary_program",
+    "rosemary_runners",
+    "rosemary_prefix",
+    "rosemary_pinned_build",
+)
 
 DNS_CHOICES = [
     ("system", "System (Darling default)"),
@@ -87,7 +97,10 @@ class SettingsPage(Adw.Bin):
             model=Gtk.StringList.new(["Darling", "Rosemary"]),
         )
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
-        self.backend_row.connect("notify::selected", self._backend_selected)
+        self._backend_handler = self.backend_row.connect(
+            "notify::selected", self._backend_selected
+        )
+        window.watch_setting("runtime_backend", self._show_backend)
         runtime_group.add(self.backend_row)
         self.env_page.add(runtime_group)
 
@@ -110,14 +123,8 @@ class SettingsPage(Adw.Bin):
                 [_("Grid"), _("GNOME (classic)"), _("Monochrome · aubree.lat")]
             ),
         )
-        self.appearance_row.set_selected(
-            self.appearance_codes.index(settings.get("launcher_appearance", "gnome"))
-        )
-        self.appearance_row.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_launcher_appearance(
-                self.appearance_codes[row.get_selected()]
-            ),
+        widgets.bind_combo(
+            window, self.appearance_row, "launcher_appearance", self.appearance_codes, "gnome"
         )
         interface.add(self.appearance_row)
         tray_switch = Adw.SwitchRow(
@@ -125,12 +132,8 @@ class SettingsPage(Adw.Bin):
             subtitle=_(
                 "Open settings or stop Roblox from the panel's tray while Quadra runs"
             ),
-            active=settings.get("tray_icon", True),
         )
-        tray_switch.connect(
-            "notify::active", lambda row, _pspec: window.set_tray_icon(row.get_active())
-        )
-        interface.add(tray_switch)
+        interface.add(widgets.bind_switch(window, tray_switch, "tray_icon", True))
         self.env_page.add(interface)
 
         self._runtime_codes = runtime.VARIANTS
@@ -139,16 +142,6 @@ class SettingsPage(Adw.Bin):
             "ciderdarling": _("QuadraHQ's CiderDarling"),
         }
         bundled = runtime.is_bundled()
-        release = window.cider_release
-        self._cider_pin = (
-            None
-            if bundled
-            else (
-                runtime_updates.pin(release)
-                if release
-                else runtime.pinned_ciderdarling()
-            )
-        )
         self._runtime_choices = self._installed_runtime_choices()
         darling_group = Adw.PreferencesGroup(
             title="Darling", description=_("Each runtime keeps its own Roblox sign-in.")
@@ -252,18 +245,7 @@ class SettingsPage(Adw.Bin):
             subtitle=_("Applies on next launch."),
             model=Gtk.StringList.new([_("X11 / Xwayland"), _("Wayland")]),
         )
-        selected_backend = settings.get("display_backend", "x11")
-        backend.set_selected(
-            backend_codes.index(selected_backend)
-            if selected_backend in backend_codes
-            else 0
-        )
-        backend.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "display_backend", backend_codes[row.get_selected()]
-            ),
-        )
+        widgets.bind_combo(window, backend, "display_backend", backend_codes, "x11")
         game.add(backend)
         window.runtime_only(backend, "input", hide=True)
 
@@ -275,12 +257,13 @@ class SettingsPage(Adw.Bin):
         ui_scale.set_subtitle(
             _("100–400%. Keeps the display resolution. Applies on next launch.")
         )
-        ui_scale.set_value(validated_dpi_scale(settings.get("dpi_scale", 1.0)) * 100)
-        ui_scale.connect(
-            "notify::value",
-            lambda row, _pspec: window.set_setting(
-                "dpi_scale", validated_dpi_scale(row.get_value() / 100)
-            ),
+        widgets.bind_spin(
+            window,
+            ui_scale,
+            "dpi_scale",
+            1.0,
+            to_setting=lambda value: validated_dpi_scale(value / 100),
+            to_row=lambda value: validated_dpi_scale(value) * 100,
         )
         game.add(ui_scale)
         window.runtime_only(ui_scale, "input", hide=True)
@@ -290,14 +273,8 @@ class SettingsPage(Adw.Bin):
             subtitle=_(
                 "Show FPS, frametimes and CPU/GPU usage. Requires MangoHud; applies on next launch."
             ),
-            active=settings.get("mangohud", False),
         )
-        mangohud.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("mangohud", row.get_active()),
-        )
-        game.add(mangohud)
-        self.mangohud_row = mangohud
+        game.add(widgets.bind_switch(window, mangohud, "mangohud"))
 
         sensitivity = Adw.SpinRow.new_with_range(0.1, 5.0, 0.05)
         sensitivity.set_digits(2)
@@ -305,12 +282,12 @@ class SettingsPage(Adw.Bin):
         sensitivity.set_subtitle(
             _("Mouse movement multiplier while rotating the camera")
         )
-        sensitivity.set_value(settings["mouse_sensitivity"])
-        sensitivity.connect(
-            "notify::value",
-            lambda row, _pspec: window.set_setting(
-                "mouse_sensitivity", round(row.get_value(), 2)
-            ),
+        widgets.bind_spin(
+            window,
+            sensitivity,
+            "mouse_sensitivity",
+            1.0,
+            to_setting=lambda value: round(value, 2),
         )
         game.add(sensitivity)
         window.runtime_only(sensitivity, "input", hide=True)
@@ -319,106 +296,65 @@ class SettingsPage(Adw.Bin):
         scroll_sens.set_digits(1)
         scroll_sens.set_title(_("Scroll sensitivity"))
         scroll_sens.set_subtitle(_("Mouse wheel scroll speed in menus and interface"))
-        scroll_sens.set_value(settings.get("scroll_sensitivity", 1.5))
-        scroll_sens.connect(
-            "notify::value",
-            lambda row, _pspec: window.set_setting(
-                "scroll_sensitivity", round(row.get_value(), 2)
-            ),
+        widgets.bind_spin(
+            window,
+            scroll_sens,
+            "scroll_sensitivity",
+            1.5,
+            to_setting=lambda value: round(value, 2),
         )
         game.add(scroll_sens)
         window.runtime_only(scroll_sens, "input", hide=True)
 
-        self.raw_mouse_row = Adw.SwitchRow(
+        raw_mouse = Adw.SwitchRow(
             title=_("Raw mouse input"),
             subtitle=_(
                 "Camera moves by the mouse's own motion, without pointer acceleration (XInput 2)"
             ),
-            active=settings.get("raw_mouse", True),
         )
-        self.raw_mouse_row.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("raw_mouse", row.get_active()),
-        )
-        game.add(self.raw_mouse_row)
-        window.runtime_only(self.raw_mouse_row, "input", hide=True)
+        game.add(widgets.bind_switch(window, raw_mouse, "raw_mouse", True))
+        window.runtime_only(raw_mouse, "input", hide=True)
 
         menu_bar = Adw.SwitchRow(
             title=_("Hide the macOS menu bar"),
             subtitle=_("The Roblox, Edit, Window… strip at the top of the game window"),
-            active=settings["hide_menu_bar"],
         )
-        menu_bar.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("hide_menu_bar", row.get_active()),
-        )
-        game.add(menu_bar)
+        game.add(widgets.bind_switch(window, menu_bar, "hide_menu_bar"))
         window.runtime_only(menu_bar, "menu_bar")
 
         hide_launcher = Adw.SwitchRow(
             title=_("Hide launcher while playing"),
             subtitle=_("Hide the launcher window while the game is running"),
-            active=settings.get("hide_launcher_on_launch", True),
         )
-        hide_launcher.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "hide_launcher_on_launch", row.get_active()
-            ),
-        )
-        game.add(hide_launcher)
+        game.add(widgets.bind_switch(window, hide_launcher, "hide_launcher_on_launch", True))
 
         reopen = Adw.SwitchRow(
             title=_("Open settings after Roblox exits"),
             subtitle=_("Otherwise Quadra closes with the game"),
-            active=settings.get("open_settings_after_exit", False),
         )
-        reopen.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "open_settings_after_exit", row.get_active()
-            ),
-        )
-        game.add(reopen)
+        game.add(widgets.bind_switch(window, reopen, "open_settings_after_exit"))
 
         playtime_switch = Adw.SwitchRow(
             title=_("Show playtime"),
             subtitle=_("Show accumulated playtime on the Play page"),
-            active=settings.get("show_playtime", True),
         )
-        playtime_switch.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_show_playtime(row.get_active()),
-        )
-        game.add(playtime_switch)
+        game.add(widgets.bind_switch(window, playtime_switch, "show_playtime", True))
 
         server_location = Adw.SwitchRow(
             title=_("Show server location"),
             subtitle=_(
                 "Sends the game server's IP address to RoValra (apis.rovalra.com) while you play"
             ),
-            active=settings.get("server_location_lookup", False),
         )
-        server_location.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_server_location_lookup(row.get_active()),
-        )
-        game.add(server_location)
+        game.add(widgets.bind_switch(window, server_location, "server_location_lookup"))
 
         server_notify = Adw.SwitchRow(
             title=_("Notify of server location"),
             subtitle=_(
                 "Show a desktop notification with the server's location when you join one"
             ),
-            active=settings.get("server_location_notify", True),
         )
-        server_notify.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "server_location_notify", row.get_active()
-            ),
-        )
-        game.add(server_notify)
+        game.add(widgets.bind_switch(window, server_notify, "server_location_notify", True))
 
         cores = os.cpu_count() or 1
         cpu_limit = Adw.SpinRow.new_with_range(0, cores, 1)
@@ -426,13 +362,7 @@ class SettingsPage(Adw.Bin):
         cpu_limit.set_subtitle(
             _("0 uses all cores. Applied a few seconds after the game starts.")
         )
-        cpu_limit.set_value(settings.get("roblox_cpu_limit", 0))
-        cpu_limit.connect(
-            "notify::value",
-            lambda row, _pspec: window.set_setting(
-                "roblox_cpu_limit", int(row.get_value())
-            ),
-        )
+        widgets.bind_spin(window, cpu_limit, "roblox_cpu_limit", 0, to_setting=int)
         game.add(cpu_limit)
 
         self.env_page.add(game)
@@ -467,28 +397,21 @@ class SettingsPage(Adw.Bin):
         vr_scale.set_subtitle(
             _("Percent of the headset's recommended size per eye. Lower is smoother.")
         )
-        vr_scale.set_value(
-            vr.validated_render_scale(
-                settings.get("vr_render_scale", vr.DEFAULT_RENDER_SCALE)
-            )
-        )
-        vr_scale.connect(
-            "notify::value",
-            lambda row, _pspec: window.set_setting(
-                "vr_render_scale", vr.validated_render_scale(row.get_value())
-            ),
+        widgets.bind_spin(
+            window,
+            vr_scale,
+            "vr_render_scale",
+            vr.DEFAULT_RENDER_SCALE,
+            to_setting=vr.validated_render_scale,
+            to_row=vr.validated_render_scale,
         )
         vr_mirror = Adw.SwitchRow(
             title=_("Show the headset view in the game window"),
             subtitle=_(
                 "Both eyes side by side on the desktop. Off saves a little time per frame."
             ),
-            active=settings.get("vr_mirror", True),
         )
-        vr_mirror.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("vr_mirror", row.get_active()),
-        )
+        widgets.bind_switch(window, vr_mirror, "vr_mirror", True)
 
         def vr_toggled(row, _pspec=None):
             vr_scale.set_sensitive(row.get_active())
@@ -528,58 +451,42 @@ class SettingsPage(Adw.Bin):
         # 3. Discord Rich Presence
         discord_group = Adw.PreferencesGroup(title=_("Discord Rich Presence"))
 
-        self.discord_rpc_switch = Adw.SwitchRow(
+        discord_rpc = Adw.SwitchRow(
             title=_("Enable Discord Rich Presence"),
             subtitle=_("Show current game and playtime in your Discord status"),
-            active=settings.get("discord_rpc", True),
         )
-        self.discord_rpc_switch.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_discord_rpc(row.get_active()),
-        )
-        discord_group.add(self.discord_rpc_switch)
-
-        self.discord_game = Adw.SwitchRow(
-            title=_("Show experience name in Discord"),
-            subtitle=_("Display the title and creator of the place you are playing"),
-            active=settings.get("discord_rpc_game", True),
-        )
-        self.discord_game.set_sensitive(settings.get("discord_rpc", True))
-        self.discord_game.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_discord_rpc_option(
-                "discord_rpc_game", row.get_active()
+        discord_group.add(widgets.bind_switch(window, discord_rpc, "discord_rpc", True))
+        discord_options = []
+        for key, title, subtitle, default in (
+            (
+                "discord_rpc_game",
+                _("Show experience name in Discord"),
+                _("Display the title and creator of the place you are playing"),
+                True,
             ),
-        )
-        discord_group.add(self.discord_game)
-
-        self.discord_icon = Adw.SwitchRow(
-            title=_("Show experience thumbnail in Discord"),
-            subtitle=_("Replace the Quadra icon with the game's icon"),
-            active=settings.get("discord_rpc_icon", False),
-        )
-        self.discord_icon.set_sensitive(settings.get("discord_rpc", True))
-        self.discord_icon.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_discord_rpc_option(
-                "discord_rpc_icon", row.get_active()
+            (
+                "discord_rpc_icon",
+                _("Show experience thumbnail in Discord"),
+                _("Replace the Quadra icon with the game's icon"),
+                False,
             ),
-        )
-        discord_group.add(self.discord_icon)
-
-        self.discord_time = Adw.SwitchRow(
-            title=_("Show elapsed time in Discord"),
-            subtitle=_("Display how long you have been playing in your status"),
-            active=settings.get("discord_rpc_time", True),
-        )
-        self.discord_time.set_sensitive(settings.get("discord_rpc", True))
-        self.discord_time.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_discord_rpc_option(
-                "discord_rpc_time", row.get_active()
+            (
+                "discord_rpc_time",
+                _("Show elapsed time in Discord"),
+                _("Display how long you have been playing in your status"),
+                True,
             ),
-        )
-        discord_group.add(self.discord_time)
+        ):
+            option = Adw.SwitchRow(title=title, subtitle=subtitle)
+            discord_group.add(widgets.bind_switch(window, option, key, default))
+            discord_options.append(option)
+
+        def show_discord_options(_key, enabled):
+            for option in discord_options:
+                option.set_sensitive(enabled)
+
+        show_discord_options("discord_rpc", settings.get("discord_rpc", True))
+        window.watch_setting("discord_rpc", show_discord_options)
 
         self.env_page.add(discord_group)
 
@@ -595,20 +502,15 @@ class SettingsPage(Adw.Bin):
             title=_("DNS server"),
             model=Gtk.StringList.new([_(label) for _code, label in DNS_CHOICES]),
         )
-        current = settings.get("dns", "system")
-        server.set_selected(dns_codes.index(current) if current in dns_codes else 0)
+        widgets.bind_combo(window, server, "dns", dns_codes, "system")
         custom = Adw.EntryRow(title=_("Custom server"))
         custom.set_text(settings.get("dns_custom", ""))
         custom.set_show_apply_button(True)
         custom.set_tooltip_text(
             _("IP address, optionally with :port. Plain DNS, not encrypted.")
         )
-        custom.set_visible(current == "custom")
-
-        def dns_changed(row, _pspec):
-            code = dns_codes[row.get_selected()]
-            window.set_setting("dns", code)
-            custom.set_visible(code == "custom")
+        custom.set_visible(settings.get("dns", "system") == "custom")
+        window.watch_setting("dns", lambda _key, code: custom.set_visible(code == "custom"))
 
         def custom_applied(row):
             text = row.get_text().strip()
@@ -621,7 +523,6 @@ class SettingsPage(Adw.Bin):
             row.remove_css_class("error")
             window.set_setting("dns_custom", text)
 
-        server.connect("notify::selected", dns_changed)
         custom.connect("apply", custom_applied)
         dns_group.add(server)
         dns_group.add(custom)
@@ -631,13 +532,8 @@ class SettingsPage(Adw.Bin):
                 'Answers Roblox\'s telemetry and crash-upload hosts with "not found". '
                 "Needs a DNS server above other than the system's."
             ),
-            active=settings.get("block_telemetry", False),
         )
-        block.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("block_telemetry", row.get_active()),
-        )
-        dns_group.add(block)
+        dns_group.add(widgets.bind_switch(window, block, "block_telemetry"))
         self.env_page.add(dns_group)
         window.runtime_only(dns_group, "dns", hide=True)
 
@@ -656,15 +552,8 @@ class SettingsPage(Adw.Bin):
             ("trace_keys", "Keyboard tracing"),
             ("fps_log", "Frame rate in the log"),
         ]:
-            row = Adw.SwitchRow(
-                title=_(title), subtitle=core.TRACE_ENV[key], active=settings[key]
-            )
-            row.connect(
-                "notify::active",
-                lambda r, _pspec, k=key: window.set_setting(k, r.get_active()),
-            )
-            diagnostics.add(row)
-        self._synced_switches = {}
+            row = Adw.SwitchRow(title=_(title), subtitle=core.TRACE_ENV[key])
+            diagnostics.add(widgets.bind_switch(window, row, key))
         diagnostics.add(self._allow_debugger_row())
         collect = widgets._button_row(_("Collect diagnostics"))
         collect.connect("activated", lambda *_args: window.collect_diagnostics())
@@ -713,24 +602,17 @@ class SettingsPage(Adw.Bin):
         )
         self.version_row.add_suffix(self.update_button)
         roblox.add(self.version_row)
-        self.channel_row = Adw.ActionRow(
-            title=_("Last client channel"),
-            subtitle=settings.get("roblox_channel") or _("Release (default)"),
-        )
+        self.channel_row = Adw.ActionRow(title=_("Last client channel"))
+        self._show_channel("roblox_channel", settings.get("roblox_channel"))
+        window.watch_setting("roblox_channel", self._show_channel)
         roblox.add(self.channel_row)
+        window.watch_client(self._show_installed_client)
 
-        self.auto_update_switch = Adw.SwitchRow(
+        auto_update = Adw.SwitchRow(
             title=_("Check for Roblox updates on startup"),
             subtitle=_("Prompt to update if a newer version of Roblox is available"),
-            active=settings.get("auto_check_roblox_updates", True),
         )
-        self.auto_update_switch.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "auto_check_roblox_updates", row.get_active()
-            ),
-        )
-        roblox.add(self.auto_update_switch)
+        roblox.add(widgets.bind_switch(window, auto_update, "auto_check_roblox_updates", True))
 
         self.progress = Gtk.ProgressBar(
             show_text=True,
@@ -755,6 +637,7 @@ class SettingsPage(Adw.Bin):
         self.roblox_page.add(rosemary_roblox)
         window.runtime_only(rosemary_roblox, "rosemary", hide=True)
         self.refresh_rosemary()
+        window.watch_setting(ROSEMARY_SETTINGS, lambda _key, _value: self.refresh_rosemary())
 
         # The startup render throttle patch gets a group of its own: the
         # button applies or reverts it by hand, the switch decides whether
@@ -768,18 +651,11 @@ class SettingsPage(Adw.Bin):
         )
         throttle.add(self.throttle_row)
 
-        self.auto_patch_switch = Adw.SwitchRow(
+        auto_patch = Adw.SwitchRow(
             title=_("Apply the throttle patch automatically"),
             subtitle=_("Patch the client on every launch and after Roblox updates"),
-            active=settings.get("auto_patch_throttle", True),
         )
-        self.auto_patch_switch.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "auto_patch_throttle", row.get_active()
-            ),
-        )
-        throttle.add(self.auto_patch_switch)
+        throttle.add(widgets.bind_switch(window, auto_patch, "auto_patch_throttle", True))
         self._in_thread(core.throttle_patch_state, self._throttle_state_done)
         self.roblox_page.add(throttle)
         window.runtime_only(throttle, "throttle")
@@ -824,9 +700,25 @@ class SettingsPage(Adw.Bin):
     def flush(self):
         self.flags_page.flush()
 
-    def refresh_raw_mouse(self):
-        if hasattr(self, "raw_mouse_row"):
-            self.raw_mouse_row.set_active(self.window.settings.get("raw_mouse", True))
+    def _show_channel(self, _key, channel):
+        self.channel_row.set_subtitle(channel or _("Release (default)"))
+
+    def _show_installed_client(self):
+        self.version_row.set_subtitle(core.installed_version() or _("not found"))
+        self.refresh_rosemary()
+
+    def selected_runtime(self):
+        index = self.runtime_row.get_selected()
+        return self._runtime_codes[index] if index < len(self._runtime_codes) else None
+
+    def select_runtime(self, variant):
+        self.runtime_row.set_selected(self._runtime_codes.index(variant))
+
+    def installed_runtime(self, variant):
+        return self._runtime_choices.get(variant)
+
+    def runtime_installed(self, variant):
+        return variant in self._runtime_choices
 
     def ciderdarling_revisions(self):
         """(installed, pinned) CiderDarling source revisions; None when unknown."""
@@ -838,7 +730,7 @@ class SettingsPage(Adw.Bin):
         )
         return (
             installed if isinstance(installed, str) else None,
-            (self._cider_pin or {}).get("revision"),
+            (self.window.cider_pin or {}).get("revision"),
         )
 
     def _installed_runtime_choices(self):
@@ -866,10 +758,7 @@ class SettingsPage(Adw.Bin):
         )
 
     def _runtime_selection_changed(self):
-        index = self.runtime_row.get_selected()
-        selected = (
-            self._runtime_codes[index] if index < len(self._runtime_codes) else None
-        )
+        selected = self.selected_runtime()
         choice = self._runtime_choices.get(selected)
         bundled = runtime.is_bundled()
         installing = self.window.runtime_install_job is not None
@@ -962,7 +851,7 @@ class SettingsPage(Adw.Bin):
             return
         if not self.window.begin("switching runtime"):
             return
-        selected = self._runtime_codes[self.runtime_row.get_selected()]
+        selected = self.selected_runtime()
         saved = False
         try:
             # Also protect Roblox launched outside this window but using the
@@ -978,7 +867,7 @@ class SettingsPage(Adw.Bin):
                     _("Install this runtime with Quadra's installer before switching.")
                 )
             self.flush()
-            core.save_settings(self.window.settings)
+            self.window.settings.save()
             runtime.save_selection(choice, current=core.DARLING_RUNTIME)
             saved = True
             self.window._stop_web()
@@ -1011,7 +900,7 @@ class SettingsPage(Adw.Bin):
                     _("The previous CiderDarling installation is unavailable.")
                 )
             self.flush()
-            core.save_settings(self.window.settings)
+            self.window.settings.save()
             runtime.save_selection(choice, current=core.DARLING_RUNTIME)
             saved = True
             self.window._stop_web()
@@ -1031,14 +920,16 @@ class SettingsPage(Adw.Bin):
         finally:
             self.window.end(resume_pending=False)
 
+    def _show_backend(self, _key, backend):
+        with self.backend_row.handler_block(self._backend_handler):
+            self.backend_row.set_selected(1 if backend == "rosemary" else 0)
+        self._show_gpu_rows()
+
     def _backend_selected(self, row, _pspec):
         window = self.window
         window.set_setting(
             "runtime_backend", "rosemary" if row.get_selected() == 1 else "darling"
         )
-        window.apply_runtime_state()
-        self._show_gpu_rows()
-        self.refresh_rosemary()
         if (
             window.rosemary_selected()
             and not window.rosemary_ready()
@@ -1065,7 +956,10 @@ class SettingsPage(Adw.Bin):
                 rosemary_install.normalize_source(settings.get("rosemary_source"))
             )
         )
-        self.rosemary_source_row.connect("notify::selected", self._rosemary_source_selected)
+        self._rosemary_source_handler = self.rosemary_source_row.connect(
+            "notify::selected", self._rosemary_source_selected
+        )
+        window.watch_setting("rosemary_source", self._show_rosemary_source)
         program.add(self.rosemary_source_row)
         self.rosemary_runner_row = Adw.ComboRow(title=_("Rosemary runner"), use_subtitle=False)
         self._rosemary_runners = []
@@ -1121,66 +1015,29 @@ class SettingsPage(Adw.Bin):
             ),
             model=Gtk.StringList.new([_("Automatic"), _("Native"), _("Emulated")]),
         )
-        modes = list(rosemary_runtime.ENGINES)
-        engine.set_selected(
-            modes.index(settings.get("rosemary_engine", "auto"))
-            if settings.get("rosemary_engine", "auto") in modes
-            else 0
-        )
-        engine.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_engine", modes[row.get_selected()]
-            ),
-        )
+        widgets.bind_combo(window, engine, "rosemary_engine", rosemary_runtime.ENGINES, "auto")
         options.add(engine)
         opengl = Adw.SwitchRow(
             title=_("Force OpenGL"),
             subtitle=_("For machines without a Vulkan driver"),
-            active=settings.get("rosemary_force_opengl", False),
         )
-        opengl.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_force_opengl", row.get_active()
-            ),
-        )
-        options.add(opengl)
-        drivers = list(rosemary_runtime.VIDEO_DRIVERS)
+        options.add(widgets.bind_switch(window, opengl, "rosemary_force_opengl"))
         display = widgets.ComboRow(
             title=_("Display server"),
             model=Gtk.StringList.new([_("Default"), "Wayland", "X11 (XWayland)"]),
         )
-        display.set_selected(
-            drivers.index(settings.get("rosemary_video_driver", ""))
-            if settings.get("rosemary_video_driver", "") in drivers
-            else 0
-        )
-        display.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_video_driver", drivers[row.get_selected()]
-            ),
+        widgets.bind_combo(
+            window, display, "rosemary_video_driver", rosemary_runtime.VIDEO_DRIVERS, ""
         )
         options.add(display)
-        swaps = list(rosemary_runtime.SWAP_INTERVALS)
         vsync = widgets.ComboRow(
             title="VSync",
             model=Gtk.StringList.new([_("Default"), _("Off"), _("On"), _("Adaptive")]),
         )
-        vsync.set_selected(
-            swaps.index(settings.get("rosemary_swap_interval", ""))
-            if settings.get("rosemary_swap_interval", "") in swaps
-            else 0
-        )
-        vsync.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_swap_interval", swaps[row.get_selected()]
-            ),
+        widgets.bind_combo(
+            window, vsync, "rosemary_swap_interval", rosemary_runtime.SWAP_INTERVALS, ""
         )
         options.add(vsync)
-        presentation = list(rosemary_runtime.PRESENTATION_MODES)
         present = widgets.ComboRow(
             title=_("Presentation mode"),
             subtitle=_("How frames reach the screen (Vulkan present mode)"),
@@ -1188,15 +1045,12 @@ class SettingsPage(Adw.Bin):
                 [_("Default"), _("Immediate"), "FIFO", _("FIFO relaxed"), "Mailbox"]
             ),
         )
-        current = settings.get("rosemary_presentation_mode", "")
-        present.set_selected(
-            presentation.index(current) if current in presentation else 0
-        )
-        present.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_presentation_mode", presentation[row.get_selected()]
-            ),
+        widgets.bind_combo(
+            window,
+            present,
+            "rosemary_presentation_mode",
+            rosemary_runtime.PRESENTATION_MODES,
+            "",
         )
         options.add(present)
         rate = Adw.EntryRow(
@@ -1216,7 +1070,6 @@ class SettingsPage(Adw.Bin):
 
         rate.connect("apply", rate_applied)
         options.add(rate)
-        decorations = list(rosemary_runtime.DECORATIONS)
         title_bar = widgets.ComboRow(
             title=_("Title bar"),
             subtitle=_("Who draws the window's title bar"),
@@ -1224,18 +1077,10 @@ class SettingsPage(Adw.Bin):
                 [_("Default"), _("Rosemary (Mac style)"), _("Window manager")]
             ),
         )
-        current = settings.get("rosemary_decorations", "")
-        title_bar.set_selected(
-            decorations.index(current) if current in decorations else 0
-        )
-        title_bar.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_decorations", decorations[row.get_selected()]
-            ),
+        widgets.bind_combo(
+            window, title_bar, "rosemary_decorations", rosemary_runtime.DECORATIONS, ""
         )
         options.add(title_bar)
-        menus = list(rosemary_runtime.MENUS)
         menu = widgets.ComboRow(
             title=_("Menu placement"),
             subtitle=_('"Hide the macOS menu bar" in Game settings overrides this'),
@@ -1243,14 +1088,7 @@ class SettingsPage(Adw.Bin):
                 [_("Default"), _("In the title bar"), _("Strip under it"), _("None")]
             ),
         )
-        current = settings.get("rosemary_menu", "")
-        menu.set_selected(menus.index(current) if current in menus else 0)
-        menu.connect(
-            "notify::selected",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_menu", menus[row.get_selected()]
-            ),
-        )
+        widgets.bind_combo(window, menu, "rosemary_menu", rosemary_runtime.MENUS, "")
         options.add(menu)
         for key, title, subtitle in (
             ("rosemary_confine_pointer", _("Keep the pointer inside the window"), None),
@@ -1265,40 +1103,20 @@ class SettingsPage(Adw.Bin):
                 _("Crouching with Control would otherwise be a right click"),
             ),
         ):
-            row = Adw.SwitchRow(
-                title=title, subtitle=subtitle or "", active=settings.get(key, False)
-            )
-            row.connect(
-                "notify::active",
-                lambda r, _pspec, k=key: window.set_setting(k, r.get_active()),
-            )
-            options.add(row)
+            row = Adw.SwitchRow(title=title, subtitle=subtitle or "")
+            options.add(widgets.bind_switch(window, row, key))
         zink = Adw.SwitchRow(
             title=_("VR: OpenGL through Vulkan (zink)"),
             subtitle=_(
                 "Roblox's VR needs its OpenGL renderer; this runs it on Vulkan with Mesa's zink"
             ),
-            active=settings.get("rosemary_vr_zink", False),
         )
-        zink.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_vr_zink", row.get_active()
-            ),
-        )
-        options.add(zink)
+        options.add(widgets.bind_switch(window, zink, "rosemary_vr_zink"))
         server = Adw.SwitchRow(
             title=_("Process server"),
             subtitle=_("Stopped with the game; turn off to leave it running"),
-            active=settings.get("rosemary_process_server", True),
         )
-        server.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "rosemary_process_server", row.get_active()
-            ),
-        )
-        options.add(server)
+        options.add(widgets.bind_switch(window, server, "rosemary_process_server", True))
         self.env_page.add(options)
         for group in (program, options):
             window.runtime_only(group, "rosemary", hide=True)
@@ -1338,15 +1156,10 @@ class SettingsPage(Adw.Bin):
             subtitle=_(
                 "Runs Roblox's bundled interface every time. Games load assets again."
             ),
-            active=self.window.settings.get("rosemary_clear_cache_on_launch", False),
         )
-        cache_on_launch.connect(
-            "notify::active",
-            lambda row, _pspec: self.window.set_setting(
-                "rosemary_clear_cache_on_launch", row.get_active()
-            ),
+        client_group.add(
+            widgets.bind_switch(self.window, cache_on_launch, "rosemary_clear_cache_on_launch")
         )
-        client_group.add(cache_on_launch)
         return client_group
 
     def _rosemary_source(self):
@@ -1354,11 +1167,16 @@ class SettingsPage(Adw.Bin):
             self.window.settings.get("rosemary_source")
         )
 
+    def _show_rosemary_source(self, _key, source):
+        with self.rosemary_source_row.handler_block(self._rosemary_source_handler):
+            self.rosemary_source_row.set_selected(
+                self._rosemary_sources.index(rosemary_install.normalize_source(source))
+            )
+
     def _rosemary_source_selected(self, row, _pspec):
         window = self.window
         kind = self._rosemary_sources[row.get_selected()]
         window.set_setting("rosemary_source", kind)
-        self.refresh_rosemary()
         # Quadra installs the build you picked when it is not there yet.
         if (
             not rosemary_runtime.quadra_runners(kind)
@@ -1382,9 +1200,12 @@ class SettingsPage(Adw.Bin):
             and newest not in have
             and rosemary_install.runner_kind(newest) == kind
         ):
-            GLib.idle_add(
-                self.rosemary_install_button.set_label, _("Update to {version}", version=newest)
-            )
+            GLib.idle_add(self._offer_rosemary_update, newest)
+        return False
+
+    def _offer_rosemary_update(self, version):
+        if self.window.settings_page is self:
+            self.rosemary_install_button.set_label(_("Update to {version}", version=version))
         return False
 
     def refresh_rosemary(self):
@@ -1468,7 +1289,6 @@ class SettingsPage(Adw.Bin):
 
     def _rosemary_runner_selected(self, _row, _pspec):
         self.window.set_setting("rosemary_program", self._selected_rosemary_runner().program)
-        self.refresh_rosemary()
 
     def _choose_rosemary_runner(self, on_added=lambda: None):
         dialog = Gtk.FileChooserNative.new(
@@ -1500,7 +1320,6 @@ class SettingsPage(Adw.Bin):
         added = [p for p in window.settings.get("rosemary_runners") or [] if p != program]
         window.set_setting("rosemary_runners", [*added, program])
         window.set_setting("rosemary_program", program)
-        self.refresh_rosemary()
         return True
 
     def _remove_rosemary_runner(self):
@@ -1513,7 +1332,6 @@ class SettingsPage(Adw.Bin):
         ]
         window.set_setting("rosemary_runners", kept)
         window.set_setting("rosemary_program", "")
-        self.refresh_rosemary()
 
     def _toggle_rosemary_rollback(self):
         settings = self.window.settings
@@ -1523,7 +1341,6 @@ class SettingsPage(Adw.Bin):
             previous = rosemary_runtime.previous_build(settings)
             if previous is not None:
                 self.window.set_setting("rosemary_pinned_build", previous[0].key)
-        self.refresh_rosemary()
 
     def _set_rosemary_busy(self, busy):
         for button in (self.rosemary_install_button, self.rosemary_client_button):
@@ -1533,6 +1350,8 @@ class SettingsPage(Adw.Bin):
 
     def _run_rosemary(self, work):
         """Run `work(progress)` off the GTK thread with the progress bar."""
+        if not self.window.begin("installing Rosemary"):
+            return
         self._set_rosemary_busy(True)
 
         def show_progress(fraction, text):
@@ -1556,7 +1375,8 @@ class SettingsPage(Adw.Bin):
 
     def _rosemary_finished(self, error):
         self._set_rosemary_busy(False)
-        self.refresh_rosemary()
+        self.window.end(resume_pending=False)
+        self.window.client_changed()
         if error is not None:
             dialogs._error_dialog(self.window, _("Rosemary"), str(error) or repr(error))
         else:
@@ -1570,10 +1390,9 @@ class SettingsPage(Adw.Bin):
         )
 
     def _install_rosemary_client(self):
+        settings = self.window.settings.snapshot()
         self._run_rosemary(
-            lambda progress: rosemary_runtime.ensure_ready(
-                self.window.settings, progress
-            )
+            lambda progress: rosemary_runtime.ensure_ready(settings, progress)
         )
 
     # Keep the stored Metal key so existing selections follow Quadra M2VK.
@@ -1611,13 +1430,14 @@ class SettingsPage(Adw.Bin):
             subtitle=_(subtitle),
             model=Gtk.StringList.new([_(label) for _code, label, _hint in choices]),
         )
-        current = self.window.settings.get(key, codes[0])
-        row.set_selected(codes.index(current) if current in codes else 0)
-        row.connect(
-            "notify::selected",
-            lambda row, _pspec: self.window.set_setting(key, codes[row.get_selected()]),
-        )
-        self._m2vk_defaults[key] = (row, codes[0])
+        widgets.bind_combo(self.window, row, key, codes, codes[0])
+        self._m2vk_defaults[key] = codes[0]
+        return row
+
+    def _m2vk_switch(self, key, title, subtitle, default):
+        row = Adw.SwitchRow(title=title, subtitle=subtitle)
+        widgets.bind_switch(self.window, row, key, default)
+        self._m2vk_defaults[key] = default
         return row
 
     def _m2vk_spin(self, key, title, subtitle, low, high, step, default):
@@ -1625,19 +1445,13 @@ class SettingsPage(Adw.Bin):
         row.set_digits(0)
         row.set_title(_(title))
         row.set_subtitle(_(subtitle))
-        value = self.window.settings.get(key, default)
-        row.set_value(
-            value
-            if isinstance(value, int)
-            and not isinstance(value, bool)
-            and low <= value <= high
-            else default
-        )
-        row.connect(
-            "notify::value",
-            lambda row, _pspec: self.window.set_setting(key, int(row.get_value())),
-        )
-        self._m2vk_defaults[key] = (row, default)
+
+        def in_range(value):
+            whole_number = isinstance(value, int) and not isinstance(value, bool)
+            return value if whole_number and low <= value <= high else default
+
+        widgets.bind_spin(self.window, row, key, default, to_setting=int, to_row=in_range)
+        self._m2vk_defaults[key] = default
         return row
 
     def _build_m2vk_group(self, settings):
@@ -1653,20 +1467,13 @@ class SettingsPage(Adw.Bin):
         )
         self.m2vk_group = group
 
-        self.shader_preload_switch = Adw.SwitchRow(
+        shader_preload = Adw.SwitchRow(
             title=_("Shader preloading"),
             subtitle=_(
                 "Prepare learned shaders before playing. New shaders may still compile during play."
             ),
-            active=settings.get("metal_shader_preload", True),
         )
-        self.shader_preload_switch.connect(
-            "notify::active",
-            lambda row, *_args: window.set_setting(
-                "metal_shader_preload", row.get_active()
-            ),
-        )
-        group.add(self.shader_preload_switch)
+        group.add(widgets.bind_switch(window, shader_preload, "metal_shader_preload", True))
         for key, title, subtitle in (
             (
                 "metal_library_preload",
@@ -1679,19 +1486,13 @@ class SettingsPage(Adw.Bin):
                 "Warm bundled resources before playing. Downloaded world assets still load in game.",
             ),
         ):
-            row = Adw.SwitchRow(
-                title=_(title), subtitle=_(subtitle), active=settings.get(key, True)
-            )
-            row.set_sensitive(self.shader_preload_switch.get_active())
-            self.shader_preload_switch.connect(
+            row = Adw.SwitchRow(title=_(title), subtitle=_(subtitle))
+            group.add(widgets.bind_switch(window, row, key, True))
+            row.set_sensitive(shader_preload.get_active())
+            shader_preload.connect(
                 "notify::active",
                 lambda switch, _prop, row=row: row.set_sensitive(switch.get_active()),
             )
-            row.connect(
-                "notify::active",
-                lambda row, _prop, key=key: window.set_setting(key, row.get_active()),
-            )
-            group.add(row)
 
         group.add(
             self._m2vk_combo(
@@ -1710,22 +1511,17 @@ class SettingsPage(Adw.Bin):
                 self.M2VK_PRESENT,
             )
         )
-        priority = Adw.SwitchRow(
-            title=_("Keep important graphics memory resident"),
-            subtitle=_(
-                "When video memory runs out, let the driver move textures aside before render targets "
-                "instead of failing. Turn off if a driver misbehaves."
-            ),
-            active=settings.get("metal_memory_priority", True),
+        group.add(
+            self._m2vk_switch(
+                "metal_memory_priority",
+                _("Keep important graphics memory resident"),
+                _(
+                    "When video memory runs out, let the driver move textures aside before render targets "
+                    "instead of failing. Turn off if a driver misbehaves."
+                ),
+                True,
+            )
         )
-        priority.connect(
-            "notify::active",
-            lambda row, *_args: window.set_setting(
-                "metal_memory_priority", row.get_active()
-            ),
-        )
-        self._m2vk_defaults["metal_memory_priority"] = (priority, True)
-        group.add(priority)
         group.add(
             self._m2vk_spin(
                 "metal_vram_limit_gib",
@@ -1760,34 +1556,24 @@ class SettingsPage(Adw.Bin):
             )
         )
 
-        fallback = Adw.SwitchRow(
-            title=_("Fall back to OpenGL if Quadra M2VK cannot start"),
-            subtitle=_(
-                "Play with OpenGL this time instead of stopping, when no working GPU driver is found."
-            ),
-            active=settings.get("metal_fallback", True),
+        group.add(
+            self._m2vk_switch(
+                "metal_fallback",
+                _("Fall back to OpenGL if Quadra M2VK cannot start"),
+                _(
+                    "Play with OpenGL this time instead of stopping, when no working GPU driver is found."
+                ),
+                True,
+            )
         )
-        fallback.connect(
-            "notify::active",
-            lambda row, *_args: window.set_setting("metal_fallback", row.get_active()),
-        )
-        self._m2vk_defaults["metal_fallback"] = (fallback, True)
-        group.add(fallback)
 
         diagnostics = Adw.SwitchRow(
             title=_("Quadra M2VK performance diagnostics"),
             subtitle=_(
                 "Record compilation, encoding, GPU timing and memory use for performance reports."
             ),
-            active=settings.get("metal_diagnostics", False),
         )
-        diagnostics.connect(
-            "notify::active",
-            lambda row, *_args: window.set_setting(
-                "metal_diagnostics", row.get_active()
-            ),
-        )
-        group.add(diagnostics)
+        group.add(widgets.bind_switch(window, diagnostics, "metal_diagnostics"))
 
         reset = widgets._button_row(_("Reset Quadra M2VK settings"))
         reset.connect("activated", lambda *_args: self._reset_m2vk())
@@ -1795,14 +1581,8 @@ class SettingsPage(Adw.Bin):
         self._update_m2vk(settings.get("renderer", "opengl"))
 
     def _reset_m2vk(self):
-        """Put the tuning rows back to their defaults; each row saves its own change."""
-        for row, default in self._m2vk_defaults.values():
-            if isinstance(row, Adw.ComboRow):
-                row.set_selected(0)
-            elif isinstance(row, Adw.SwitchRow):
-                row.set_active(bool(default))
-            else:
-                row.set_value(default)
+        for key, default in self._m2vk_defaults.items():
+            self.window.set_setting(key, default)
         dialogs._toast(self.window.toasts, _("Quadra M2VK settings reset"))
 
     def _update_m2vk(self, renderer):
@@ -1834,6 +1614,8 @@ class SettingsPage(Adw.Bin):
         self._renderer_rows.append(
             (row, row.connect("notify::selected", self._select_renderer))
         )
+        if len(self._renderer_rows) == 1:
+            self.window.watch_setting("renderer", lambda _key, code: self._show_renderer(code))
         return row
 
     def _show_renderer(self, code):
@@ -1869,11 +1651,9 @@ class SettingsPage(Adw.Bin):
                 )
                 return
             window.set_setting("renderer", selected)
-            self._show_renderer(selected)
             return
         if selected == "opengl" or not graphics.missing_vulkan_dependencies():
             window.set_setting("renderer", selected)
-            self._show_renderer(selected)
             return
         for other, _handler in self._renderer_rows:
             other.set_sensitive(False)
@@ -1912,6 +1692,7 @@ class SettingsPage(Adw.Bin):
         if len(self._gpu_rows) == 1:
             from .. import gpus
 
+            self.window.watch_setting("gpu", lambda _key, code: self._show_gpu(code))
             self._gpu_choice_needed = self.window.settings.get("gpu", "auto") != "auto"
             self._in_thread(gpus.enumerate_gpus, self._gpu_choices_loaded)
         self._show_gpu_rows()
@@ -1926,11 +1707,15 @@ class SettingsPage(Adw.Bin):
         selected = row.get_selected()
         if selected < len(self._gpu_codes):
             self.window.set_setting("gpu", self._gpu_codes[selected])
-            for other, handler, _always in self._gpu_rows:
-                if other is not row and other.get_selected() != selected:
-                    other.handler_block(handler)
-                    other.set_selected(selected)
-                    other.handler_unblock(handler)
+
+    def _show_gpu(self, code):
+        if code not in self._gpu_codes:
+            return
+        index = self._gpu_codes.index(code)
+        for row, handler, _always in self._gpu_rows:
+            if row.get_selected() != index:
+                with row.handler_block(handler):
+                    row.set_selected(index)
 
     def _gpu_choices_loaded(self, adapters, error):
         if getattr(self.window, "settings_page", None) is not self:
@@ -1964,26 +1749,8 @@ class SettingsPage(Adw.Bin):
             )
         return False
 
-    def _synced_switch(self, key, title, subtitle):
-        """A switch for one setting; its copies on other tabs follow it."""
-        row = Adw.SwitchRow(
-            title=title, subtitle=subtitle, active=self.window.settings.get(key, False)
-        )
-        rows = self._synced_switches.setdefault(key, [])
-        rows.append(row)
-
-        def changed(changed_row, _pspec):
-            value = changed_row.get_active()
-            self.window.set_setting(key, value)
-            for other in rows:
-                if other is not changed_row and other.get_active() != value:
-                    other.set_active(value)
-
-        row.connect("notify::active", changed)
-        return row
-
     def _allow_debugger_row(self):
-        return self._synced_switch(
+        return self._switch_row(
             "allow_debugger",
             _("Allow freeze diagnostics"),
             _(
@@ -1993,7 +1760,7 @@ class SettingsPage(Adw.Bin):
         )
 
     def _text_input_trace_row(self):
-        return self._synced_switch(
+        return self._switch_row(
             "trace_text_input",
             _("Trace text input"),
             _(
@@ -2001,8 +1768,12 @@ class SettingsPage(Adw.Bin):
             ),
         )
 
+    def _switch_row(self, key, title, subtitle):
+        row = Adw.SwitchRow(title=title, subtitle=subtitle)
+        return widgets.bind_switch(self.window, row, key)
+
     def _ciderdarling_page(self):
-        window, settings = self.window, self.window.settings
+        window = self.window
         page = Adw.PreferencesPage()
         about = Adw.PreferencesGroup(
             title="CiderDarling",
@@ -2039,16 +1810,11 @@ class SettingsPage(Adw.Bin):
             subtitle=_(
                 "Checks in the background. Install an available update in a separate terminal."
             ),
-            active=settings.get("auto_check_ciderdarling_updates", True),
             sensitive=not runtime.is_bundled(),
         )
-        automatic.connect(
-            "notify::active",
-            lambda row, *_args: window.set_setting(
-                "auto_check_ciderdarling_updates", row.get_active()
-            ),
+        about.add(
+            widgets.bind_switch(window, automatic, "auto_check_ciderdarling_updates", True)
         )
-        about.add(automatic)
         self.cider_rollback_row = widgets._button_row(
             _("Use previous CiderDarling and restart")
         )
@@ -2075,15 +1841,8 @@ class SettingsPage(Adw.Bin):
                 "QUADRA_KICK. Interrupts threads stuck in long waits. Off by default: "
                 "each kick costs time. Applies on next launch."
             ),
-            active=settings.get("cider_thread_kicks", False),
         )
-        kicks.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "cider_thread_kicks", row.get_active()
-            ),
-        )
-        threads.add(kicks)
+        threads.add(widgets.bind_switch(window, kicks, "cider_thread_kicks"))
         page.add(threads)
 
         diagnostics = Adw.PreferencesGroup(title=_("Diagnostics"))
@@ -2093,28 +1852,16 @@ class SettingsPage(Adw.Bin):
                 "CIDER_TRACE_FILE. Numeric timings, no game text, in a private file in the logs "
                 "folder (up to 32 MB per launch). Applies on next launch."
             ),
-            active=settings.get("cider_trace", False),
         )
-        trace.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting("cider_trace", row.get_active()),
-        )
-        diagnostics.add(trace)
+        diagnostics.add(widgets.bind_switch(window, trace, "cider_trace"))
         verbose = Adw.SwitchRow(
             title=_("Verbose darlingserver log"),
             subtitle=_(
                 "DSERVER_LOG_LEVEL=debug. dserver.log grows quickly; applies the next time "
                 "Darling starts."
             ),
-            active=settings.get("cider_verbose_server_log", False),
         )
-        verbose.connect(
-            "notify::active",
-            lambda row, _pspec: window.set_setting(
-                "cider_verbose_server_log", row.get_active()
-            ),
-        )
-        diagnostics.add(verbose)
+        diagnostics.add(widgets.bind_switch(window, verbose, "cider_verbose_server_log"))
         diagnostics.add(self._allow_debugger_row())
         diagnostics.add(self._text_input_trace_row())
         collect = widgets._button_row(_("Collect diagnostics"))
@@ -2396,13 +2143,11 @@ class SettingsPage(Adw.Bin):
         def done(backup, error):
             if error is None and not _prepare_only and channel is not None:
                 self.window.set_setting("roblox_channel", channel)
-                self.channel_row.set_subtitle(channel or _("Release (default)"))
             self.window.end(resume_pending=error is None)
             self.update_button.set_sensitive(True)
             self._set_update_action(_("Check for updates"), self.check_updates)
             self.progress.set_visible(False)
-            self.version_row.set_subtitle(core.installed_version() or _("not found"))
-            self.window.play_page.refresh()
+            self.window.client_changed()
             if error is None:
                 core.clear_last_error()
             if on_complete:
@@ -2556,7 +2301,7 @@ class SettingsPage(Adw.Bin):
                 # Keep the switch in step with the button: a hand-removed
                 # patch must not be re-applied on the next launch, and a
                 # hand-installed one is worth keeping that way.
-                self.auto_patch_switch.set_active(not remove)
+                self.window.set_setting("auto_patch_throttle", not remove)
             self._in_thread(core.throttle_patch_state, self._throttle_state_done)
 
         self._in_thread(work, done)
@@ -2579,11 +2324,14 @@ class SettingsPage(Adw.Bin):
         dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
 
         def response(_dialog, result):
-            if result == "delete":
+            if result != "delete" or not self.window.begin("deleting Roblox"):
+                return
+            try:
                 core.delete_roblox()
-                self.version_row.set_subtitle(_("not found"))
-                self.window.play_page.refresh()
-                dialogs._toast(self.window.toasts, _("Roblox deleted successfully"))
+            finally:
+                self.window.end(resume_pending=False)
+                self.window.client_changed()
+            dialogs._toast(self.window.toasts, _("Roblox deleted successfully"))
 
         dialog.connect("response", response)
         dialog.present(self.window)

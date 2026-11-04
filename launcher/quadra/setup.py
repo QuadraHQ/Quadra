@@ -170,8 +170,7 @@ class SetupWizard(Adw.Bin):
         return page
 
     def _appearance_selected(self, code):
-        page = self.window.settings_page
-        page.appearance_row.set_selected(page.appearance_codes.index(code))
+        self.window.set_launcher_appearance(code)
 
     def _runtime(self):
         page, body = self._page("Choose how Roblox runs", "The runtime runs the macOS Roblox client on Linux. "
@@ -191,7 +190,7 @@ class SetupWizard(Adw.Bin):
         return page
 
     def _runtime_selected(self, code):
-        self.window.settings_page.backend_row.set_selected(1 if code == "rosemary" else 0)
+        self.window.set_setting("runtime_backend", code)
         self.rosemary_sources.set_visible(code == "rosemary")
         self.darling_variants.set_visible(code == "darling" and not darling_runtime.is_bundled())
         self._show_rosemary_source()
@@ -227,16 +226,13 @@ class SetupWizard(Adw.Bin):
 
     def _quadra_rosemary_toggled(self, row, _pspec):
         self.own_rosemary = not row.get_active()
-        page = self.window.settings_page
         if not self.own_rosemary:
             self.window.set_setting("rosemary_program", "")
-            page.rosemary_source_row.set_selected(page._rosemary_sources.index("quadra"))
-            page.refresh_rosemary()
+            self.window.set_setting("rosemary_source", "quadra")
         self._show_rosemary_source()
 
     def _own_rosemary_selected(self, row, _pspec):
         self.window.set_setting("rosemary_program", self._own_rosemary_runners[row.get_selected()].program)
-        self.window.settings_page.refresh_rosemary()
         self._show_rosemary_source()
 
     def _show_rosemary_source(self):
@@ -247,7 +243,6 @@ class SetupWizard(Adw.Bin):
         if self.own_rosemary and chosen not in programs and programs:
             chosen = programs[0]
             self.window.set_setting("rosemary_program", chosen)
-            page.refresh_rosemary()
         with self.own_rosemary_row.handler_block(self._own_rosemary_handler):
             if runners != self._own_rosemary_runners:
                 self._own_rosemary_runners = runners
@@ -425,7 +420,7 @@ class SetupWizard(Adw.Bin):
         if not self.window.begin("installing Rosemary"):
             self._finished(RuntimeError(_("Another operation is in progress. Wait for it to finish, then try again.")))
             return
-        settings = self.window.settings
+        settings = self.window.settings.snapshot()
         needs_quadra_rosemary = not self.own_rosemary and not rosemary_runtime.quadra_runners()
         rosemary_share = 0.4 if needs_quadra_rosemary else 0.0
 
@@ -450,7 +445,7 @@ class SetupWizard(Adw.Bin):
 
     def _rosemary_installed(self, error):
         self.window.end(resume_pending=False)
-        self.window.settings_page.refresh_rosemary()
+        self.window.client_changed()
         self._finished(error)
         return False
 

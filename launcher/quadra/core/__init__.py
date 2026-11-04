@@ -32,6 +32,7 @@ from . import (
     locations,
     files,
     config,
+    state,
     fast_flags,
     logs,
     roblox,
@@ -50,7 +51,7 @@ from . import (
 )
 
 namespace.share_names(__name__, [
-    locations, files, config, fast_flags, logs, roblox, builds, launcher_update, desktop,
+    locations, files, config, state, fast_flags, logs, roblox, builds, launcher_update, desktop,
     process_control, darling_server, account, x11, prefix_files, host, audio, session, server_location,
 ])
 
@@ -58,6 +59,7 @@ if TYPE_CHECKING:  # tells editors and type checkers what core.NAME is
     from .locations import *  # noqa: F403
     from .files import *  # noqa: F403
     from .config import *  # noqa: F403
+    from .state import *  # noqa: F403
     from .fast_flags import *  # noqa: F403
     from .logs import *  # noqa: F403
     from .roblox import *  # noqa: F403

@@ -9,6 +9,10 @@ __all__ = [
     "_button_row",
     "_add_tabs",
     "ComboRow",
+    "_follow_setting",
+    "bind_switch",
+    "bind_combo",
+    "bind_spin",
     "_ignored_marker",
     "_page_sidebar",
 ]
@@ -91,6 +95,47 @@ class ComboRow(Adw.ComboRow):
                 pending.append(child)
                 child = child.get_next_sibling()
         return None
+
+
+def _follow_setting(window, row, handler, key, show):
+    def follow(_key, value):
+        with row.handler_block(handler):
+            show(value)
+
+    window.watch_setting(key, follow)
+
+
+def bind_switch(window, row, key, default=False):
+    row.set_active(bool(window.settings.get(key, default)))
+    handler = row.connect(
+        "notify::active", lambda changed, _pspec: window.set_setting(key, changed.get_active())
+    )
+    _follow_setting(window, row, handler, key, lambda value: row.set_active(bool(value)))
+    return row
+
+
+def bind_combo(window, row, key, codes, default=None):
+    codes = list(codes)
+
+    def index_of(value):
+        return codes.index(value) if value in codes else 0
+
+    row.set_selected(index_of(window.settings.get(key, default)))
+    handler = row.connect(
+        "notify::selected",
+        lambda changed, _pspec: window.set_setting(key, codes[changed.get_selected()]),
+    )
+    _follow_setting(window, row, handler, key, lambda value: row.set_selected(index_of(value)))
+    return row
+
+
+def bind_spin(window, row, key, default, to_setting=lambda value: value, to_row=lambda value: value):
+    row.set_value(to_row(window.settings.get(key, default)))
+    handler = row.connect(
+        "notify::value", lambda changed, _pspec: window.set_setting(key, to_setting(changed.get_value()))
+    )
+    _follow_setting(window, row, handler, key, lambda value: row.set_value(to_row(value)))
+    return row
 
 
 def _ignored_marker(row):

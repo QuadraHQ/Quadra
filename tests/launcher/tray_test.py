@@ -12,8 +12,11 @@ WATCHER_XML = """<node><interface name="org.kde.StatusNotifierWatcher">
 <method name="RegisterStatusNotifierItem"><arg type="s" direction="in"/></method></interface></node>"""
 
 loop = GLib.MainLoop()
-registered, clicks, result = [], [], {}
+registered, clicks, result, layouts = [], [], {}, []
 connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+connection.signal_subscribe(None, "com.canonical.dbusmenu", "LayoutUpdated", tray.MENU_PATH, None,
+                            Gio.DBusSignalFlags.NONE,
+                            lambda *signal: layouts.append(signal[-1].unpack()))
 
 
 def watcher_call(conn, sender, path, iface, method, params, invocation):
@@ -56,7 +59,8 @@ def step_layout():
 
 
 def finish():
-    loop.quit()
+    item.menu_changed()
+    GLib.timeout_add(200, lambda: loop.quit() or False)
     return False
 
 
@@ -66,5 +70,6 @@ loop.run()
 print("labels", result.get("labels"), "clicks", clicks)
 assert result["labels"] == ["Open settings", "separator", "Stop Roblox"], result
 assert clicks == ["settings", "activate"], clicks  # disabled "Stop Roblox" did not fire
+assert layouts == [(2, 0)], layouts
 item.stop()
 print("TRAY OK")

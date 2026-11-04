@@ -139,6 +139,21 @@ class Tray:
         self.connection = None
         self.registered = False
 
+    def menu_changed(self):
+        self._revision += 1
+        if self.connection is None:
+            return
+        try:
+            self.connection.emit_signal(
+                None,
+                MENU_PATH,
+                "com.canonical.dbusmenu",
+                "LayoutUpdated",
+                GLib.Variant("(ui)", (self._revision, 0)),
+            )
+        except GLib.Error as error:
+            log.debug("Could not announce the tray menu: %s", error)
+
     def _watcher_appeared(self, connection, name, owner):
         try:
             connection.call(WATCHER, "/StatusNotifierWatcher", WATCHER, "RegisterStatusNotifierItem",

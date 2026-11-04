@@ -50,6 +50,8 @@ class StudioPage(Adw.Bin):
         self.appearance_tabs = widgets._add_tabs(toolbar_view, self.stack)
         self.set_child(toolbar_view)
         self.connect("map", lambda *_args: self._shown())
+        window.watch_studio(self.show_studio_status)
+        self.show_studio_status(window.studio_status.value)
         self.refresh()
 
     # -- helpers
@@ -64,15 +66,8 @@ class StudioPage(Adw.Bin):
         threading.Thread(target=run, daemon=True).start()
 
     def _switch(self, group, key, title, subtitle):
-        row = Adw.SwitchRow(
-            title=title,
-            subtitle=subtitle,
-            active=self.window.settings.get(key, core.DEFAULT_SETTINGS[key]),
-        )
-        row.connect(
-            "notify::active",
-            lambda changed, _pspec: self.window.set_setting(key, changed.get_active()),
-        )
+        row = Adw.SwitchRow(title=title, subtitle=subtitle)
+        widgets.bind_switch(self.window, row, key, core.DEFAULT_SETTINGS[key])
         group.add(row)
         return row
 
@@ -416,19 +411,15 @@ class StudioPage(Adw.Bin):
         self.webview_status_row.set_subtitle(state.get("webview") or _("Not installed"))
         return False
 
-    def set_studio_busy(self, busy, label=None):
+    def show_studio_status(self, status):
+        busy = status is not None
+        fraction, text = status or (None, "")
         self.launch_row.set_sensitive(not busy)
-        self.launch_row.set_title(
-            label if busy and label else _("Launch Roblox Studio")
-        )
-
-    def show_studio_progress(self, fraction, text):
-        self.progress.set_visible(True)
-        self.progress.set_fraction(fraction)
-        self.progress.set_text(text)
-
-    def hide_studio_progress(self):
-        self.progress.set_visible(False)
+        self.launch_row.set_title(_("Checking…") if busy else _("Launch Roblox Studio"))
+        self.progress.set_visible(fraction is not None)
+        if fraction is not None:
+            self.progress.set_fraction(fraction)
+            self.progress.set_text(text)
 
     def flush(self):
         self.flags_page.flush()

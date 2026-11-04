@@ -11,7 +11,30 @@ from . import dialogs, logs_view, system
 
 __all__ = [
     "PlayPage",
+    "SETTINGS_SHOWN",
+    "PLAYTIME_SETTINGS",
+    "RENDERER_NAMES",
 ]
+
+SETTINGS_SHOWN = (
+    "renderer",
+    "runtime_backend",
+    "rosemary_source",
+    "rosemary_program",
+    "rosemary_runners",
+    "rosemary_prefix",
+    "rosemary_pinned_build",
+    "rosemary_force_opengl",
+    "vr",
+    "rosemary_vr_zink",
+)
+PLAYTIME_SETTINGS = ("show_playtime", "playtime_seconds")
+
+RENDERER_NAMES = {
+    "opengl": "OpenGL",
+    "vulkan": "Vulkan / Zink",
+    "metal": "Quadra M2VK",
+}
 
 
 class PlayPage(Adw.Bin):
@@ -116,6 +139,12 @@ class PlayPage(Adw.Bin):
         self._darling_status_timer = 0
         self.connect("map", self._watch_darling_status)
         self.connect("unmap", self._pause_darling_status)
+        window.watch_activity(self.refresh)
+        window.watch_client(self.refresh)
+        window.watch_setting(SETTINGS_SHOWN, lambda _key, _value: self.refresh())
+        window.watch_setting(PLAYTIME_SETTINGS, lambda _key, _value: self.refresh_playtime())
+        window.watch_studio(self.show_studio_status)
+        self.show_studio_status(window.studio_status.value)
         self.refresh()
 
     def _dashboard(self):
@@ -236,18 +265,15 @@ class PlayPage(Adw.Bin):
             GLib.source_remove(self._darling_status_timer)
             self._darling_status_timer = 0
 
-    # The Studio button's state, driven by LauncherWindow._update_and_start_studio.
-    def set_studio_busy(self, busy, label=None):
+    def show_studio_status(self, status):
+        busy = status is not None
+        fraction, text = status or (None, "")
         self.studio.set_sensitive(not busy)
-        self.studio.set_label(label if busy and label else _("Roblox Studio"))
-
-    def show_studio_progress(self, fraction, text):
-        self.studio_progress.set_visible(True)
-        self.studio_progress.set_fraction(fraction)
-        self.studio_progress.set_text(text)
-
-    def hide_studio_progress(self):
-        self.studio_progress.set_visible(False)
+        self.studio.set_label(_("Checking…") if busy else _("Roblox Studio"))
+        self.studio_progress.set_visible(fraction is not None)
+        if fraction is not None:
+            self.studio_progress.set_fraction(fraction)
+            self.studio_progress.set_text(text)
 
     def set_appearance(self, appearance):
         custom = appearance != "gnome"
@@ -302,6 +328,23 @@ class PlayPage(Adw.Bin):
         else:
             self.window.play_clicked()
 
+    def _renderer_in_use(self):
+        session = self.window.session
+        session_settings = getattr(session, "settings", None)
+        settings = session_settings if session_settings is not None else self.window.settings
+        rosemary = (
+            isinstance(session, rosemary_runtime.RosemarySession)
+            if session is not None
+            else self.window.rosemary_selected()
+        )
+        if not rosemary:
+            return RENDERER_NAMES.get(settings.get("renderer", "opengl"), "OpenGL")
+        if settings.get("rosemary_force_opengl", False):
+            return "OpenGL"
+        if settings.get("vr", False):
+            return RENDERER_NAMES["vulkan"] if settings.get("rosemary_vr_zink", False) else "OpenGL"
+        return "Metal"
+
     def refresh_playtime(self):
         show = self.window.settings.get("show_playtime", True)
         self.playtime_box.set_visible(show)
@@ -353,12 +396,7 @@ class PlayPage(Adw.Bin):
             parts.append(_("Sign in with Quick Login"))
         self.status.set_description(" · ".join(parts))
         self.dashboard_facts["client"].set_label(version or _("Not installed"))
-        renderer = {
-            "opengl": "OpenGL",
-            "vulkan": "Vulkan / Zink",
-            "metal": "Quadra M2VK",
-        }.get(self.window.settings.get("renderer", "opengl"), "OpenGL")
-        self.dashboard_facts["renderer"].set_label(renderer)
+        self.dashboard_facts["renderer"].set_label(self._renderer_in_use())
         self.dashboard_facts["runtime"].set_label(
             "Rosemary"
             if rosemary

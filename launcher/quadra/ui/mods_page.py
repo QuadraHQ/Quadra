@@ -311,15 +311,23 @@ class ModsPage(Adw.Bin):
             subprocess.Popen(["xdg-open", str(folder)])
 
     def _apply_mods_now(self):
+        if not self.window.begin("applying mods"):
+            return
         try:
-            mods.apply_mods(self.window.settings)
+            mods.apply_mods(self.window.settings.snapshot())
             dialogs._toast(self.window.toasts, _("Mods applied"))
         except Exception as e:
             dialogs._error_dialog(self.window, _("Error applying mods"), str(e))
+        finally:
+            self.window.end(resume_pending=False)
 
     def _reset_mods(self):
+        if not self.window.begin("resetting mods"):
+            return
         try:
             mods.restore_all_mods()
             dialogs._toast(self.window.toasts, _("All mods have been reset"))
         except Exception as e:
             dialogs._error_dialog(self.window, _("Error resetting mods"), str(e))
+        finally:
+            self.window.end(resume_pending=False)

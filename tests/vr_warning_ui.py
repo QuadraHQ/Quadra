@@ -68,7 +68,7 @@ with patch.object(core, "save_settings", side_effect=lambda value: saved.append(
     assert len(shown) == 1 and shown[0].get_heading() == "Turn on VR?"
     body = shown[0].get_body()
     assert "memory" in body and "cheat" in body and "anti-cheat" in body, body
-    assert not vr.get_active() and window.settings["vr"] is False and stored_vr() is False
+    assert not vr.get_active() and window.settings["vr"] is False and stored_vr() is not True
     assert not scale.get_sensitive()
 
     # Cancel leaves it off, and "Don't show this again" is not kept for a refusal.
