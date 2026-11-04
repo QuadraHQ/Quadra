@@ -34,6 +34,23 @@ _CACHE_LOCK = threading.RLock()
 _CACHE_LIMIT = 512
 _CACHE_FILE_LIMIT = 2 * 1024 * 1024
 _HTTP_BODY_LIMIT = 1024 * 1024
+_PLACEHOLDER_NAMES = {"[TITLE UNAVAILABLE]", "[UNKNOWN]"}
+_DISCORD_TEXT_LIMIT = 128
+
+
+def _known(value) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    if value.strip() in _PLACEHOLDER_NAMES:
+        return None
+    return value
+
+
+def _discord_text(value: str) -> str:
+    value = value.strip()
+    if len(value) > _DISCORD_TEXT_LIMIT:
+        value = value[: _DISCORD_TEXT_LIMIT - 1] + "…"
+    return value.ljust(2)
 
 
 def _cache_entry(place_id: int, value) -> dict | None:
@@ -51,7 +68,7 @@ def _cache_entry(place_id: int, value) -> dict | None:
         value.get("creator", ""),
         value.get("icon_url"),
     )
-    if not isinstance(name, str) or not name or len(name) > 1024:
+    if _known(name) is None or len(name) > 1024:
         return None
     if not isinstance(creator, str) or len(creator) > 1024:
         return None
@@ -61,7 +78,7 @@ def _cache_entry(place_id: int, value) -> dict | None:
         "place_id": place_id,
         "universe_id": universe_id,
         "name": name,
-        "creator": creator,
+        "creator": _known(creator) or "",
         "icon_url": icon,
     }
 
@@ -172,12 +189,16 @@ _load_cache()
 
 
 def fetch_game_info(
-    place_id: int, universe_id: int | None = None, *, cancelled=None
+    place_id: int,
+    universe_id: int | None = None,
+    *,
+    cancelled=None,
+    refresh: bool = False,
 ) -> dict | None:
-    """Fetch experience title, creator, and icon from public Roblox APIs."""
     cached = _cached_game_info(place_id)
-    if cached:
+    if cached and not refresh:
         return cached
+    known = cached or {}
 
     def stopped():
         return cancelled is not None and cancelled()
@@ -185,6 +206,7 @@ def fetch_game_info(
     try:
         if stopped():
             return None
+        universe_id = universe_id or known.get("universe_id")
         if not universe_id:
             data = _public_json(
                 f"https://apis.roblox.com/universes/v1/places/{place_id}/universe"
@@ -201,8 +223,9 @@ def fetch_game_info(
         if stopped() or not entries:
             return None
         entry = entries[0]
-        name = entry.get("name", "Roblox")
-        creator = entry.get("creator", {}).get("name", "")
+        name = _known(entry.get("name")) or known.get("name")
+        creator = _known((entry.get("creator") or {}).get("name"))
+        creator = creator or known.get("creator", "")
 
         icon_url = None
         try:
@@ -212,22 +235,25 @@ def fetch_game_info(
                 f"https://thumbnails.roblox.com/v1/games/icons?universeIds={universe_id}&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false"
             )
             ientries = idata.get("data", [])
-            if ientries and ientries[0].get("imageUrl"):
-                icon_url = ientries[0]["imageUrl"]
+            if ientries and ientries[0].get("state") == "Completed":
+                icon_url = _known(ientries[0].get("imageUrl"))
         except Exception:
             pass
 
-        info = {
-            "place_id": place_id,
-            "universe_id": universe_id,
-            "name": name,
-            "creator": creator,
-            "icon_url": icon_url,
-        }
-        if stopped():
+        info = _cache_entry(
+            place_id,
+            {
+                "universe_id": universe_id,
+                "name": name,
+                "creator": creator,
+                "icon_url": icon_url or known.get("icon_url"),
+            },
+        )
+        if stopped() or info is None:
             return None
-        _store_game_info(place_id, info)
-        return _cache_entry(place_id, info)
+        if info != cached:
+            _store_game_info(place_id, info)
+        return info
     except Exception as e:
         log.debug("Failed to fetch game info for place %s: %s", place_id, e)
         return None
@@ -243,6 +269,8 @@ class GameActivityTracker:
     _READ_SIZE = 64 * 1024
     _READS_PER_TURN = 4
     _LINE_LIMIT = 256 * 1024
+    _LOOKUP_SECONDS = 60.0
+    _QUICK_RETRIES = 5
 
     def __init__(self, log_path, on_change, *, autostart=True):
         # A path, or a function returning the current path (None until it
@@ -312,8 +340,8 @@ class GameActivityTracker:
                 self._emit_locked(
                     {"place_id": place_id, "name": "Roblox", "loading": True}
                 )
-                self._pending_join = (self._generation, place_id, universe_id)
-                self._condition.notify_all()
+            self._pending_join = (self._generation, place_id, universe_id)
+            self._condition.notify_all()
 
     def _leave(self):
         with self._condition:
@@ -336,28 +364,41 @@ class GameActivityTracker:
                     return
                 generation, place_id, universe_id = self._pending_join
                 self._pending_join = None
-            for attempt in range(6):
-                if not self.is_current_generation(generation):
-                    break
-                info = fetch_game_info(
-                    place_id,
-                    universe_id,
-                    cancelled=lambda: not self.is_current_generation(generation),
-                )
-                with self._condition:
-                    if not self.running or self._generation != generation:
-                        break
-                    if info:
-                        # Any queued loading callback now describes an older
-                        # state, even though the experience itself is unchanged.
-                        self._generation += 1
-                        self._emit_locked(info)
-                        break
-                    if attempt < 5:
-                        self._condition.wait_for(
-                            lambda: not self.running or self._generation != generation,
-                            timeout=1.0 + attempt * 0.5,
-                        )
+            self._follow_game(generation, place_id, universe_id)
+
+    def _follow_game(self, generation, place_id, universe_id):
+        shown = _cached_game_info(place_id)
+        failures = 0
+        while True:
+            if shown is not None or failures > self._QUICK_RETRIES:
+                pause = self._LOOKUP_SECONDS
+            else:
+                pause = 0.5 + failures * 0.5 if failures else 0.0
+            with self._condition:
+                if self._condition.wait_for(
+                    lambda: not self.running or self._generation != generation,
+                    timeout=pause,
+                ):
+                    return
+            found = fetch_game_info(
+                place_id,
+                universe_id,
+                refresh=True,
+                cancelled=lambda: not self.is_current_generation(generation),
+            )
+            with self._condition:
+                if not self.running or self._generation != generation:
+                    return
+                if found is None:
+                    failures += 1
+                    continue
+                failures = 0
+                universe_id = found["universe_id"]
+                if found != shown:
+                    self._generation += 1
+                    generation = self._generation
+                    shown = found
+                    self._emit_locked(found)
 
     def _run(self):
         join_re = re.compile(
@@ -478,6 +519,7 @@ class DiscordRPC:
         self._io_lock = self._TRANSPORT_LOCK
         self._owner_token = object()
         self._pending = self._NO_PENDING
+        self._last_problem: str | None = None
         self._worker = threading.Thread(
             target=self._presence_worker, name="quadra-discord-ipc", daemon=True
         )
@@ -509,11 +551,19 @@ class DiscordRPC:
         with self._condition:
             return self._closed
 
+    def _report(self, problem: str | None):
+        if problem == self._last_problem:
+            return
+        self._last_problem = problem
+        if problem:
+            print("Discord presence:", problem)
+
     def _find_socket(self) -> list[str]:
         candidates = []
         uid = os.getuid()
         runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}")
-        bases = [runtime, os.environ.get("TMPDIR", "/tmp"), "/tmp"]
+        temporary = [os.environ.get(name) for name in ("TMPDIR", "TMP", "TEMP")]
+        bases = [runtime, *temporary, "/tmp"]
         if runtime:
             sandboxed_clients = ("app/*", ".flatpak/*/xdg-run", "snap.*")
             for pattern in sandboxed_clients:
@@ -564,6 +614,10 @@ class DiscordRPC:
                 continue
             if opcode == 4:
                 continue
+            if opcode == 2:
+                raise ConnectionError(
+                    f"Discord closed the connection: {self._reason(body)}"
+                )
             if opcode != 1:
                 raise ConnectionError(
                     "Discord IPC closed or returned an invalid opcode"
@@ -575,12 +629,30 @@ class DiscordRPC:
                 if data.get("cmd") == "DISPATCH" and data.get("evt") == "READY":
                     return
                 if data.get("evt") == "ERROR":
-                    raise ConnectionError("Discord rejected IPC handshake")
+                    raise ConnectionError(
+                        f"Discord rejected IPC handshake: {self._reason(data)}"
+                    )
             elif data.get("nonce") == nonce:
                 if data.get("cmd") != "SET_ACTIVITY" or data.get("evt") == "ERROR":
-                    raise ConnectionError("Discord rejected presence update")
+                    raise ConnectionError(
+                        f"Discord rejected presence update: {self._reason(data)}"
+                    )
                 return
         raise ConnectionError("Discord IPC response did not match request")
+
+    @staticmethod
+    def _reason(message) -> str:
+        if isinstance(message, bytes):
+            try:
+                message = json.loads(message)
+            except ValueError:
+                return message.decode("utf-8", errors="replace") or "no reason given"
+        if not isinstance(message, dict):
+            return "no reason given"
+        details = message.get("data")
+        if isinstance(details, dict) and details.get("message"):
+            return str(details["message"])
+        return str(message.get("message") or "no reason given")
 
     def _disconnect_locked(self):
         sock, self.sock = self.sock, None
@@ -597,7 +669,11 @@ class DiscordRPC:
             return False
         if self._connected and self.sock:
             return True
-        for path in self._find_socket():
+        paths = self._find_socket()
+        if not paths:
+            self._report("no Discord app found (no discord-ipc socket)")
+        failure = None
+        for path in paths:
             if self._is_closed() or not self._is_owner():
                 return False
             s: socket.socket | None = None
@@ -616,15 +692,20 @@ class DiscordRPC:
                         self.sock = s
                         self._connected = True
                         log.info("Connected to Discord IPC on %s", path)
+                        self._report(None)
+                        print("Discord presence: connected on", path)
                         return True
                 s.close()
             except Exception as e:
+                failure = f"could not connect on {path}: {e}"
                 log.debug("Failed connecting to %s: %s", path, e)
                 if s:
                     try:
                         s.close()
                     except Exception:
                         pass
+        if failure:
+            self._report(failure)
         return False
 
     def connect(self) -> bool:
@@ -644,18 +725,19 @@ class DiscordRPC:
     ) -> dict:
         assets: dict = {
             "large_image": large_image,
-            "large_text": large_text,
+            "large_text": _discord_text(large_text),
         }
         if small_image:
             assets["small_image"] = small_image
             if small_text:
-                assets["small_text"] = small_text
+                assets["small_text"] = _discord_text(small_text)
         activity: dict = {
-            "details": details,
+            "type": 0,
+            "details": _discord_text(details),
             "assets": assets,
         }
         if state:
-            activity["state"] = state
+            activity["state"] = _discord_text(state)
         if start_time:
             activity["timestamps"] = {"start": int(start_time)}
         if buttons:
@@ -690,6 +772,8 @@ class DiscordRPC:
             return True
         except Exception as e:
             log.debug("Failed to send presence: %s", e)
+            if not closing:
+                self._report(f"Discord did not take the activity: {e}")
             self._disconnect_locked()
             return False
 

@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -146,6 +148,122 @@ class DiscordPresenceTests(unittest.TestCase):
         self.assertEqual(activity["buttons"], [{"label": "Game page", "url": "https://www.roblox.com/games/1"},
                                                {"label": "Get Quadra", "url": discord.WEBSITE_URL}])
         self.assertNotIn("buttons", discord.DiscordRPC._activity(details="Menu"))
+
+
+class FakeRobloxApi:
+    def __init__(self):
+        self.name = "Natural Disaster Survival"
+        self.creator = "Stickmasterluke"
+        self.icon_state = "Completed"
+        self.icon = "https://tr.rbxcdn.com/icon-1.png"
+        self.requests = []
+
+    def __call__(self, url):
+        self.requests.append(url)
+        if "/universe" in url:
+            return {"universeId": 7}
+        if "games.roblox.com" in url:
+            return {"data": [{"name": self.name, "creator": {"name": self.creator}}]}
+        return {"data": [{"state": self.icon_state, "imageUrl": self.icon}]}
+
+
+class GameLookupTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.mkdtemp(prefix="quadra-games-")
+        self.addCleanup(shutil.rmtree, directory, True)
+        for change in (
+            patch.object(discord, "CACHE_FILE", Path(directory) / "game_cache.json"),
+            patch.dict(discord._GAME_CACHE, clear=True),
+        ):
+            change.start()
+            self.addCleanup(change.stop)
+        self.api = FakeRobloxApi()
+        api = patch.object(discord, "_public_json", self.api)
+        api.start()
+        self.addCleanup(api.stop)
+
+    def test_a_placeholder_name_is_not_shown(self):
+        self.api.name = "[TITLE UNAVAILABLE]"
+        self.assertIsNone(discord.fetch_game_info(1))
+        self.assertNotIn(1, discord._GAME_CACHE)
+
+    def test_a_refresh_keeps_what_the_new_answer_lacks(self):
+        first = discord.fetch_game_info(1)
+        self.api.name = "[TITLE UNAVAILABLE]"
+        self.api.creator = "[UNKNOWN]"
+        self.api.icon_state = "Pending"
+        self.api.icon = "https://tr.rbxcdn.com/placeholder.png"
+        self.assertEqual(discord.fetch_game_info(1, refresh=True), first)
+
+    def test_a_refresh_takes_newer_details_and_saves_them(self):
+        discord.fetch_game_info(1)
+        self.api.name = "Natural Disaster Survival [UPDATE]"
+        refreshed = discord.fetch_game_info(1, refresh=True)
+        self.assertEqual(refreshed["name"], "Natural Disaster Survival [UPDATE]")
+        saved = json.loads(discord.CACHE_FILE.read_text())
+        self.assertEqual(saved["1"]["name"], "Natural Disaster Survival [UPDATE]")
+        self.assertEqual(sum("/universe" in url for url in self.api.requests), 1)
+
+    def test_an_icon_still_being_made_is_not_used(self):
+        self.api.icon_state = "Pending"
+        self.assertIsNone(discord.fetch_game_info(1)["icon_url"])
+
+    def test_cached_placeholder_names_are_dropped(self):
+        entry = {"universe_id": 7, "name": "[TITLE UNAVAILABLE]", "creator": "", "icon_url": None}
+        self.assertIsNone(discord._cache_entry(1, entry))
+
+    def test_the_game_being_played_is_looked_up_again(self):
+        directory = tempfile.mkdtemp(prefix="quadra-log-")
+        self.addCleanup(shutil.rmtree, directory, True)
+        log_path = Path(directory) / "roblox.log"
+        log_path.write_text("[FLog::Output] ! Joining game 'abc' place 1 at 10.0.0.1\n")
+        seen = []
+        changed = threading.Condition()
+
+        def on_change(info, _generation):
+            with changed:
+                seen.append(info)
+                changed.notify_all()
+
+        with patch.object(discord.GameActivityTracker, "_LOOKUP_SECONDS", 0.05):
+            tracker = discord.GameActivityTracker(str(log_path), on_change)
+            self.addCleanup(tracker.stop)
+            with changed:
+                self.assertTrue(changed.wait_for(lambda: any(i and i.get("creator") for i in seen), 5))
+                self.api.name = "Natural Disaster Survival [UPDATE]"
+                self.assertTrue(changed.wait_for(lambda: seen[-1]["name"].endswith("[UPDATE]"), 5))
+        self.assertTrue(seen[0]["loading"])
+
+
+class ActivityTextTests(unittest.TestCase):
+    def test_text_fits_discord_limits(self):
+        activity = discord.DiscordRPC._activity(details="x" * 200, state="A", large_text="Q")
+        self.assertEqual(len(activity["details"]), 128)
+        self.assertTrue(activity["details"].endswith("…"))
+        self.assertEqual(activity["state"], "A ")
+        self.assertEqual(activity["assets"]["large_text"], "Q ")
+        self.assertEqual(activity["type"], 0)
+
+
+class DiscordProblemTests(unittest.TestCase):
+    def test_a_missing_discord_is_reported_once(self):
+        directory = tempfile.mkdtemp(prefix="quadra-rpc-", dir="/tmp")
+        self.addCleanup(shutil.rmtree, directory, True)
+        empty = {"XDG_RUNTIME_DIR": directory, "TMPDIR": directory, "TMP": directory, "TEMP": directory}
+        output = io.StringIO()
+        with patch.dict(os.environ, empty), patch.object(
+            discord.DiscordRPC, "_find_socket", return_value=[]
+        ), contextlib.redirect_stdout(output):
+            rpc = discord.DiscordRPC()
+            self.addCleanup(rpc.close)
+            self.assertFalse(rpc.connect())
+            self.assertFalse(rpc.connect())
+        self.assertEqual(output.getvalue(), "Discord presence: no Discord app found (no discord-ipc socket)\n")
+
+    def test_discord_reasons_are_read(self):
+        self.assertEqual(discord.DiscordRPC._reason({"data": {"message": "Invalid asset"}}), "Invalid asset")
+        self.assertEqual(discord.DiscordRPC._reason(b'{"code": 4000, "message": "Invalid Client ID"}'), "Invalid Client ID")
+        self.assertEqual(discord.DiscordRPC._reason(b""), "no reason given")
 
 
 if __name__ == "__main__":
