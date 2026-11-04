@@ -1,6 +1,6 @@
 """Toasts and the dialogs every page uses: the copyable error dialog and the VR warning."""
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from .. import __version__, core
 from ..i18n import _
@@ -9,7 +9,11 @@ __all__ = [
     "_toast",
     "_error_dialog",
     "_vr_warning_dialog",
+    "_choose_file",
+    "CLOSED_WITHOUT_A_FILE",
 ]
+
+CLOSED_WITHOUT_A_FILE = (Gtk.DialogError.CANCELLED, Gtk.DialogError.DISMISSED)
 
 
 def _toast(overlay, text):
@@ -18,6 +22,36 @@ def _toast(overlay, text):
     # would turn the toast empty.
     toast.set_use_markup(False)
     overlay.add_toast(toast)
+
+
+def _choose_file(window, title, accept_label, on_chosen, filter_name="", patterns=(), save_as=None):
+    dialog = Gtk.FileDialog(title=title, accept_label=accept_label, modal=True)
+    if patterns:
+        file_filter = Gtk.FileFilter(name=filter_name)
+        for pattern in patterns:
+            file_filter.add_pattern(pattern)
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(file_filter)
+        dialog.set_filters(filters)
+        dialog.set_default_filter(file_filter)
+    if save_as is not None:
+        dialog.set_initial_name(save_as)
+
+    def finished(dialog, result):
+        try:
+            file = dialog.save_finish(result) if save_as is not None else dialog.open_finish(result)
+        except GLib.Error as error:
+            if not any(error.matches(Gtk.DialogError.quark(), code) for code in CLOSED_WITHOUT_A_FILE):
+                _error_dialog(window, title, error.message)
+            return
+        path = file.get_path() if file is not None else None
+        if path:
+            on_chosen(path)
+
+    if save_as is not None:
+        dialog.save(window, None, finished)
+    else:
+        dialog.open(window, None, finished)
 
 
 def _error_dialog(window, heading, details):

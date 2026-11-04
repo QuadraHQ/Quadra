@@ -116,6 +116,8 @@ with ExitStack() as context:
         assert window.backdrops.get_visible_child_name() == code
         assert page.appearance_stack.get_visible_child_name() == ("gnome" if code == "gnome" else "custom")
         assert (theme._provider is None) == (code == "gnome")
+        if theme._provider is not None and hasattr(Gtk, "InterfaceColorScheme"):
+            assert theme._provider.props.prefers_color_scheme == Gtk.InterfaceColorScheme.DARK
         assert window.appearance_layer.monochrome == (code == "monochrome")
         if code != "gnome":
             # Monochrome greys every image, except the logo, which keeps its colours there as everywhere.
@@ -143,5 +145,18 @@ with ExitStack() as context:
     window.destroy()
     assert page._darling_status_timer == 0
     theme.install("gnome")
+    if hasattr(Gtk, "InterfaceColorScheme"):
+        manager = Adw.StyleManager.get_default()
+        provider = Gtk.CssProvider()
+        stop_following = theme.follow_color_scheme(provider)
+        manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+        assert provider.props.prefers_color_scheme == Gtk.InterfaceColorScheme.LIGHT
+        manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+        assert provider.props.prefers_color_scheme == Gtk.InterfaceColorScheme.DARK
+        stop_following()
+        stop_following()
+        manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+        assert provider.props.prefers_color_scheme == Gtk.InterfaceColorScheme.DARK
+        manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
 
 print("PASS: three live appearances persist, native CSS restores, controls/logs/unsaved pages/session survive, play/log tabs keep their order")

@@ -1301,22 +1301,11 @@ class SettingsPage(Adw.Bin):
         self.window.set_setting("rosemary_program", self._selected_rosemary_runner().program)
 
     def _choose_rosemary_runner(self, on_added=lambda: None):
-        dialog = Gtk.FileChooserNative.new(
-            _("Choose a Rosemary program"),
-            self.window,
-            Gtk.FileChooserAction.OPEN,
-            _("Add"),
-            _("Cancel"),
-        )
-
-        def on_response(chooser, response):
-            file = chooser.get_file() if response == Gtk.ResponseType.ACCEPT else None
-            chooser.destroy()
-            if file is not None and file.get_path() and self._add_rosemary_runner(file.get_path()):
+        def chosen(path):
+            if self._add_rosemary_runner(path):
                 on_added()
 
-        dialog.connect("response", on_response)
-        dialog.show()
+        dialogs._choose_file(self.window, _("Choose a Rosemary program"), _("Add"), chosen)
 
     def _add_rosemary_runner(self, program):
         if not rosemary_runtime.is_runnable(program):

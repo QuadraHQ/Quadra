@@ -30,6 +30,7 @@ import gi
 # Before any module below imports GTK.
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
+gi.require_version("GLibUnix", "2.0")
 
 from .. import namespace
 from . import (

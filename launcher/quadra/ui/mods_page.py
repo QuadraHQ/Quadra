@@ -222,80 +222,28 @@ class ModsPage(Adw.Bin):
         self.custom_cursor_row.set_visible(code == "custom")
 
     def _choose_custom_death_sound(self):
-        dialog = Gtk.FileChooserNative.new(
-            _("Select custom death sound (.ogg)"),
-            self.window,
-            Gtk.FileChooserAction.OPEN,
-            _("Select"),
-            _("Cancel"),
-        )
-        f = Gtk.FileFilter()
-        f.set_name("Audio files (*.ogg)")
-        f.add_pattern("*.ogg")
-        dialog.add_filter(f)
+        def chosen(path):
+            self.window.set_setting("mod_custom_death_sound", path)
+            self.custom_death_row.set_subtitle(path)
 
-        def on_response(d, res):
-            if res == Gtk.ResponseType.ACCEPT:
-                file = d.get_file()
-                if file:
-                    path = file.get_path()
-                    self.window.set_setting("mod_custom_death_sound", path)
-                    self.custom_death_row.set_subtitle(path)
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.show()
+        dialogs._choose_file(self.window, _("Select custom death sound (.ogg)"), _("Select"), chosen,
+                             "Audio files (*.ogg)", ("*.ogg",))
 
     def _choose_custom_cursor(self):
-        dialog = Gtk.FileChooserNative.new(
-            _("Select custom cursor (.png or folder)"),
-            self.window,
-            Gtk.FileChooserAction.OPEN,
-            _("Select"),
-            _("Cancel"),
-        )
-        f = Gtk.FileFilter()
-        f.set_name("PNG Images (*.png)")
-        f.add_pattern("*.png")
-        dialog.add_filter(f)
+        def chosen(path):
+            self.window.set_setting("mod_custom_cursor", path)
+            self.custom_cursor_row.set_subtitle(path)
 
-        def on_response(d, res):
-            if res == Gtk.ResponseType.ACCEPT:
-                file = d.get_file()
-                if file:
-                    path = file.get_path()
-                    self.window.set_setting("mod_custom_cursor", path)
-                    self.custom_cursor_row.set_subtitle(path)
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.show()
+        dialogs._choose_file(self.window, _("Select custom cursor (.png or folder)"), _("Select"), chosen,
+                             "PNG Images (*.png)", ("*.png",))
 
     def _choose_font(self):
-        dialog = Gtk.FileChooserNative.new(
-            _("Select font (.ttf, .otf)"),
-            self.window,
-            Gtk.FileChooserAction.OPEN,
-            _("Select"),
-            _("Cancel"),
-        )
-        f = Gtk.FileFilter()
-        f.set_name("Font files (*.ttf, *.otf)")
-        f.add_pattern("*.ttf")
-        f.add_pattern("*.otf")
-        dialog.add_filter(f)
+        def chosen(path):
+            self.window.set_setting("mod_custom_font", path)
+            self.font_row.set_subtitle(Path(path).name)
 
-        def on_response(d, res):
-            if res == Gtk.ResponseType.ACCEPT:
-                file = d.get_file()
-                if file:
-                    path = file.get_path()
-                    self.window.set_setting("mod_custom_font", path)
-                    self.font_row.set_subtitle(Path(path).name)
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.show()
+        dialogs._choose_file(self.window, _("Select font (.ttf, .otf)"), _("Select"), chosen,
+                             "Font files (*.ttf, *.otf)", ("*.ttf", "*.otf"))
 
     def _clear_font(self):
         self.window.set_setting("mod_custom_font", "")

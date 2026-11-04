@@ -641,19 +641,41 @@ def register_fonts():
 
 _provider = None
 _provider_display = None
+_stop_following_color_scheme = None
 _native_scheme = None
 _fonts_registered = False
 
 
+def follow_color_scheme(provider):
+    if not hasattr(Gtk, "InterfaceColorScheme"):
+        return lambda: None
+    manager = Adw.StyleManager.get_default()
+
+    def show_color_scheme(*_args):
+        provider.props.prefers_color_scheme = (
+            Gtk.InterfaceColorScheme.DARK if manager.get_dark() else Gtk.InterfaceColorScheme.LIGHT
+        )
+
+    show_color_scheme()
+    handler = manager.connect("notify::dark", show_color_scheme)
+
+    def stop_following():
+        if manager.handler_is_connected(handler):
+            manager.disconnect(handler)
+
+    return stop_following
+
+
 def install(appearance="monochrome"):
     """Replace our provider, or remove it completely for native GNOME."""
-    global _provider, _provider_display, _native_scheme, _fonts_registered
+    global _provider, _provider_display, _stop_following_color_scheme, _native_scheme, _fonts_registered
     manager = Adw.StyleManager.get_default()
     if _native_scheme is None:
         _native_scheme = manager.get_color_scheme()
     if _provider is not None:
+        _stop_following_color_scheme()
         Gtk.StyleContext.remove_provider_for_display(_provider_display, _provider)
-        _provider = _provider_display = None
+        _provider = _provider_display = _stop_following_color_scheme = None
     if appearance == "gnome":
         manager.set_color_scheme(_native_scheme)
         return
@@ -662,11 +684,8 @@ def install(appearance="monochrome"):
         _fonts_registered = True
     manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
     provider = Gtk.CssProvider()
-    css = _stylesheet(appearance)
-    if hasattr(provider, "load_from_string"):  # GTK 4.12
-        provider.load_from_string(css)
-    else:
-        provider.load_from_data(css.encode())
+    _stop_following_color_scheme = follow_color_scheme(provider)
+    provider.load_from_string(_stylesheet(appearance))
     _provider_display = Gdk.Display.get_default()
     Gtk.StyleContext.add_provider_for_display(
         _provider_display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)

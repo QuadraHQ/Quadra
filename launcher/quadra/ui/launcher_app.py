@@ -4,7 +4,7 @@ import os
 import signal
 import threading
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GLibUnix, Gtk
 
 from .. import core, tray
 from .. import uri as uri_handoff
@@ -25,10 +25,10 @@ class LauncherApp(Adw.Application):
         super().__init__(
             application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS
         )
-        self.window = None
+        self.window: launcher_window.LauncherWindow | None = None
         self.page = page
         self.open_settings = open_settings
-        self.tray = None
+        self.tray: tray.Tray | None = None
         self._stopping = False
         # `quadrahq --settings` (the shortcut's "Settings" action) opens the
         # settings window of a running Quadra.
@@ -73,10 +73,14 @@ class LauncherApp(Adw.Application):
         running = bool(window and window.session)
         return [
             (_("Open settings"), self.show_settings, True),
-            (_("Stop Roblox"), lambda: window.stop(), running),
+            (_("Stop Roblox"), self._stop_roblox, running),
             None,
             (_("Quit Quadra"), lambda: self.stop_from_signal(signal.SIGTERM), True),
         ]
+
+    def _stop_roblox(self):
+        if self.window:
+            self.window.stop()
 
     def do_shutdown(self):
         if self.tray is not None:
@@ -122,7 +126,8 @@ class LauncherApp(Adw.Application):
         window = self.window
         if window:
             try:
-                window.settings_page.flush()
+                if window.settings_page:
+                    window.settings_page.flush()
                 window._stop_web()
                 window._stop_rpc()
                 window.settings.save()
@@ -135,20 +140,20 @@ class LauncherApp(Adw.Application):
         pending = uri_handoff.peek_pending()
         if not self.window:
             Gtk.Window.set_default_icon_name("quadrahq")
-            Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
-                str(core.PROJECT / "launcher" / "icons")
-            )
-            Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
-                str(core.ICONS)
-            )
+            display = Gdk.Display.get_default()
+            if display is not None:
+                icon_theme = Gtk.IconTheme.get_for_display(display)
+                icon_theme.add_search_path(str(core.PROJECT / "launcher" / "icons"))
+                icon_theme.add_search_path(str(core.ICONS))
             # Audio FIFOs of a launcher that was killed (HostAudio.stop never ran).
             core.sweep_audio_fifos()
-            self.window = launcher_window.LauncherWindow(self, self.page)
+            window = launcher_window.LauncherWindow(self, self.page)
+            self.window = window
             # Keep running while the window is hidden during a game.
             self.hold()
-            self.window.connect("close-request", self._close)
-            self.window.settings.watch("tray_icon", lambda _key, _value: self.apply_tray())
-            self.window.activity_changes.add(self._tray_menu_changed)
+            window.connect("close-request", self._close)
+            window.settings.watch("tray_icon", lambda _key, _value: self.apply_tray())
+            window.activity_changes.add(self._tray_menu_changed)
             self.apply_tray()
             # Roblox starts straight away behind a splash; the settings window
             # only opens when asked for (or when something needs the user:
@@ -156,17 +161,17 @@ class LauncherApp(Adw.Application):
             needs_window = (
                 self.open_settings
                 or self.page is not None
-                or self.window.setup_active
-                or not self.window.runtime_ready()
+                or window.setup_active
+                or not window.runtime_ready()
                 or os.environ.get("QUADRA_PAGE")
             )
             if needs_window:
-                self.window.present_settings()
+                window.present_settings()
             else:
-                self.window.autostart()
+                window.autostart()
             if os.environ.get("QUADRA_PAGE"):
                 # Screenshots: no focused field.
-                GLib.timeout_add(300, lambda: self.window.set_focus(None) and False)
+                GLib.timeout_add(300, lambda: window.set_focus(None) and False)
             return
         # Activated again while running (the shortcut, a browser link).
         if pending:
@@ -189,13 +194,6 @@ class LauncherApp(Adw.Application):
 
 
 def main(page=None, open_settings=False):
-    # Some desktops set GTK's old dark-theme preference globally. Libadwaita
-    # owns the color scheme; clear the legacy property for this process before
-    # constructing Adw.Application, without editing the user's GTK settings.
-    Gtk.init()
-    settings = Gtk.Settings.get_default()
-    if settings and settings.get_property("gtk-application-prefer-dark-theme"):
-        settings.set_property("gtk-application-prefer-dark-theme", False)
     application = LauncherApp(page, open_settings)
     if open_settings:
         # One launcher at a time: a running one opens its settings itself.
@@ -224,7 +222,7 @@ def main(page=None, open_settings=False):
     for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         if number == signal.SIGHUP and signal.getsignal(number) == signal.SIG_IGN:
             continue  # started with nohup: closing the terminal must not end the game
-        GLib.unix_signal_add(
+        GLibUnix.signal_add(
             GLib.PRIORITY_DEFAULT, number, application.stop_from_signal, number
         )
     return application.run(None)

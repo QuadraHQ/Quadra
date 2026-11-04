@@ -420,35 +420,16 @@ class FlagsPage(Adw.PreferencesPage):
         dialog.present(self.window)
 
     def _save_export_file(self, text):
-        dialog = Gtk.FileChooserNative.new(
-            _("Save fast flags"),
-            self.window,
-            Gtk.FileChooserAction.SAVE,
-            _("Save"),
-            _("Cancel"),
-        )
-        dialog.set_current_name("ClientAppSettings.json")
-        f = Gtk.FileFilter()
-        f.set_name("JSON files (*.json)")
-        f.add_pattern("*.json")
-        dialog.add_filter(f)
+        def chosen(path):
+            try:
+                Path(path).write_text(text, encoding="utf-8")
+            except OSError as error:
+                dialogs._error_dialog(self.window, _("Could not save flags"), str(error))
+                return
+            dialogs._toast(self.window.toasts, _("Flags saved to {path}", path=Path(path).name))
 
-        def on_response(d, res):
-            if res == Gtk.ResponseType.ACCEPT:
-                file = d.get_file()
-                if file:
-                    try:
-                        Path(file.get_path()).write_text(text, encoding="utf-8")
-                        dialogs._toast(
-                            self.window.toasts,
-                            _("Flags saved to {path}", path=Path(file.get_path()).name),
-                        )
-                    except OSError as e:
-                        dialogs._error_dialog(self.window, _("Could not save flags"), str(e))
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.show()
+        dialogs._choose_file(self.window, _("Save fast flags"), _("Save"), chosen,
+                             "JSON files (*.json)", ("*.json",), save_as="ClientAppSettings.json")
 
     def _reset_dialog(self):
         dialog = Adw.AlertDialog(

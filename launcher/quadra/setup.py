@@ -41,7 +41,8 @@ def _install_style():
     global _provider
     if _provider is None:
         _provider = Gtk.CssProvider()
-        _provider.load_from_data(_STYLE.encode())
+        theme.follow_color_scheme(_provider)
+        _provider.load_from_string(_STYLE)
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), _provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
