@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
       - uses: actions/checkout@v4
@@ -41,4 +41,4 @@ jobs:
           bundle: quadra.flatpak
           build-dir: flatpak/build-dir
           repo-dir: flatpak/repo
-          cache-key: flatpak-builder-${{ hashFiles('flatpak/org.quadrahq.Quadra.yml', 'flatpak/launcher-ui.json') }}
+          cache-key: flatpak-builder-${{ hashFiles('flatpak/org.quadrahq.Quadra.yml') }}
