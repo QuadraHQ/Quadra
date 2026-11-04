@@ -28,8 +28,10 @@ UI_CONTRIBUTOR_AVATAR = core.CACHE_DIR / "tinytosha-avatar.png"
 TINYTOSHA_AVATAR_URL = "https://avatars.githubusercontent.com/u/259899852"
 
 AVATAR = core.CACHE_DIR / "author-avatar.png"
-THUMBNAIL_API = ("https://thumbnails.roblox.com/v1/users/avatar-headshot"
-                 f"?userIds={ROBLOX_ID}&size=150x150&format=Png&isCircular=false")
+THUMBNAIL_API = (
+    "https://thumbnails.roblox.com/v1/users/avatar-headshot"
+    f"?userIds={ROBLOX_ID}&size=150x150&format=Png&isCircular=false"
+)
 
 
 class _PinnedHTTPS(http.client.HTTPSConnection):
@@ -101,7 +103,9 @@ def tinytosha_avatar(max_age=86400):
     except OSError:
         pass
     try:
-        req = urllib.request.Request(TINYTOSHA_AVATAR_URL, headers={"User-Agent": "Quadra"})
+        req = urllib.request.Request(
+            TINYTOSHA_AVATAR_URL, headers={"User-Agent": "Quadra"}
+        )
         with urllib.request.urlopen(req, timeout=5) as response:
             image = response.read()
         core.CACHE_DIR.mkdir(parents=True, exist_ok=True)

@@ -54,7 +54,7 @@ def disabled_units(mods_dir):
         names = os.listdir(mods_dir)
     except OSError:
         return []
-    return sorted(n[:-len(SUFFIX)] for n in names if n.endswith(SUFFIX))
+    return sorted(n[: -len(SUFFIX)] for n in names if n.endswith(SUFFIX))
 
 
 def is_disabled(name):
@@ -63,7 +63,10 @@ def is_disabled(name):
 
 def begin_session(config_dir, mods_dir, *, now=None):
     data = _load(config_dir)
-    data["session"] = {"units": units(mods_dir), "started": time.time() if now is None else now}
+    data["session"] = {
+        "units": units(mods_dir),
+        "started": time.time() if now is None else now,
+    }
     _save(config_dir, data)
 
 

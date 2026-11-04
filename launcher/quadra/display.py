@@ -1,4 +1,5 @@
 """Window backend selection for X11/Xwayland and native Wayland."""
+
 import ctypes
 import math
 import os
@@ -25,39 +26,65 @@ def window_environment(settings, helper):
     if backend != "wayland":
         raise ValueError(f"Unknown window backend: {backend}")
     if not os.environ.get("WAYLAND_DISPLAY"):
-        raise RuntimeError("Wayland requires a Wayland desktop session. Select X11 in Settings.")
+        raise RuntimeError(
+            "Wayland requires a Wayland desktop session. Select X11 in Settings."
+        )
     if not Path(helper).is_file():
-        raise RuntimeError("The Wayland helper is missing. Install SDL2/Wayland development libraries and rebuild, or select X11.")
-    values = {"QUADRA_WAYLAND": "1", "EGL_PLATFORM": "wayland",
-              "QUADRA_WAYLAND_HELPER": str(helper)}
+        raise RuntimeError(
+            "The Wayland helper is missing. Install SDL2/Wayland development libraries and rebuild, or select X11."
+        )
+    values = {
+        "QUADRA_WAYLAND": "1",
+        "EGL_PLATFORM": "wayland",
+        "QUADRA_WAYLAND_HELPER": str(helper),
+    }
     if settings.get("renderer", "opengl") in ("vulkan", "metal"):
         from .graphics import wayland_vulkan_environment
+
         values.update(wayland_vulkan_environment())
     return values
 
 
 class WaylandProbeWindow:
     """The same Linux helper and EGL surface used by the Wayland client."""
+
     def __init__(self):
         pointer, uint, integer = ctypes.c_void_p, ctypes.c_uint, ctypes.c_int
         display = ctypes.CFUNCTYPE(pointer)
         create = ctypes.CFUNCTYPE(uint, integer, integer)
         surface = ctypes.CFUNCTYPE(pointer, uint)
-        action = ctypes.CFUNCTYPE(None, uint, integer, ctypes.c_double, ctypes.c_double, ctypes.c_char_p)
+        action = ctypes.CFUNCTYPE(
+            None, uint, integer, ctypes.c_double, ctypes.c_double, ctypes.c_char_p
+        )
         error = ctypes.CFUNCTYPE(ctypes.c_char_p)
-        create_subwindow = ctypes.CFUNCTYPE(uint, uint, integer, integer, integer, integer)
-        subwindow_frame = ctypes.CFUNCTYPE(None, uint, integer, integer, integer, integer)
+        create_subwindow = ctypes.CFUNCTYPE(
+            uint, uint, integer, integer, integer, integer
+        )
+        subwindow_frame = ctypes.CFUNCTYPE(
+            None, uint, integer, integer, integer, integer
+        )
         subwindow_visible = ctypes.CFUNCTYPE(None, uint, integer)
         destroy_subwindow = ctypes.CFUNCTYPE(None, uint)
 
         class API(ctypes.Structure):
-            _fields_ = [("version", uint), ("display", display), ("create", create),
-                        ("surface", surface), ("action", action), ("poll", pointer),
-                        ("screen", pointer), ("cursor", pointer), ("clipboard", pointer),
-                        ("error", error), ("create_subwindow", create_subwindow),
-                        ("subwindow_surface", surface), ("subwindow_frame", subwindow_frame),
-                        ("subwindow_visible", subwindow_visible), ("destroy_subwindow", destroy_subwindow),
-                        ("subwindow_wl_surface", surface)]
+            _fields_ = [
+                ("version", uint),
+                ("display", display),
+                ("create", create),
+                ("surface", surface),
+                ("action", action),
+                ("poll", pointer),
+                ("screen", pointer),
+                ("cursor", pointer),
+                ("clipboard", pointer),
+                ("error", error),
+                ("create_subwindow", create_subwindow),
+                ("subwindow_surface", surface),
+                ("subwindow_frame", subwindow_frame),
+                ("subwindow_visible", subwindow_visible),
+                ("destroy_subwindow", destroy_subwindow),
+                ("subwindow_wl_surface", surface),
+            ]
 
         self.library = ctypes.CDLL(os.environ["QUADRA_WAYLAND_HELPER"])
         get_api = self.library.quadra_wayland_host_api
@@ -65,7 +92,9 @@ class WaylandProbeWindow:
         value = get_api()
         # Check only the ABI header before reading newly added function slots.
         if not value or ctypes.cast(value, ctypes.POINTER(uint)).contents.value != 4:
-            raise RuntimeError("Wayland helper failed to initialize or is outdated. Rebuild Quadra before using Wayland.")
+            raise RuntimeError(
+                "Wayland helper failed to initialize or is outdated. Rebuild Quadra before using Wayland."
+            )
         self.api = value.contents
         self.native = self.api.display()
         self.children = set()
@@ -75,15 +104,25 @@ class WaylandProbeWindow:
         except Exception:
             self.close()
             raise
-        self.surface = self.api.subwindow_surface(self.drawable) if self.drawable else None
+        self.surface = (
+            self.api.subwindow_surface(self.drawable) if self.drawable else None
+        )
         if not self.native or not self.surface:
             self.close()
-            raise RuntimeError((self.api.error() or b"Wayland test window failed").decode(errors="replace"))
+            raise RuntimeError(
+                (self.api.error() or b"Wayland test window failed").decode(
+                    errors="replace"
+                )
+            )
 
     def create_drawable(self, x, y, width, height):
         handle = self.api.create_subwindow(self.handle, x, y, width, height)
         if not handle:
-            raise RuntimeError((self.api.error() or b"Wayland test view failed").decode(errors="replace"))
+            raise RuntimeError(
+                (self.api.error() or b"Wayland test view failed").decode(
+                    errors="replace"
+                )
+            )
         self.children.add(handle)
         return handle
 

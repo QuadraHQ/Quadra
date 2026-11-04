@@ -31,18 +31,38 @@ def _save(config_dir, data):
     os.replace(temporary, path)
 
 
-def record(config_dir, place_id, job_id, *, name=None, server_ip=None, location=None, now=None):
+def record(
+    config_dir, place_id, job_id, *, name=None, server_ip=None, location=None, now=None
+):
     """Remember a server joined in a game. Newest first, bounded."""
     place_id = str(int(place_id))
     now = time.time() if now is None else now
     with _lock:
         data = load(config_dir)
         game = data.get(place_id) if isinstance(data.get(place_id), dict) else {}
-        servers = [s for s in game.get("servers", []) if isinstance(s, dict) and s.get("job_id") != job_id]
-        servers.insert(0, {"job_id": job_id, "server_ip": server_ip, "location": location, "joined_at": now})
-        game = {"name": name or game.get("name") or "", "last_played": now, "servers": servers[:MAX_SERVERS]}
+        servers = [
+            s
+            for s in game.get("servers", [])
+            if isinstance(s, dict) and s.get("job_id") != job_id
+        ]
+        servers.insert(
+            0,
+            {
+                "job_id": job_id,
+                "server_ip": server_ip,
+                "location": location,
+                "joined_at": now,
+            },
+        )
+        game = {
+            "name": name or game.get("name") or "",
+            "last_played": now,
+            "servers": servers[:MAX_SERVERS],
+        }
         data[place_id] = game
-        for stale in sorted(data, key=lambda k: data[k].get("last_played", 0))[:max(0, len(data) - MAX_GAMES)]:
+        for stale in sorted(data, key=lambda k: data[k].get("last_played", 0))[
+            : max(0, len(data) - MAX_GAMES)
+        ]:
             del data[stale]
         _save(config_dir, data)
 

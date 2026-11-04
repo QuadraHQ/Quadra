@@ -114,7 +114,9 @@ class ServersPage(Adw.Bin):
     def _join_typed(self, row):
         place = region.parse_place(row.get_text())
         if place is None:
-            dialogs._toast(self.window.toasts, _("Enter a place id or a roblox.com/games link"))
+            dialogs._toast(
+                self.window.toasts, _("Enter a place id or a roblox.com/games link")
+            )
             return
         self._join(place)
 

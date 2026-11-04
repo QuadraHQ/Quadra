@@ -13,7 +13,7 @@ import threading
 import time
 import urllib.request
 import uuid
-from pathlib import Path
+
 from . import core
 
 log = logging.getLogger("quadra.discord")
@@ -39,17 +39,30 @@ def _cache_entry(place_id: int, value) -> dict | None:
     if place_id <= 0 or not isinstance(value, dict):
         return None
     universe_id = value.get("universe_id")
-    if not isinstance(universe_id, int) or isinstance(universe_id, bool) or universe_id <= 0:
+    if (
+        not isinstance(universe_id, int)
+        or isinstance(universe_id, bool)
+        or universe_id <= 0
+    ):
         return None
-    name, creator, icon = value.get("name"), value.get("creator", ""), value.get("icon_url")
+    name, creator, icon = (
+        value.get("name"),
+        value.get("creator", ""),
+        value.get("icon_url"),
+    )
     if not isinstance(name, str) or not name or len(name) > 1024:
         return None
     if not isinstance(creator, str) or len(creator) > 1024:
         return None
     if icon is not None and (not isinstance(icon, str) or len(icon) > 4096):
         return None
-    return {"place_id": place_id, "universe_id": universe_id, "name": name,
-            "creator": creator, "icon_url": icon}
+    return {
+        "place_id": place_id,
+        "universe_id": universe_id,
+        "name": name,
+        "creator": creator,
+        "icon_url": icon,
+    }
 
 
 def _cached_game_info(place_id: int) -> dict | None:
@@ -97,9 +110,17 @@ def _save_cache():
         temporary = None
         try:
             CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            entries = [(key, (json.dumps(str(key)) + ":" +
-                             json.dumps(value, ensure_ascii=False, separators=(",", ":"))).encode("utf-8"))
-                       for key, value in _GAME_CACHE.items()]
+            entries = [
+                (
+                    key,
+                    (
+                        json.dumps(str(key))
+                        + ":"
+                        + json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+                    ).encode("utf-8"),
+                )
+                for key, value in _GAME_CACHE.items()
+            ]
             size = 2 + sum(len(body) for _, body in entries) + max(0, len(entries) - 1)
             first = 0
             while size > _CACHE_FILE_LIMIT and first < len(entries):
@@ -108,8 +129,9 @@ def _save_cache():
                 size -= len(body) + (1 if first + 1 < len(entries) else 0)
                 first += 1
             body = b"{" + b",".join(body for _, body in entries[first:]) + b"}"
-            with tempfile.NamedTemporaryFile(mode="wb", dir=CACHE_FILE.parent,
-                                             prefix=".game_cache-", delete=False) as output:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=CACHE_FILE.parent, prefix=".game_cache-", delete=False
+            ) as output:
                 temporary = output.name
                 output.write(body)
             os.replace(temporary, CACHE_FILE)
@@ -148,11 +170,14 @@ def _public_json(url: str):
 _load_cache()
 
 
-def fetch_game_info(place_id: int, universe_id: int | None = None, *, cancelled=None) -> dict | None:
+def fetch_game_info(
+    place_id: int, universe_id: int | None = None, *, cancelled=None
+) -> dict | None:
     """Fetch experience title, creator, and icon from public Roblox APIs."""
     cached = _cached_game_info(place_id)
     if cached:
         return cached
+
     def stopped():
         return cancelled is not None and cancelled()
 
@@ -160,13 +185,17 @@ def fetch_game_info(place_id: int, universe_id: int | None = None, *, cancelled=
         if stopped():
             return None
         if not universe_id:
-            data = _public_json(f"https://apis.roblox.com/universes/v1/places/{place_id}/universe")
+            data = _public_json(
+                f"https://apis.roblox.com/universes/v1/places/{place_id}/universe"
+            )
             universe_id = data.get("universeId")
 
         if stopped() or not universe_id:
             return None
 
-        data = _public_json(f"https://games.roblox.com/v1/games?universeIds={universe_id}")
+        data = _public_json(
+            f"https://games.roblox.com/v1/games?universeIds={universe_id}"
+        )
         entries = data.get("data", [])
         if stopped() or not entries:
             return None
@@ -179,7 +208,8 @@ def fetch_game_info(place_id: int, universe_id: int | None = None, *, cancelled=
             if stopped():
                 return None
             idata = _public_json(
-                f"https://thumbnails.roblox.com/v1/games/icons?universeIds={universe_id}&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false")
+                f"https://thumbnails.roblox.com/v1/games/icons?universeIds={universe_id}&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false"
+            )
             ientries = idata.get("data", [])
             if ientries and ientries[0].get("imageUrl"):
                 icon_url = ientries[0]["imageUrl"]
@@ -226,9 +256,12 @@ class GameActivityTracker:
         self._generation = 0
         self._pending_join = None
         self._started = False
-        self._resolve_thread = threading.Thread(target=self._resolve_worker,
-                                                name="quadra-game-metadata", daemon=True)
-        self.thread = threading.Thread(target=self._run, name="quadra-game-log", daemon=True)
+        self._resolve_thread = threading.Thread(
+            target=self._resolve_worker, name="quadra-game-metadata", daemon=True
+        )
+        self.thread = threading.Thread(
+            target=self._run, name="quadra-game-log", daemon=True
+        )
         if autostart:
             self.start()
 
@@ -275,7 +308,9 @@ class GameActivityTracker:
             if cached:
                 self._emit_locked(cached)
             else:
-                self._emit_locked({"place_id": place_id, "name": "Roblox", "loading": True})
+                self._emit_locked(
+                    {"place_id": place_id, "name": "Roblox", "loading": True}
+                )
                 self._pending_join = (self._generation, place_id, universe_id)
                 self._condition.notify_all()
 
@@ -293,7 +328,9 @@ class GameActivityTracker:
     def _resolve_worker(self):
         while True:
             with self._condition:
-                self._condition.wait_for(lambda: not self.running or self._pending_join is not None)
+                self._condition.wait_for(
+                    lambda: not self.running or self._pending_join is not None
+                )
                 if not self.running:
                     return
                 generation, place_id, universe_id = self._pending_join
@@ -301,8 +338,11 @@ class GameActivityTracker:
             for attempt in range(6):
                 if not self.is_current_generation(generation):
                     break
-                info = fetch_game_info(place_id, universe_id,
-                                       cancelled=lambda: not self.is_current_generation(generation))
+                info = fetch_game_info(
+                    place_id,
+                    universe_id,
+                    cancelled=lambda: not self.is_current_generation(generation),
+                )
                 with self._condition:
                     if not self.running or self._generation != generation:
                         break
@@ -315,7 +355,8 @@ class GameActivityTracker:
                     if attempt < 5:
                         self._condition.wait_for(
                             lambda: not self.running or self._generation != generation,
-                            timeout=1.0 + attempt * 0.5)
+                            timeout=1.0 + attempt * 0.5,
+                        )
 
     def _run(self):
         join_re = re.compile(
@@ -323,16 +364,16 @@ class GameActivityTracker:
             r"GameJoinUtil::joinGamePost.*BODY:.*[\"']placeId[\"']:\s*(\d+)|"
             r"status code:.*[\"']PlaceId[\"']:\s*(\d+)|"
             r"Report game_join_loadtime:.*placeid:(\d+)",
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         uid_re = re.compile(
             r"[\"']UniverseId[\"']:\s*(\d+)|"
             r"universeid:(\d+)",
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         leave_re = re.compile(
             r"leaveUGCGame|returnToLuaApp|stage:LuaApp|destroyCaptureModeDataModelIfExists|Destroying MegaReplicator",
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         last_pos = 0
@@ -384,7 +425,7 @@ class GameActivityTracker:
                             end = chunk.find(b"\n")
                             if end < 0:
                                 continue
-                            chunk = chunk[end + 1:]
+                            chunk = chunk[end + 1 :]
                             discarding_line = False
                         pieces = (fragment + chunk).split(b"\n")
                         fragment = pieces.pop()
@@ -436,8 +477,9 @@ class DiscordRPC:
         self._io_lock = self._TRANSPORT_LOCK
         self._owner_token = object()
         self._pending = self._NO_PENDING
-        self._worker = threading.Thread(target=self._presence_worker,
-                                        name="quadra-discord-ipc", daemon=True)
+        self._worker = threading.Thread(
+            target=self._presence_worker, name="quadra-discord-ipc", daemon=True
+        )
         try:
             self._worker.start()
         except RuntimeError:
@@ -492,7 +534,9 @@ class DiscordRPC:
             buf.extend(chunk)
         return bytes(buf)
 
-    def _send_frame(self, s: socket.socket, opcode: int, payload: bytes, deadline: float):
+    def _send_frame(
+        self, s: socket.socket, opcode: int, payload: bytes, deadline: float
+    ):
         if len(payload) > self._FRAME_LIMIT:
             raise ValueError("Discord IPC request exceeded size limit")
         remaining = deadline - time.monotonic()
@@ -515,7 +559,9 @@ class DiscordRPC:
             if opcode == 4:
                 continue
             if opcode != 1:
-                raise ConnectionError("Discord IPC closed or returned an invalid opcode")
+                raise ConnectionError(
+                    "Discord IPC closed or returned an invalid opcode"
+                )
             data = json.loads(body)
             if not isinstance(data, dict):
                 raise ValueError("Discord IPC response was not an object")
@@ -554,7 +600,9 @@ class DiscordRPC:
                 deadline = time.monotonic() + self._TIMEOUT
                 s.settimeout(self._TIMEOUT)
                 s.connect(path)
-                payload = json.dumps({"v": 1, "client_id": self.client_id}).encode("utf-8")
+                payload = json.dumps({"v": 1, "client_id": self.client_id}).encode(
+                    "utf-8"
+                )
                 self._send_frame(s, 0, payload, deadline)
                 self._response(s, deadline, ready=True)
                 with self._condition:
@@ -606,7 +654,9 @@ class DiscordRPC:
             activity["timestamps"] = {"start": int(start_time)}
         if buttons:
             # Discord shows at most two, to people viewing the profile.
-            activity["buttons"] = [{"label": label[:32], "url": url} for label, url in buttons[:2]]
+            activity["buttons"] = [
+                {"label": label[:32], "url": url} for label, url in buttons[:2]
+            ]
         return activity
 
     def _set_activity_locked(self, activity, *, closing=False) -> bool:
@@ -664,7 +714,9 @@ class DiscordRPC:
         try:
             while True:
                 with self._condition:
-                    self._condition.wait_for(lambda: self._closed or self._pending is not self._NO_PENDING)
+                    self._condition.wait_for(
+                        lambda: self._closed or self._pending is not self._NO_PENDING
+                    )
                     if self._closed:
                         break
                     activity, self._pending = self._pending, self._NO_PENDING

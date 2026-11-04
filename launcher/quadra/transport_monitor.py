@@ -3,7 +3,6 @@
 import os
 import re
 
-
 _SELECTION = re.compile(
     rb"^[^\[\r\n]*\[(?:DFLog|FLog)::NetworkClient\][ \t]+Transport selection:"
     rb"[^\r\n]*\bselectedTransport=([A-Za-z][A-Za-z0-9_-]{0,31})(?=[,\s]|$)"
@@ -52,7 +51,7 @@ class TransportMonitor:
                         end = chunk.find(b"\n")
                         if end < 0:
                             continue
-                        chunk = chunk[end + 1:]
+                        chunk = chunk[end + 1 :]
                         self._discarding_line = False
                     lines = (self._fragment + chunk).split(b"\n")
                     self._fragment = lines.pop()

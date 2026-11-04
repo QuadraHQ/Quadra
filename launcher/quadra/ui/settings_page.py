@@ -99,7 +99,11 @@ class SettingsPage(Adw.Bin):
             sensitive=not rosemary_bundled,
         )
         if rosemary_bundled:
-            self.backend_row.set_subtitle(_("Nix manages Rosemary. Update or switch it through your Nix configuration."))
+            self.backend_row.set_subtitle(
+                _(
+                    "Nix manages Rosemary. Update or switch it through your Nix configuration."
+                )
+            )
         self.backend_row.set_selected(1 if window.rosemary_selected() else 0)
         self._backend_handler = self.backend_row.connect(
             "notify::selected", self._backend_selected
@@ -128,7 +132,11 @@ class SettingsPage(Adw.Bin):
             ),
         )
         widgets.bind_combo(
-            window, self.appearance_row, "launcher_appearance", self.appearance_codes, "gnome"
+            window,
+            self.appearance_row,
+            "launcher_appearance",
+            self.appearance_codes,
+            "gnome",
         )
         interface.add(self.appearance_row)
         tray_switch = Adw.SwitchRow(
@@ -330,7 +338,9 @@ class SettingsPage(Adw.Bin):
             title=_("Hide launcher while playing"),
             subtitle=_("Hide the launcher window while the game is running"),
         )
-        game.add(widgets.bind_switch(window, hide_launcher, "hide_launcher_on_launch", True))
+        game.add(
+            widgets.bind_switch(window, hide_launcher, "hide_launcher_on_launch", True)
+        )
 
         reopen = Adw.SwitchRow(
             title=_("Open settings after Roblox exits"),
@@ -358,7 +368,9 @@ class SettingsPage(Adw.Bin):
                 "Show a desktop notification with the server's location when you join one"
             ),
         )
-        game.add(widgets.bind_switch(window, server_notify, "server_location_notify", True))
+        game.add(
+            widgets.bind_switch(window, server_notify, "server_location_notify", True)
+        )
 
         cores = os.cpu_count() or 1
         cpu_limit = Adw.SpinRow.new_with_range(0, cores, 1)
@@ -514,7 +526,9 @@ class SettingsPage(Adw.Bin):
             _("IP address, optionally with :port. Plain DNS, not encrypted.")
         )
         custom.set_visible(settings.get("dns", "system") == "custom")
-        window.watch_setting("dns", lambda _key, code: custom.set_visible(code == "custom"))
+        window.watch_setting(
+            "dns", lambda _key, code: custom.set_visible(code == "custom")
+        )
 
         def custom_applied(row):
             text = row.get_text().strip()
@@ -616,7 +630,9 @@ class SettingsPage(Adw.Bin):
             title=_("Check for Roblox updates on startup"),
             subtitle=_("Prompt to update if a newer version of Roblox is available"),
         )
-        roblox.add(widgets.bind_switch(window, auto_update, "auto_check_roblox_updates", True))
+        roblox.add(
+            widgets.bind_switch(window, auto_update, "auto_check_roblox_updates", True)
+        )
 
         self.progress = Gtk.ProgressBar(
             show_text=True,
@@ -641,7 +657,9 @@ class SettingsPage(Adw.Bin):
         self.roblox_page.add(rosemary_roblox)
         window.runtime_only(rosemary_roblox, "rosemary", hide=True)
         self.refresh_rosemary()
-        window.watch_setting(ROSEMARY_SETTINGS, lambda _key, _value: self.refresh_rosemary())
+        window.watch_setting(
+            ROSEMARY_SETTINGS, lambda _key, _value: self.refresh_rosemary()
+        )
 
         # The startup render throttle patch gets a group of its own: the
         # button applies or reverts it by hand, the switch decides whether
@@ -659,7 +677,9 @@ class SettingsPage(Adw.Bin):
             title=_("Apply the throttle patch automatically"),
             subtitle=_("Patch the client on every launch and after Roblox updates"),
         )
-        throttle.add(widgets.bind_switch(window, auto_patch, "auto_patch_throttle", True))
+        throttle.add(
+            widgets.bind_switch(window, auto_patch, "auto_patch_throttle", True)
+        )
         self._in_thread(core.throttle_patch_state, self._throttle_state_done)
         self.roblox_page.add(throttle)
         window.runtime_only(throttle, "throttle")
@@ -966,7 +986,9 @@ class SettingsPage(Adw.Bin):
         window.watch_setting("rosemary_source", self._show_rosemary_source)
         program.add(self.rosemary_source_row)
         rosemary_bundled = bool(backends.bundled_rosemary())
-        self.rosemary_runner_row = Adw.ComboRow(title=_("Rosemary runner"), use_subtitle=False)
+        self.rosemary_runner_row = Adw.ComboRow(
+            title=_("Rosemary runner"), use_subtitle=False
+        )
         self._rosemary_runners = []
         self._runner_selected_handler = self.rosemary_runner_row.connect(
             "notify::selected", self._rosemary_runner_selected
@@ -986,7 +1008,9 @@ class SettingsPage(Adw.Bin):
             valign=Gtk.Align.CENTER,
             css_classes=["suggested-action"],
         )
-        self.rosemary_install_button.connect("clicked", lambda *_args: self._install_rosemary())
+        self.rosemary_install_button.connect(
+            "clicked", lambda *_args: self._install_rosemary()
+        )
         self.rosemary_runner_row.add_suffix(self.rosemary_install_button)
         program.add(self.rosemary_runner_row)
         self._keep_typed_rosemary_program_listed()
@@ -1000,8 +1024,16 @@ class SettingsPage(Adw.Bin):
         add_runner.set_activatable_widget(browse)
         program.add(add_runner)
         if rosemary_bundled:
-            program.set_description(_("Nix manages Rosemary. Update or switch it through your Nix configuration."))
-            for row in (self.rosemary_source_row, self.rosemary_install_button, add_runner):
+            program.set_description(
+                _(
+                    "Nix manages Rosemary. Update or switch it through your Nix configuration."
+                )
+            )
+            for row in (
+                self.rosemary_source_row,
+                self.rosemary_install_button,
+                add_runner,
+            ):
                 row.set_visible(False)
             self.rosemary_runner_row.set_sensitive(False)
         prefix = Adw.EntryRow(title=_("Prefix folder (empty: Quadra's own)"))
@@ -1025,7 +1057,9 @@ class SettingsPage(Adw.Bin):
             ),
             model=Gtk.StringList.new([_("Automatic"), _("Native"), _("Emulated")]),
         )
-        widgets.bind_combo(window, engine, "rosemary_engine", rosemary_runtime.ENGINES, "auto")
+        widgets.bind_combo(
+            window, engine, "rosemary_engine", rosemary_runtime.ENGINES, "auto"
+        )
         options.add(engine)
         opengl = Adw.SwitchRow(
             title=_("Force OpenGL"),
@@ -1126,7 +1160,9 @@ class SettingsPage(Adw.Bin):
             title=_("Process server"),
             subtitle=_("Stopped with the game; turn off to leave it running"),
         )
-        options.add(widgets.bind_switch(window, server, "rosemary_process_server", True))
+        options.add(
+            widgets.bind_switch(window, server, "rosemary_process_server", True)
+        )
         self.env_page.add(options)
         for group in (program, options):
             window.runtime_only(group, "rosemary", hide=True)
@@ -1137,12 +1173,16 @@ class SettingsPage(Adw.Bin):
         self.rosemary_client_button = Gtk.Button(
             label=_("Install or update"), valign=Gtk.Align.CENTER
         )
-        self.rosemary_client_button.connect("clicked", lambda *_args: self._install_rosemary_client())
+        self.rosemary_client_button.connect(
+            "clicked", lambda *_args: self._install_rosemary_client()
+        )
         self.rosemary_client_row.add_suffix(self.rosemary_client_button)
         client_group.add(self.rosemary_client_row)
         self.rosemary_rollback_row = Adw.ActionRow(title=_("Previous version"))
         self.rosemary_rollback_button = Gtk.Button(valign=Gtk.Align.CENTER)
-        self.rosemary_rollback_button.connect("clicked", lambda *_args: self._toggle_rosemary_rollback())
+        self.rosemary_rollback_button.connect(
+            "clicked", lambda *_args: self._toggle_rosemary_rollback()
+        )
         self.rosemary_rollback_row.add_suffix(self.rosemary_rollback_button)
         client_group.add(self.rosemary_rollback_row)
         client_progress = Gtk.ProgressBar(show_text=True, visible=False, margin_top=6)
@@ -1168,7 +1208,9 @@ class SettingsPage(Adw.Bin):
             ),
         )
         client_group.add(
-            widgets.bind_switch(self.window, cache_on_launch, "rosemary_clear_cache_on_launch")
+            widgets.bind_switch(
+                self.window, cache_on_launch, "rosemary_clear_cache_on_launch"
+            )
         )
         return client_group
 
@@ -1215,7 +1257,9 @@ class SettingsPage(Adw.Bin):
 
     def _offer_rosemary_update(self, version):
         if self.window.settings_page is self:
-            self.rosemary_install_button.set_label(_("Update to {version}", version=version))
+            self.rosemary_install_button.set_label(
+                _("Update to {version}", version=version)
+            )
         return False
 
     def refresh_rosemary(self):
@@ -1230,7 +1274,9 @@ class SettingsPage(Adw.Bin):
                 _("Update") if (has_chosen or custom) else _("Install")
             )
             if has_chosen:
-                threading.Thread(target=self._check_rosemary_update, daemon=True).start()
+                threading.Thread(
+                    target=self._check_rosemary_update, daemon=True
+                ).start()
         except rosemary_runtime.RosemaryError as error:
             self.rosemary_runner_row.set_subtitle(str(error).splitlines()[0])
             self.rosemary_install_button.set_label(_("Install"))
@@ -1258,7 +1304,9 @@ class SettingsPage(Adw.Bin):
             )
             self.rosemary_rollback_button.set_label(_("Follow latest"))
         elif previous is not None:
-            self.rosemary_rollback_row.set_subtitle(previous[0].version or previous[0].guid)
+            self.rosemary_rollback_row.set_subtitle(
+                previous[0].version or previous[0].guid
+            )
             self.rosemary_rollback_button.set_label(_("Go back"))
 
     def _chosen_rosemary_program(self):
@@ -1269,7 +1317,8 @@ class SettingsPage(Adw.Bin):
         typed = self._chosen_rosemary_program()
         settings = self.window.settings
         typed_runner = next(
-            (r for r in rosemary_runtime.runner_list(settings) if r.program == typed), None
+            (r for r in rosemary_runtime.runner_list(settings) if r.program == typed),
+            None,
         )
         added = settings.get("rosemary_runners") or []
         if typed_runner and typed_runner.added_by_hand and typed not in added:
@@ -1286,7 +1335,9 @@ class SettingsPage(Adw.Bin):
                 self.rosemary_runner_row.set_model(
                     Gtk.StringList.new([runner.label for runner in runners])
                 )
-            self.rosemary_runner_row.set_selected(programs.index(chosen) if chosen in programs else 0)
+            self.rosemary_runner_row.set_selected(
+                programs.index(chosen) if chosen in programs else 0
+            )
         self._show_remove_runner_button()
 
     def _selected_rosemary_runner(self):
@@ -1298,14 +1349,18 @@ class SettingsPage(Adw.Bin):
         )
 
     def _rosemary_runner_selected(self, _row, _pspec):
-        self.window.set_setting("rosemary_program", self._selected_rosemary_runner().program)
+        self.window.set_setting(
+            "rosemary_program", self._selected_rosemary_runner().program
+        )
 
     def _choose_rosemary_runner(self, on_added=lambda: None):
         def chosen(path):
             if self._add_rosemary_runner(path):
                 on_added()
 
-        dialogs._choose_file(self.window, _("Choose a Rosemary program"), _("Add"), chosen)
+        dialogs._choose_file(
+            self.window, _("Choose a Rosemary program"), _("Add"), chosen
+        )
 
     def _add_rosemary_runner(self, program):
         if not rosemary_runtime.is_runnable(program):
@@ -1316,7 +1371,9 @@ class SettingsPage(Adw.Bin):
             )
             return False
         window = self.window
-        added = [p for p in window.settings.get("rosemary_runners") or [] if p != program]
+        added = [
+            p for p in window.settings.get("rosemary_runners") or [] if p != program
+        ]
         window.set_setting("rosemary_runners", [*added, program])
         window.set_setting("rosemary_program", program)
         return True
@@ -1449,7 +1506,9 @@ class SettingsPage(Adw.Bin):
             whole_number = isinstance(value, int) and not isinstance(value, bool)
             return value if whole_number and low <= value <= high else default
 
-        widgets.bind_spin(self.window, row, key, default, to_setting=int, to_row=in_range)
+        widgets.bind_spin(
+            self.window, row, key, default, to_setting=int, to_row=in_range
+        )
         self._m2vk_defaults[key] = default
         return row
 
@@ -1472,7 +1531,9 @@ class SettingsPage(Adw.Bin):
                 "Prepare learned shaders before playing. New shaders may still compile during play."
             ),
         )
-        group.add(widgets.bind_switch(window, shader_preload, "metal_shader_preload", True))
+        group.add(
+            widgets.bind_switch(window, shader_preload, "metal_shader_preload", True)
+        )
         for key, title, subtitle in (
             (
                 "metal_library_preload",
@@ -1614,7 +1675,9 @@ class SettingsPage(Adw.Bin):
             (row, row.connect("notify::selected", self._select_renderer))
         )
         if len(self._renderer_rows) == 1:
-            self.window.watch_setting("renderer", lambda _key, code: self._show_renderer(code))
+            self.window.watch_setting(
+                "renderer", lambda _key, code: self._show_renderer(code)
+            )
         return row
 
     def _show_renderer(self, code):
@@ -1700,7 +1763,9 @@ class SettingsPage(Adw.Bin):
     def _show_gpu_rows(self):
         renderer_applies = backends.supports(self.window.runtime_name(), "renderer")
         for row, _handler, always_visible in self._gpu_rows:
-            row.set_visible(always_visible or (renderer_applies and self._gpu_choice_needed))
+            row.set_visible(
+                always_visible or (renderer_applies and self._gpu_choice_needed)
+            )
 
     def _select_gpu(self, row, _pspec):
         selected = row.get_selected()
@@ -1727,7 +1792,9 @@ class SettingsPage(Adw.Bin):
             codes.append(selection)
             labels.append(_("Selected graphics card unavailable"))
         self._gpu_codes = codes
-        self._gpu_choice_needed = len(adapters) > 1 or selection != "auto" or error is not None
+        self._gpu_choice_needed = (
+            len(adapters) > 1 or selection != "auto" or error is not None
+        )
         self._show_gpu_rows()
         for row, handler, _always_visible in self._gpu_rows:
             row.handler_block(handler)
@@ -1812,7 +1879,9 @@ class SettingsPage(Adw.Bin):
             sensitive=not runtime.is_bundled(),
         )
         about.add(
-            widgets.bind_switch(window, automatic, "auto_check_ciderdarling_updates", True)
+            widgets.bind_switch(
+                window, automatic, "auto_check_ciderdarling_updates", True
+            )
         )
         self.cider_rollback_row = widgets._button_row(
             _("Use previous CiderDarling and restart")
@@ -1860,7 +1929,9 @@ class SettingsPage(Adw.Bin):
                 "Darling starts."
             ),
         )
-        diagnostics.add(widgets.bind_switch(window, verbose, "cider_verbose_server_log"))
+        diagnostics.add(
+            widgets.bind_switch(window, verbose, "cider_verbose_server_log")
+        )
         diagnostics.add(self._allow_debugger_row())
         diagnostics.add(self._text_input_trace_row())
         collect = widgets._button_row(_("Collect diagnostics"))

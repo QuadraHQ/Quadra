@@ -1,10 +1,11 @@
 """Select one Darling executable, its matching root and its own guest prefix."""
+
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import tempfile
+from pathlib import Path
 
 from .. import backends
 from ..paths import user_directory
@@ -21,18 +22,27 @@ INSTALLER = Path(__file__).resolve().parents[3] / "install-runtime.sh"
 def is_bundled(environment=None):
     """Whether the package owns the client, sysroot and runtime updates."""
     env = os.environ if environment is None else environment
-    return bool(env.get("FLATPAK_ID") or env.get("QUADRA_BUNDLED_DARLING")
-                or backends.bundled_rosemary(env))
+    return bool(
+        env.get("FLATPAK_ID")
+        or env.get("QUADRA_BUNDLED_DARLING")
+        or backends.bundled_rosemary(env)
+    )
 
 
 def _validate_selection(data):
-    if (not isinstance(data, dict) or data.get("schema_version") != 1
-            or data.get("runtime") not in VARIANTS):
+    if (
+        not isinstance(data, dict)
+        or data.get("schema_version") != 1
+        or data.get("runtime") not in VARIANTS
+    ):
         raise ValueError("unknown runtime or schema")
     for key in ("executable", "sysroot", "prefix"):
         value = data.get(key)
-        if (not isinstance(value, str) or not Path(value).is_absolute()
-                or any(character in value for character in "\n\r\0")):
+        if (
+            not isinstance(value, str)
+            or not Path(value).is_absolute()
+            or any(character in value for character in "\n\r\0")
+        ):
             raise ValueError(f"invalid {key}")
     return data
 
@@ -69,7 +79,9 @@ def read_selection(path):
         data = json.loads(path.read_text())
         return _validate_selection(data)
     except (OSError, ValueError) as error:
-        raise RuntimeError(f"Cannot read Darling selection {path}: {error}. Rerun Quadra's installer.") from error
+        raise RuntimeError(
+            f"Cannot read Darling selection {path}: {error}. Rerun Quadra's installer."
+        ) from error
 
 
 def pinned_ciderdarling(installer=None):
@@ -96,7 +108,7 @@ def save_selection(selection, path=None, current=None):
     path = Path(path) if path is not None else selection_path()
     saved = read_selection(path)
     history = remembered_runtimes(saved)
-    previous = saved.get('previous_ciderdarling') if saved else None
+    previous = saved.get("previous_ciderdarling") if saved else None
     if current is not None:
         snapshot = {key: current[key] for key in SELECTION_KEYS}
         snapshot["schema_version"] = 1
@@ -105,23 +117,32 @@ def save_selection(selection, path=None, current=None):
             history[current["runtime"]] = {key: current[key] for key in SELECTION_KEYS}
         except ValueError:
             pass  # The initial fallback may only have a missing client on PATH.
-    old_cider = history.get('ciderdarling')
-    if (data['runtime'] == 'ciderdarling' and old_cider
-            and old_cider['sysroot'] != data['sysroot']):
+    old_cider = history.get("ciderdarling")
+    if (
+        data["runtime"] == "ciderdarling"
+        and old_cider
+        and old_cider["sysroot"] != data["sysroot"]
+    ):
         previous = dict(old_cider, schema_version=1)
     if previous:
         try:
             previous = _validate_selection(previous)
-            if previous['runtime'] == 'ciderdarling':
-                data['previous_ciderdarling'] = {key: previous[key] for key in (*SELECTION_KEYS, 'schema_version')}
+            if previous["runtime"] == "ciderdarling":
+                data["previous_ciderdarling"] = {
+                    key: previous[key] for key in (*SELECTION_KEYS, "schema_version")
+                }
         except ValueError:
             pass
     history[data["runtime"]] = {key: data[key] for key in SELECTION_KEYS}
-    data["runtimes"] = {variant: dict(entry, schema_version=1) for variant, entry in history.items()}
+    data["runtimes"] = {
+        variant: dict(entry, schema_version=1) for variant, entry in history.items()
+    }
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=".runtime-", delete=False) as stream:
+        with tempfile.NamedTemporaryFile(
+            mode="w", dir=path.parent, prefix=".runtime-", delete=False
+        ) as stream:
             temporary = Path(stream.name)
             json.dump(data, stream, indent=2)
             stream.write("\n")
@@ -136,18 +157,24 @@ def save_selection(selection, path=None, current=None):
 def rollback_candidate(current, path=None):
     """A usable previous installation; never change or migrate a prefix."""
     saved = read_selection(Path(path) if path is not None else selection_path())
-    candidate = saved.get('previous_ciderdarling') if saved else None
+    candidate = saved.get("previous_ciderdarling") if saved else None
     try:
         candidate = _validate_selection(candidate)
-        client, root = Path(candidate['executable']), Path(candidate['sysroot'])
+        client, root = Path(candidate["executable"]), Path(candidate["sysroot"])
         data = metadata(root)
-        if (candidate['runtime'] != 'ciderdarling' or current['runtime'] != 'ciderdarling'
-                or root.resolve() == Path(current['sysroot']).resolve()
-                or not client.is_file() or not os.access(client, os.X_OK)
-                or client.resolve().parent.parent / 'libexec/darling' != root.resolve()
-                or data.get('architecture') != 'x86_64'):
+        if (
+            candidate["runtime"] != "ciderdarling"
+            or current["runtime"] != "ciderdarling"
+            or root.resolve() == Path(current["sysroot"]).resolve()
+            or not client.is_file()
+            or not os.access(client, os.X_OK)
+            or client.resolve().parent.parent / "libexec/darling" != root.resolve()
+            or data.get("architecture") != "x86_64"
+        ):
             return None
-        return {key: candidate[key] for key in (*SELECTION_KEYS, 'schema_version')} | {'prefix': current['prefix']}
+        return {key: candidate[key] for key in (*SELECTION_KEYS, "schema_version")} | {
+            "prefix": current["prefix"]
+        }
     except (OSError, ValueError, KeyError):
         return None
 
@@ -177,16 +204,25 @@ def metadata(sysroot):
         if path.stat().st_size > 65536:
             return {}
         data = json.loads(path.read_text())
-        if (isinstance(data, dict) and data.get("schema_version") == 1
-                and data.get("name") == "CiderDarling"):
+        if (
+            isinstance(data, dict)
+            and data.get("schema_version") == 1
+            and data.get("name") == "CiderDarling"
+        ):
             return data
     except (OSError, ValueError):
         pass
     return {}
 
 
-def installed_runtimes(current=None, environment=None, selection_file=None,
-                       regular_clients=None, cider_directory=CIDER_DIRECTORY, pinned=...):
+def installed_runtimes(
+    current=None,
+    environment=None,
+    selection_file=None,
+    regular_clients=None,
+    cider_directory=CIDER_DIRECTORY,
+    pinned=...,
+):
     """Find usable installed clients; do not start Darling or install anything.
 
     The installer's pinned CiderDarling directory wins when it is complete, so
@@ -200,7 +236,9 @@ def installed_runtimes(current=None, environment=None, selection_file=None,
         return {bundled["runtime"]: bundled}
     if env.get("FLATPAK_ID"):
         return {}
-    saved = read_selection(selection_file if selection_file is not None else selection_path())
+    saved = read_selection(
+        selection_file if selection_file is not None else selection_path()
+    )
     remembered = remembered_runtimes(saved)
     if current is not None:
         remembered[current["runtime"]] = {key: current[key] for key in SELECTION_KEYS}
@@ -224,9 +262,11 @@ def installed_runtimes(current=None, environment=None, selection_file=None,
                 if revision is not None and data.get("source_revision") != revision:
                     return
                 variant = "ciderdarling"
-            elif ((root / "usr/share/ciderdarling/runtime.json").exists()
-                  or (root / "usr/share/ciderdarling/runtime.json").is_symlink()
-                  or root.resolve().is_relative_to(Path(cider_directory).resolve())):
+            elif (
+                (root / "usr/share/ciderdarling/runtime.json").exists()
+                or (root / "usr/share/ciderdarling/runtime.json").is_symlink()
+                or root.resolve().is_relative_to(Path(cider_directory).resolve())
+            ):
                 return  # Damaged CiderDarling metadata is not regular Darling.
             else:
                 variant = "regular"
@@ -235,34 +275,53 @@ def installed_runtimes(current=None, environment=None, selection_file=None,
             if variant in found:
                 return
             previous = remembered.get(variant, {})
-            default = Path.home() / (".ciderdarling" if variant == "ciderdarling" else ".darling")
+            default = Path.home() / (
+                ".ciderdarling" if variant == "ciderdarling" else ".darling"
+            )
             prefix = env.get("DPREFIX") or previous.get("prefix") or str(default)
             # A remembered custom tuple must agree with the actual client's
             # root. Keep its original path when the two resolve to the same root.
             if preferred is not None:
-                if preferred["runtime"] != variant or Path(preferred["sysroot"]).resolve() != root.resolve():
+                if (
+                    preferred["runtime"] != variant
+                    or Path(preferred["sysroot"]).resolve() != root.resolve()
+                ):
                     return
                 root = Path(preferred["sysroot"])
-            entry = {"schema_version": 1, "runtime": variant, "executable": str(client.absolute()),
-                     "sysroot": str(root), "prefix": str(Path(prefix).absolute())}
+            entry = {
+                "schema_version": 1,
+                "runtime": variant,
+                "executable": str(client.absolute()),
+                "sysroot": str(root),
+                "prefix": str(Path(prefix).absolute()),
+            }
             found[variant] = _validate_selection(entry)
         except (OSError, ValueError):
             return
 
     if pinned:
-        consider(Path(cider_directory) / pinned / "bin/darling", expected_variant="ciderdarling",
-                 revision=pinned)
+        consider(
+            Path(cider_directory) / pinned / "bin/darling",
+            expected_variant="ciderdarling",
+            revision=pinned,
+        )
     for entry in remembered.values():
         consider(entry["executable"], entry)
     if regular_clients is None:
-        regular_clients = [Path(directory) / "darling" for directory in
-                           env.get("PATH", os.defpath).split(os.pathsep) if directory]
+        regular_clients = [
+            Path(directory) / "darling"
+            for directory in env.get("PATH", os.defpath).split(os.pathsep)
+            if directory
+        ]
         regular_clients += [Path("/usr/local/bin/darling"), Path("/usr/bin/darling")]
     for client in regular_clients:
         consider(client)
     try:
-        directories = sorted((path for path in Path(cider_directory).iterdir() if path.is_dir()),
-                             key=lambda path: path.stat().st_mtime, reverse=True)
+        directories = sorted(
+            (path for path in Path(cider_directory).iterdir() if path.is_dir()),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
     except OSError:
         directories = []
     for directory in directories:
@@ -278,42 +337,63 @@ def resolve_runtime(environment=None, selection_file=None):
     if bundled:
         root = Path(bundled)
         if not root.is_absolute():
-            raise RuntimeError("QUADRA_BUNDLED_DARLING must be an absolute runtime directory")
+            raise RuntimeError(
+                "QUADRA_BUNDLED_DARLING must be an absolute runtime directory"
+            )
         sysroot = root / "libexec/darling"
         data = metadata(sysroot)
         variant = "ciderdarling" if data else "regular"
-        prefix = env.get("DPREFIX") or str(Path.home() / (
-            ".ciderdarling" if variant == "ciderdarling" else ".darling"))
-        return {"runtime": variant, "executable": str(root / "bin/darling"),
-                "sysroot": str(sysroot), "prefix": str(Path(prefix).absolute()), "metadata": data}
+        prefix = env.get("DPREFIX") or str(
+            Path.home() / (".ciderdarling" if variant == "ciderdarling" else ".darling")
+        )
+        return {
+            "runtime": variant,
+            "executable": str(root / "bin/darling"),
+            "sysroot": str(sysroot),
+            "prefix": str(Path(prefix).absolute()),
+            "metadata": data,
+        }
     # A Flatpak carries its own client, sysroot and rootless helper. Host
     # installer preferences cannot select files outside its sandbox.
     flatpak = bool(env.get("FLATPAK_ID"))
-    selected = None if flatpak else read_selection(
-        selection_file if selection_file is not None else selection_path())
+    selected = (
+        None
+        if flatpak
+        else read_selection(
+            selection_file if selection_file is not None else selection_path()
+        )
+    )
     if selected is not None:
         result = dict(selected)
     else:
         executable = shutil.which("darling", path=env.get("PATH")) or "darling"
         roots = [Path("/usr/libexec/darling"), Path("/usr/local/libexec/darling")]
         if executable != "darling":
-            roots.insert(0, Path(executable).resolve().parent.parent / "libexec/darling")
+            roots.insert(
+                0, Path(executable).resolve().parent.parent / "libexec/darling"
+            )
         if flatpak:
             roots = [Path("/app/libexec/darling")]
         sysroot = next((path for path in roots if path.is_dir()), roots[0])
-        result = {"runtime": "regular", "executable": executable,
-                  "sysroot": str(sysroot), "prefix": str(Path.home() / ".darling")}
-        if not flatpak and executable == 'darling':
-            available = installed_runtimes(environment=env, selection_file=selection_file, pinned=None)
-            if 'ciderdarling' in available:
-                result = dict(available['ciderdarling'])
+        result = {
+            "runtime": "regular",
+            "executable": executable,
+            "sysroot": str(sysroot),
+            "prefix": str(Path.home() / ".darling"),
+        }
+        if not flatpak and executable == "darling":
+            available = installed_runtimes(
+                environment=env, selection_file=selection_file, pinned=None
+            )
+            if "ciderdarling" in available:
+                result = dict(available["ciderdarling"])
     if env.get("DPREFIX"):
         result["prefix"] = str(Path(env["DPREFIX"]).absolute())
     result["metadata"] = metadata(result["sysroot"])
     if selected is None and not flatpak and result["metadata"]:
         result["runtime"] = "ciderdarling"
-        if not env.get('DPREFIX'):
-            result['prefix'] = str(Path.home() / '.ciderdarling')
+        if not env.get("DPREFIX"):
+            result["prefix"] = str(Path.home() / ".ciderdarling")
     return result
 
 

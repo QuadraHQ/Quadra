@@ -8,12 +8,12 @@ __all__ = [
     "DARLING_FLAGS",
     "FAST_FLAGS_USER",
     "_read_flags",
-    "load_bundle_flags",
-    "save_bundle_flags",
-    "load_fast_flags",
-    "save_fast_flags",
-    "parse_flag_value",
     "format_flag_value",
+    "load_bundle_flags",
+    "load_fast_flags",
+    "parse_flag_value",
+    "save_bundle_flags",
+    "save_fast_flags",
 ]
 
 # What Darling needs on top of the user's flags: RbxTransport (QUIC) fails under
@@ -82,7 +82,9 @@ def load_bundle_flags():
 
 
 def save_bundle_flags(flags):
-    files._write_atomically(locations.FAST_FLAGS, json.dumps(flags, indent=2, ensure_ascii=False))
+    files._write_atomically(
+        locations.FAST_FLAGS, json.dumps(flags, indent=2, ensure_ascii=False)
+    )
 
 
 def load_fast_flags():
@@ -101,7 +103,9 @@ def load_fast_flags():
 def save_fast_flags(flags):
     """Keep the user's flags, and give the Darling client its copy (when that
     client is installed) with Darling's own flags on top."""
-    files._write_atomically(FAST_FLAGS_USER, json.dumps(flags, indent=2, ensure_ascii=False))
+    files._write_atomically(
+        FAST_FLAGS_USER, json.dumps(flags, indent=2, ensure_ascii=False)
+    )
     if locations.FAST_FLAGS.parent.is_dir():
         save_bundle_flags({**flags, **DARLING_FLAGS})
 

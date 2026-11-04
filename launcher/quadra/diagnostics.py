@@ -16,6 +16,7 @@ library + offset; `--gdb` adds gdb's backtraces (gdb briefly stops the game).
 Credentials stay out: environment variables are filtered to Quadra, Darling
 and graphics settings, and join tickets and cookies in logs are redacted.
 """
+
 import io
 import json
 import os
@@ -25,8 +26,8 @@ import shutil
 import struct
 import subprocess
 import sys
-import tempfile
 import tarfile
+import tempfile
 import time
 from pathlib import Path
 
@@ -36,15 +37,31 @@ SAMPLE_INTERVAL = 3.0
 STACK_SCAN_BYTES = 64 * 1024
 STACK_CANDIDATES = 24
 LOG_TAIL = 2 * 1024 * 1024
-ENV_PREFIXES = ("QUADRA_", "CIDER_", "DSERVER_", "MESA_", "GALLIUM_", "ZINK_", "__GLX_", "__GL_",
-                "LIBGL_", "VK_", "MANGOHUD", "DPREFIX", "DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE",
-                "EGL_PLATFORM", "LIBDISPATCH_")
+ENV_PREFIXES = (
+    "QUADRA_",
+    "CIDER_",
+    "DSERVER_",
+    "MESA_",
+    "GALLIUM_",
+    "ZINK_",
+    "__GLX_",
+    "__GL_",
+    "LIBGL_",
+    "VK_",
+    "MANGOHUD",
+    "DPREFIX",
+    "DISPLAY",
+    "WAYLAND_DISPLAY",
+    "XDG_SESSION_TYPE",
+    "EGL_PLATFORM",
+    "LIBDISPATCH_",
+)
 SECRET_VARIABLES = ("QUADRA_PENDING_URI",)
 REDACTIONS = (
-    (re.compile(r"(ticket=)[^&\"'\s]+", re.I), r"\1<redacted>"),
-    (re.compile(r"(\"ticket\"\s*:\s*\")[^\"]*", re.I), r"\1<redacted>"),
-    (re.compile(r"(gameinfo:)[^+\s\"']+", re.I), r"\1<redacted>"),
-    (re.compile(r"(\.?ROBLOSECURITY\s*[=:]\s*)[^;\s\"']+", re.I), r"\1<redacted>"),
+    (re.compile(r"(ticket=)[^&\"'\s]+", re.IGNORECASE), r"\1<redacted>"),
+    (re.compile(r"(\"ticket\"\s*:\s*\")[^\"]*", re.IGNORECASE), r"\1<redacted>"),
+    (re.compile(r"(gameinfo:)[^+\s\"']+", re.IGNORECASE), r"\1<redacted>"),
+    (re.compile(r"(\.?ROBLOSECURITY\s*[=:]\s*)[^;\s\"']+", re.IGNORECASE), r"\1<redacted>"),
     (re.compile(r"_\|WARNING:-DO-NOT-SHARE-THIS[^\s\"';]*"), "<redacted>"),
 )
 
@@ -73,6 +90,7 @@ def _text(path, limit=None):
 
 # ------------------------------------------------------------------ threads
 
+
 def _mappings(pid):
     """Executable file mappings: (start, end, file offset, path)."""
     regions = []
@@ -91,7 +109,11 @@ def _mappings(pid):
 def _locate(address, regions):
     for start, end, offset, path in regions:
         if start <= address < end:
-            return f"{Path(path).name}+0x{address - start + offset:x}", path, address - start + offset
+            return (
+                f"{Path(path).name}+0x{address - start + offset:x}",
+                path,
+                address - start + offset,
+            )
     return None, None, None
 
 
@@ -112,7 +134,9 @@ def _macho_layout(path):
             base = 0
             if head[:4] == b"\xca\xfe\xba\xbe":
                 for index in range(struct.unpack_from(">I", head, 4)[0]):
-                    cputype, _sub, offset, _size, _align = struct.unpack_from(">5I", head, 8 + index * 20)
+                    cputype, _sub, offset, _size, _align = struct.unpack_from(
+                        ">5I", head, 8 + index * 20
+                    )
                     if cputype == 0x01000007:
                         base = offset
                         break
@@ -144,8 +168,12 @@ def _macho_names(path, offsets, nm):
         return {}
     base, segments = layout
     try:
-        output = subprocess.run([nm, "--defined-only", "-n", "--arch=x86_64", path],
-                                capture_output=True, text=True, timeout=20).stdout
+        output = subprocess.run(
+            [nm, "--defined-only", "-n", "--arch=x86_64", path],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        ).stdout
     except (OSError, subprocess.SubprocessError):
         return {}
     symbols = []
@@ -157,6 +185,7 @@ def _macho_names(path, offsets, nm):
             except ValueError:
                 pass
     import bisect
+
     keys = [address for address, _name in symbols]
     names = {}
     for offset in offsets:
@@ -175,7 +204,11 @@ def _host_path(path, roots):
     """The host file behind a path in the game's maps. Darling's libraries
     appear by their path inside its container, whose root is the prefix over
     the runtime's root; the host's own files are under /Volumes/SystemRoot."""
-    candidates = [path.removeprefix("/Volumes/SystemRoot")] if path.startswith("/Volumes/SystemRoot/") else []
+    candidates = (
+        [path.removeprefix("/Volumes/SystemRoot")]
+        if path.startswith("/Volumes/SystemRoot/")
+        else []
+    )
     relative = Path(path.lstrip("/"))
     # Overlay-backed mappings can name the host prefix even for a file
     # supplied by the runtime's lower layer, absent from that prefix on the
@@ -187,7 +220,9 @@ def _host_path(path, roots):
         except ValueError:
             pass
     candidates += [str(Path(root) / relative) for root in roots] + [path]
-    return next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
+    return next(
+        (candidate for candidate in candidates if os.path.isfile(candidate)), None
+    )
 
 
 def _symbolize(wanted, tool, roots=()):
@@ -206,20 +241,35 @@ def _symbolize(wanted, tool, roots=()):
         offsets = sorted(set(offsets))
         if _macho_layout(path):
             if nm:
-                names.update({(mapped, offset): name for offset, name in _macho_names(path, offsets, nm).items()})
+                names.update(
+                    {
+                        (mapped, offset): name
+                        for offset, name in _macho_names(path, offsets, nm).items()
+                    }
+                )
             continue
         if not tool[1]:
             continue
         if tool[0] == "llvm-symbolizer":
-            arguments = [tool[1], "--functions=short", "--no-inlines", f"--obj={path}", *map(hex, offsets)]
+            arguments = [
+                tool[1],
+                "--functions=short",
+                "--no-inlines",
+                f"--obj={path}",
+                *map(hex, offsets),
+            ]
         else:
             arguments = [tool[1], "-f", "-e", path, *map(hex, offsets)]
         try:
-            output = subprocess.run(arguments, capture_output=True, text=True, timeout=20).stdout
+            output = subprocess.run(
+                arguments, capture_output=True, text=True, timeout=20
+            ).stdout
         except (OSError, subprocess.SubprocessError):
             continue
         if tool[0] == "llvm-symbolizer":
-            functions = [block.split("\n")[0] for block in output.strip("\n").split("\n\n")]
+            functions = [
+                block.split("\n")[0] for block in output.strip("\n").split("\n\n")
+            ]
         else:
             functions = output.split("\n")[0::2]
         for offset, function in zip(offsets, functions):
@@ -230,7 +280,11 @@ def _symbolize(wanted, tool, roots=()):
 
 def _thread_sample(pid, tid):
     base = f"/proc/{pid}/task/{tid}"
-    sample = {"tid": tid, "name": _text(f"{base}/comm").strip(), "wchan": _text(f"{base}/wchan").strip()}
+    sample = {
+        "tid": tid,
+        "name": _text(f"{base}/comm").strip(),
+        "wchan": _text(f"{base}/wchan").strip(),
+    }
     stat = _text(f"{base}/stat")
     after = stat.rsplit(")", 1)[-1].split()
     if len(after) > 12:
@@ -281,7 +335,11 @@ def _describe_threads(pid, first, second, regions, symbolize, roots=()):
         current = b or a
         syscall = current.get("syscall", "")
         fields = syscall.split()
-        pc = int(fields[-1], 16) if len(fields) >= 3 and fields[-1].startswith("0x") else None
+        pc = (
+            int(fields[-1], 16)
+            if len(fields) >= 3 and fields[-1].startswith("0x")
+            else None
+        )
         stack = _stack_candidates(pid, syscall, regions) if pc is not None else []
         threads.append((tid, a, b, current, syscall, pc, stack))
     wanted = set()
@@ -301,11 +359,24 @@ def _describe_threads(pid, first, second, regions, symbolize, roots=()):
 
     lines = []
     for tid, a, b, current, syscall, pc, stack in threads:
-        busy = a and b and "cpu_ticks" in a and "cpu_ticks" in b and b["cpu_ticks"] > a["cpu_ticks"]
-        unchanged = a and b and a.get("syscall") == b.get("syscall") and a.get("wchan") == b.get("wchan")
+        busy = (
+            a
+            and b
+            and "cpu_ticks" in a
+            and "cpu_ticks" in b
+            and b["cpu_ticks"] > a["cpu_ticks"]
+        )
+        unchanged = (
+            a
+            and b
+            and a.get("syscall") == b.get("syscall")
+            and a.get("wchan") == b.get("wchan")
+        )
         verdict = "running" if busy else "unchanged wait" if unchanged else "changed"
-        lines.append(f"thread {tid} [{current.get('name', '?')}] state={current.get('state', '?')} "
-                     f"wchan={current.get('wchan') or '-'} ({verdict})")
+        lines.append(
+            f"thread {tid} [{current.get('name', '?')}] state={current.get('state', '?')} "
+            f"wchan={current.get('wchan') or '-'} ({verdict})"
+        )
         lines.append(f"  syscall: {syscall}")
         if pc is not None:
             lines.append(f"  pc: {where(pc)}")
@@ -335,7 +406,9 @@ def _game_environment(pid):
         name, separator, value = entry.decode(errors="replace").partition("=")
         if not separator or not name.startswith(ENV_PREFIXES):
             continue
-        kept.append(f"{name}=<redacted>" if name in SECRET_VARIABLES else f"{name}={value}")
+        kept.append(
+            f"{name}=<redacted>" if name in SECRET_VARIABLES else f"{name}={value}"
+        )
     return "\n".join(sorted(kept)) + "\n"
 
 
@@ -344,8 +417,15 @@ def _annotate_addresses(text, regions, roots, symbolize):
     addresses = {int(token, 16) for token in re.findall(r"\b0x[0-9a-f]{6,16}\b", text)}
     located = {address: _locate(address, regions) for address in addresses}
     located = {address: value for address, value in located.items() if value[0]}
-    names = (_symbolize({(path, offset) for _label, path, offset in located.values()}, _symbolizer(), roots)
-             if symbolize else {})
+    names = (
+        _symbolize(
+            {(path, offset) for _label, path, offset in located.values()},
+            _symbolizer(),
+            roots,
+        )
+        if symbolize
+        else {}
+    )
 
     def label(match):
         value = located.get(int(match.group(0), 16))
@@ -353,6 +433,7 @@ def _annotate_addresses(text, regions, roots, symbolize):
             return match.group(0)
         name = names.get((value[1], value[2]))
         return f"{match.group(0)} <{value[0]}{' ' + name if name else ''}>"
+
     return re.sub(r"\b0x[0-9a-f]{6,16}\b", label, text)
 
 
@@ -363,11 +444,26 @@ def _gdb_backtraces(pid):
     try:
         # gdb cannot unwind Darling's Mach-O code by itself: the registers and
         # the top of each stack let the return addresses be read anyway.
-        result = subprocess.run([gdb, "-p", str(pid), "-batch", "-nx", "-ex", "set pagination off",
-                                 "-ex", "thread apply all bt 30",
-                                 "-ex", "thread apply all info registers rip rsp rbp",
-                                 "-ex", "thread apply all x/64gx $sp"],
-                                capture_output=True, text=True, timeout=90)
+        result = subprocess.run(
+            [
+                gdb,
+                "-p",
+                str(pid),
+                "-batch",
+                "-nx",
+                "-ex",
+                "set pagination off",
+                "-ex",
+                "thread apply all bt 30",
+                "-ex",
+                "thread apply all info registers rip rsp rbp",
+                "-ex",
+                "thread apply all x/64gx $sp",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
         return result.stdout + result.stderr
     except subprocess.TimeoutExpired:
         return "gdb did not finish within 90 s\n"
@@ -384,17 +480,23 @@ def _ptrace_note(pid):
         permitted = False
     note = f"kernel.yama.ptrace_scope={scope}; user-space locations {'available' if permitted else 'unavailable'}"
     if not permitted:
-        note += ("\nStart the game with QUADRA_ALLOW_DEBUGGER=1 (Settings → allow freeze diagnostics) "
-                 "to include instruction pointers and stacks.")
+        note += (
+            "\nStart the game with QUADRA_ALLOW_DEBUGGER=1 (Settings → allow freeze diagnostics) "
+            "to include instruction pointers and stacks."
+        )
     return note + "\n"
 
 
 # --------------------------------------------------------------------- main
 
+
 def _latest(directory, pattern, exclude=None):
     try:
-        files = [path for path in Path(directory).glob(pattern)
-                 if path.is_file() and not (exclude and exclude in path.name)]
+        files = [
+            path
+            for path in Path(directory).glob(pattern)
+            if path.is_file() and not (exclude and exclude in path.name)
+        ]
     except OSError:
         return None
     return max(files, key=lambda path: path.stat().st_mtime, default=None)
@@ -403,12 +505,16 @@ def _latest(directory, pattern, exclude=None):
 def collect(output_dir=None, *, gdb=False, symbolize=True, interval=SAMPLE_INTERVAL):
     """Write the archive and return its path; RuntimeError when that fails."""
     from . import core
+
     stamp = time.strftime("%Y%m%d-%H%M%S")
     output_dir = Path(output_dir) if output_dir else core.CACHE_DIR / "diagnostics"
     files = {}
-    summary = [f"Quadra {__version__}", f"Collected {time.strftime('%Y-%m-%d %H:%M:%S %z')}",
-               f"Kernel {platform.release()} ({platform.machine()}); CPUs {os.cpu_count()}",
-               f"Darling {core.DARLING_EXECUTABLE}; sysroot {core.DARLING_SYSROOT}; prefix {core.DARLING_PREFIX}"]
+    summary = [
+        f"Quadra {__version__}",
+        f"Collected {time.strftime('%Y-%m-%d %H:%M:%S %z')}",
+        f"Kernel {platform.release()} ({platform.machine()}); CPUs {os.cpu_count()}",
+        f"Darling {core.DARLING_EXECUTABLE}; sysroot {core.DARLING_SYSROOT}; prefix {core.DARLING_PREFIX}",
+    ]
     metadata = core.DARLING_RUNTIME.get("metadata") or {}
     if metadata:
         summary.append(f"CiderDarling revision {metadata.get('source_revision', '?')}")
@@ -416,10 +522,13 @@ def collect(output_dir=None, *, gdb=False, symbolize=True, interval=SAMPLE_INTER
     # Inventory is quick and does not execute graphics or read auth data.
     # Full GPU scenarios remain an explicit hardware-report action.
     from . import hardware_report
+
     try:
-        with tempfile.TemporaryDirectory(prefix='quadra-diagnostics-hardware-') as directory:
+        with tempfile.TemporaryDirectory(
+            prefix="quadra-diagnostics-hardware-"
+        ) as directory:
             report = hardware_report.collect(directory)
-            files['hardware.json'] = report.read_bytes()
+            files["hardware.json"] = report.read_bytes()
     except (OSError, ValueError):
         pass
 
@@ -438,10 +547,15 @@ def collect(output_dir=None, *, gdb=False, symbolize=True, interval=SAMPLE_INTER
         files[f"process-{pid}/environment.txt"] = _game_environment(pid)
         files[f"process-{pid}/status.txt"] = _text(f"/proc/{pid}/status")
         backtraces = _gdb_backtraces(pid) if gdb else None
-        files[f"process-{pid}/threads.txt"] = (_ptrace_note(pid) + "\n" +
-                                               _describe_threads(pid, first[pid], second, regions, symbolize, roots))
+        files[f"process-{pid}/threads.txt"] = (
+            _ptrace_note(pid)
+            + "\n"
+            + _describe_threads(pid, first[pid], second, regions, symbolize, roots)
+        )
         if backtraces is not None:
-            files[f"process-{pid}/gdb.txt"] = _annotate_addresses(backtraces, regions, roots, symbolize)
+            files[f"process-{pid}/gdb.txt"] = _annotate_addresses(
+                backtraces, regions, roots, symbolize
+            )
 
     sources = {
         "runtime.json": core.CONFIG_DIR / "runtime.json",
@@ -458,7 +572,9 @@ def collect(output_dir=None, *, gdb=False, symbolize=True, interval=SAMPLE_INTER
     crash = _latest(roblox_logs, "*CrashHandler*_last.log")
     if crash:
         sources[f"logs/{crash.name}"] = crash
-    sources["logs/dserver.log"] = core.DARLING_PREFIX / "private" / "var" / "log" / "dserver.log"
+    sources["logs/dserver.log"] = (
+        core.DARLING_PREFIX / "private" / "var" / "log" / "dserver.log"
+    )
     # Written by the launcher next to its logs: CiderDarling's runtime trace
     # (Settings -> CiderDarling) and darlingserver's own output.
     trace = _latest(core.LOGS, "ciderdarling-trace-*.jsonl")
@@ -478,28 +594,53 @@ def collect(output_dir=None, *, gdb=False, symbolize=True, interval=SAMPLE_INTER
         output_dir.mkdir(parents=True, exist_ok=True)
         archive = output_dir / f"quadra-diagnostics-{stamp}.tar.gz"
         descriptor = os.open(archive, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "wb") as raw, tarfile.open(fileobj=raw, mode="w:gz") as bundle:
+        with (
+            os.fdopen(descriptor, "wb") as raw,
+            tarfile.open(fileobj=raw, mode="w:gz") as bundle,
+        ):
             for name, content in files.items():
                 data = content.encode() if isinstance(content, str) else content
                 info = tarfile.TarInfo(f"quadra-diagnostics-{stamp}/{name}")
                 info.size, info.mtime, info.mode = len(data), int(time.time()), 0o600
                 bundle.addfile(info, io.BytesIO(data))
     except OSError as error:
-        raise RuntimeError(f"Could not write the diagnostics archive: {error}") from error
+        raise RuntimeError(
+            f"Could not write the diagnostics archive: {error}"
+        ) from error
     return archive
 
 
 def collect_cli(argv):
     import argparse
-    parser = argparse.ArgumentParser(prog="quadrahq --collect-diagnostics", description=__doc__.split("\n")[0])
-    parser.add_argument("--output", type=Path, help="directory for the archive (default: Quadra's cache)")
-    parser.add_argument("--gdb", action="store_true", help="also attach gdb for backtraces (briefly stops the game)")
+
+    parser = argparse.ArgumentParser(
+        prog="quadrahq --collect-diagnostics", description=__doc__.split("\n")[0]
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="directory for the archive (default: Quadra's cache)",
+    )
+    parser.add_argument(
+        "--gdb",
+        action="store_true",
+        help="also attach gdb for backtraces (briefly stops the game)",
+    )
     parser.add_argument("--no-symbols", action="store_true", help="skip symbol lookup")
-    parser.add_argument("--interval", type=float, default=SAMPLE_INTERVAL, help="seconds between the two samples")
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=SAMPLE_INTERVAL,
+        help="seconds between the two samples",
+    )
     arguments = parser.parse_args(argv)
     try:
-        archive = collect(arguments.output, gdb=arguments.gdb, symbolize=not arguments.no_symbols,
-                          interval=arguments.interval)
+        archive = collect(
+            arguments.output,
+            gdb=arguments.gdb,
+            symbolize=not arguments.no_symbols,
+            interval=arguments.interval,
+        )
     except RuntimeError as error:
         print(error, file=sys.stderr)
         return 1

@@ -54,8 +54,17 @@ def parse_server(text):
             port = rest[1:] if rest.startswith(":") else ""
     elif text.count(":") == 1:
         host, port = text.split(":")
-    if not host or not port.isdigit() or not 0 < int(port) < 65536 or any(c.isspace() for c in host):
-        raise ValueError(_("Custom DNS server must look like 9.9.9.9, 9.9.9.9:53 or [2620:fe::fe]:53"))
+    if (
+        not host
+        or not port.isdigit()
+        or not 0 < int(port) < 65536
+        or any(c.isspace() for c in host)
+    ):
+        raise ValueError(
+            _(
+                "Custom DNS server must look like 9.9.9.9, 9.9.9.9:53 or [2620:fe::fe]:53"
+            )
+        )
     return host, int(port)
 
 
@@ -68,8 +77,12 @@ def _skip_name(message, position, limit=None, compressed=True):
         if length == 0:
             return position + 1
         if length & 0xC0:
-            if (not compressed or (length & 0xC0) != 0xC0 or position + 2 > limit
-                    or ((length & 0x3F) << 8 | message[position + 1]) >= len(message)):
+            if (
+                not compressed
+                or (length & 0xC0) != 0xC0
+                or position + 2 > limit
+                or ((length & 0x3F) << 8 | message[position + 1]) >= len(message)
+            ):
                 return None
             return position + 2
         position += length + 1
@@ -81,7 +94,9 @@ def _question_end(message):
     if len(message) < 12 or message[4:6] != b"\0\1":
         return None
     position = _skip_name(message, 12, compressed=False)
-    return position + 4 if position is not None and position + 4 <= len(message) else None
+    return (
+        position + 4 if position is not None and position + 4 <= len(message) else None
+    )
 
 
 # Roblox's telemetry and crash-upload hosts (the list Voidstrap blocks). Only
@@ -109,14 +124,20 @@ def query_name(query):
         length = query[position]
         if length == 0:
             break
-        labels.append(query[position + 1:position + 1 + length].decode("ascii", "replace").lower())
+        labels.append(
+            query[position + 1 : position + 1 + length]
+            .decode("ascii", "replace")
+            .lower()
+        )
         position += length + 1
     return ".".join(labels)
 
 
 def is_blocked(name, blocked):
     """True if `name` is one of the blocked domains or below one."""
-    return bool(name) and any(name == domain or name.endswith("." + domain) for domain in blocked)
+    return bool(name) and any(
+        name == domain or name.endswith("." + domain) for domain in blocked
+    )
 
 
 def _nxdomain(query):
@@ -131,15 +152,27 @@ def _servfail(query):
     flags = struct.unpack(">H", query[2:4])[0]
     end = _question_end(query)
     question = query[12:end] if end and end <= len(query) else b""
-    return (query[:2] + struct.pack(">HHHHH", 0x8000 | (flags & 0x7900) | 0x0080 | 2,
-                                    1 if question else 0, 0, 0, 0) + question)
+    return (
+        query[:2]
+        + struct.pack(
+            ">HHHHH",
+            0x8000 | (flags & 0x7900) | 0x0080 | 2,
+            1 if question else 0,
+            0,
+            0,
+            0,
+        )
+        + question
+    )
 
 
 def _cache_metadata(response):
     """TTL field positions and a conservative lifetime, or None."""
     if len(response) < 12:
         return None
-    flags, questions, answers, authority, additional = struct.unpack(">HHHHH", response[2:12])
+    flags, questions, answers, authority, additional = struct.unpack(
+        ">HHHHH", response[2:12]
+    )
     if flags & 0x0200 or (flags & 15) not in (0, 3):
         return None  # Truncated replies and errors are not cache entries.
     records = answers + authority + additional
@@ -157,7 +190,9 @@ def _cache_metadata(response):
         offset = _skip_name(response, offset)
         if offset is None or offset + 10 > len(response):
             return None
-        kind, _class, ttl, length = struct.unpack(">HHIH", response[offset:offset + 10])
+        kind, _class, ttl, length = struct.unpack(
+            ">HHIH", response[offset : offset + 10]
+        )
         data_start, data_end = offset + 10, offset + 10 + length
         if data_end > len(response):
             return None
@@ -170,7 +205,7 @@ def _cache_metadata(response):
             soa = _skip_name(response, soa, data_end) if soa is not None else None
             if soa is None or soa + 20 != data_end:
                 return None
-            lifetime = min(ttl, struct.unpack(">I", response[soa + 16:data_end])[0])
+            lifetime = min(ttl, struct.unpack(">I", response[soa + 16 : data_end])[0])
             negative_lifetimes.append(lifetime)
             if negative:
                 fields[-1] = offset + 4, lifetime
@@ -187,9 +222,14 @@ def _cache_metadata(response):
 def _response_matches(query, response):
     end = _question_end(query)
     response_end = _question_end(response)
-    if not (end is not None and response_end == end and len(response) >= 12
-            and response[:2] == query[:2] and response[2] & 0x80
-            and (response[2] & 0x78) == (query[2] & 0x78)):
+    if not (
+        end is not None
+        and response_end == end
+        and len(response) >= 12
+        and response[:2] == query[:2]
+        and response[2] & 0x80
+        and (response[2] & 0x78) == (query[2] & 0x78)
+    ):
         return False
     position = 12
     while query[position]:
@@ -266,7 +306,9 @@ class DnsForwarder:
     def stop(self):
         with self.pool_lock:
             self.running = False
-            connections = self.active_connections | {connection for connection, _used in self.pool}
+            connections = self.active_connections | {
+                connection for connection, _used in self.pool
+            }
             self.active_connections.clear()
             self.pool.clear()
         self.address_event.set()
@@ -282,7 +324,7 @@ class DnsForwarder:
             while self.running:
                 try:
                     query, client = self.socket.recvfrom(4096)
-                except socket.timeout:
+                except TimeoutError:
                     continue
                 except OSError:
                     break
@@ -297,7 +339,9 @@ class DnsForwarder:
                         self._reply(_servfail(query), client)
                         continue
                     try:
-                        future = self.executor.submit(self._answer, query, client, deadline)
+                        future = self.executor.submit(
+                            self._answer, query, client, deadline
+                        )
                     except RuntimeError:  # stop() shut the executor down meanwhile
                         self.pending.release()
                         break
@@ -365,7 +409,11 @@ class DnsForwarder:
         if not self.running or now >= deadline or now < self.down_until:
             return None
         try:
-            response = self._resolve_tls(query, deadline) if self.tls_name else self._resolve_udp(query, deadline)
+            response = (
+                self._resolve_tls(query, deadline)
+                if self.tls_name
+                else self._resolve_udp(query, deadline)
+            )
         except (OSError, ValueError, struct.error):
             response = None
         if response is None and self.running:
@@ -383,7 +431,11 @@ class DnsForwarder:
                     socket.inet_pton(family, self.server)
                 except OSError:
                     continue
-                address = (self.server, self.port) if family == socket.AF_INET else (self.server, self.port, 0, 0)
+                address = (
+                    (self.server, self.port)
+                    if family == socket.AF_INET
+                    else (self.server, self.port, 0, 0)
+                )
                 self.upstream_address = family, address
                 return self.upstream_address
             if not self.address_resolving:
@@ -402,7 +454,11 @@ class DnsForwarder:
                     raise
         self.address_event.wait(max(0, deadline - time.monotonic()))
         with self.address_lock:
-            return self.upstream_address if self.running and time.monotonic() < deadline else None
+            return (
+                self.upstream_address
+                if self.running and time.monotonic() < deadline
+                else None
+            )
 
     def _lookup_address(self):
         address = None
@@ -487,7 +543,8 @@ class DnsForwarder:
                 if not self.running:
                     raise OSError("DNS forwarder stopped")
                 connection = self.context.wrap_socket(
-                    raw, server_hostname=self.tls_name, do_handshake_on_connect=False)
+                    raw, server_hostname=self.tls_name, do_handshake_on_connect=False
+                )
                 self.active_connections.discard(raw)
                 self.active_connections.add(connection)
             _set_timeout(connection, deadline)
@@ -548,7 +605,9 @@ class DnsForwarder:
             try:
                 _set_timeout(connection, deadline)
                 connection.sendall(struct.pack(">H", len(query)) + query)
-                length = struct.unpack(">H", self._read_exact(connection, 2, deadline))[0]
+                length = struct.unpack(">H", self._read_exact(connection, 2, deadline))[
+                    0
+                ]
                 response = self._read_exact(connection, length, deadline)
                 if not _response_matches(query, response):
                     raise OSError("DNS reply does not match query")
@@ -565,7 +624,7 @@ def resolve_a(host, provider="quad9", timeout=5):
     launcher's own downloads when the system resolver fails."""
     deadline = time.monotonic() + timeout
     server, tls_name = PROVIDERS.get(provider, PROVIDERS["quad9"])
-    query = struct.pack(">HHHHHH", 0x4d42, 0x0100, 1, 0, 0, 0)
+    query = struct.pack(">HHHHHH", 0x4D42, 0x0100, 1, 0, 0, 0)
     for label in host.rstrip(".").split("."):
         label = label.encode("idna")
         if not 0 < len(label) <= 63:
@@ -580,12 +639,16 @@ def resolve_a(host, provider="quad9", timeout=5):
     try:
         _set_timeout(raw, deadline)
         raw.connect((server, 853))
-        connection = context.wrap_socket(raw, server_hostname=tls_name, do_handshake_on_connect=False)
+        connection = context.wrap_socket(
+            raw, server_hostname=tls_name, do_handshake_on_connect=False
+        )
         _set_timeout(connection, deadline)
         connection.do_handshake()
         _set_timeout(connection, deadline)
         connection.sendall(struct.pack(">H", len(query)) + query)
-        length = struct.unpack(">H", DnsForwarder._read_exact(connection, 2, deadline))[0]
+        length = struct.unpack(">H", DnsForwarder._read_exact(connection, 2, deadline))[
+            0
+        ]
         response = DnsForwarder._read_exact(connection, length, deadline)
     finally:
         if connection is not None:
@@ -605,11 +668,13 @@ def resolve_a(host, provider="quad9", timeout=5):
         offset = _skip_name(response, offset)
         if offset is None or offset + 10 > len(response):
             raise OSError("Malformed DNS reply")
-        kind, _class, _ttl, length = struct.unpack(">HHIH", response[offset:offset + 10])
+        kind, _class, _ttl, length = struct.unpack(
+            ">HHIH", response[offset : offset + 10]
+        )
         offset += 10
         if offset + length > len(response):
             raise OSError("Malformed DNS reply")
         if kind == 1 and length == 4:
-            addresses.append(socket.inet_ntoa(response[offset:offset + 4]))
+            addresses.append(socket.inet_ntoa(response[offset : offset + 4]))
         offset += length
     return addresses

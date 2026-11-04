@@ -14,9 +14,9 @@ from pathlib import Path
 from . import locations, process_control
 
 __all__ = [
-    "_pwcat_raw_supported",
     "HostAudio",
     "_pid_alive",
+    "_pwcat_raw_supported",
     "sweep_audio_fifos",
 ]
 
@@ -145,7 +145,7 @@ class HostAudio:
                 "Communication",
                 "-P",
                 '{ application.name = "Roblox" application.icon-name = "quadrahq" '
-                f'media.name = "Roblox microphone (Quadra)" }}',
+                'media.name = "Roblox microphone (Quadra)" }',
                 str(fifo),
             ]
         if shutil.which("pacat"):
@@ -170,7 +170,9 @@ class HostAudio:
         if not command:
             raise OSError("No compatible audio playback helper is installed")
         # Audio before the game (see PLAYER_NICE); `nice` takes a relative value.
-        change = process_control._nice_target(process_control.PLAYER_NICE) - os.getpriority(os.PRIO_PROCESS, 0)
+        change = process_control._nice_target(
+            process_control.PLAYER_NICE
+        ) - os.getpriority(os.PRIO_PROCESS, 0)
         if change < 0 and shutil.which("nice"):
             command = ["nice", "-n", str(change), *command]
         return subprocess.Popen(

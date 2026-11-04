@@ -98,7 +98,9 @@ class StudioPage(Adw.Bin):
             try:
                 Path(folder()).mkdir(parents=True, exist_ok=True)
             except OSError as error:
-                dialogs._error_dialog(self.window, _("Could not open the folder"), str(error))
+                dialogs._error_dialog(
+                    self.window, _("Could not open the folder"), str(error)
+                )
                 return
             system._open_uri(self.window, Path(folder()).as_uri())
 

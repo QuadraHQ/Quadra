@@ -5,6 +5,7 @@ the signed-in account's channel is used, as Roblox's own installer does (most
 accounts are on the public one); a channel or version can be set instead.
 Packages come from setup.rbxcdn.com, with Roblox's own alternate hosts for when
 that one refuses or fails."""
+
 import json
 import logging
 import urllib.error
@@ -13,10 +14,18 @@ import urllib.request
 from . import __version__
 
 VERSION_URL = "https://clientsettingscdn.roblox.com/v2/client-version/WindowsStudio64"
-VERSION_ALTERNATE_URL = "https://clientsettings.roblox.com/v2/client-version/WindowsStudio64"
-USER_CHANNEL_URL = "https://clientsettings.roblox.com/v2/user-channel?binaryType=WindowsStudio64"
-PACKAGE_HOSTS = ("https://setup.rbxcdn.com", "https://setup-aws.rbxcdn.com", "https://setup-ak.rbxcdn.com",
-                 "https://s3.amazonaws.com/setup.roblox.com")
+VERSION_ALTERNATE_URL = (
+    "https://clientsettings.roblox.com/v2/client-version/WindowsStudio64"
+)
+USER_CHANNEL_URL = (
+    "https://clientsettings.roblox.com/v2/user-channel?binaryType=WindowsStudio64"
+)
+PACKAGE_HOSTS = (
+    "https://setup.rbxcdn.com",
+    "https://setup-aws.rbxcdn.com",
+    "https://setup-ak.rbxcdn.com",
+    "https://s3.amazonaws.com/setup.roblox.com",
+)
 # A refusal or a failing server moves on to the next host; anything else is the answer.
 RETRY_STATUSES = {403, 404, 408, 429, 500, 502, 503, 504}
 
@@ -32,7 +41,9 @@ def is_live(channel):
 
 
 def _request(url, headers=None):
-    return urllib.request.Request(url, headers={"User-Agent": f"Quadra/{__version__}", **(headers or {})})
+    return urllib.request.Request(
+        url, headers={"User-Agent": f"Quadra/{__version__}", **(headers or {})}
+    )
 
 
 def _json(url, headers=None, opener=urllib.request.urlopen, timeout=15):
@@ -80,7 +91,9 @@ def resolve(version="", channel="", cookie=lambda: None, opener=urllib.request.u
                 channel, token = user_channel(saved, opener)
             except (OSError, ValueError, KeyError):
                 # Roblox could not say; the public deployment is a safe default.
-                log.warning("Could not look up the account's Studio channel; using the public one")
+                log.warning(
+                    "Could not look up the account's Studio channel; using the public one"
+                )
                 channel, token = "", ""
     return newest(channel, token, opener), channel
 
@@ -104,5 +117,9 @@ def open_first(urls, opener=urllib.request.urlopen, timeout=60):
             last = error
         except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
             last = error
-        log.warning("Studio download from %s failed (%s); trying the next host", url.split("/")[2], last)
+        log.warning(
+            "Studio download from %s failed (%s); trying the next host",
+            url.split("/")[2],
+            last,
+        )
     raise last if last else OSError("no download address")

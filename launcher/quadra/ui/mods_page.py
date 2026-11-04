@@ -226,24 +226,42 @@ class ModsPage(Adw.Bin):
             self.window.set_setting("mod_custom_death_sound", path)
             self.custom_death_row.set_subtitle(path)
 
-        dialogs._choose_file(self.window, _("Select custom death sound (.ogg)"), _("Select"), chosen,
-                             "Audio files (*.ogg)", ("*.ogg",))
+        dialogs._choose_file(
+            self.window,
+            _("Select custom death sound (.ogg)"),
+            _("Select"),
+            chosen,
+            "Audio files (*.ogg)",
+            ("*.ogg",),
+        )
 
     def _choose_custom_cursor(self):
         def chosen(path):
             self.window.set_setting("mod_custom_cursor", path)
             self.custom_cursor_row.set_subtitle(path)
 
-        dialogs._choose_file(self.window, _("Select custom cursor (.png or folder)"), _("Select"), chosen,
-                             "PNG Images (*.png)", ("*.png",))
+        dialogs._choose_file(
+            self.window,
+            _("Select custom cursor (.png or folder)"),
+            _("Select"),
+            chosen,
+            "PNG Images (*.png)",
+            ("*.png",),
+        )
 
     def _choose_font(self):
         def chosen(path):
             self.window.set_setting("mod_custom_font", path)
             self.font_row.set_subtitle(Path(path).name)
 
-        dialogs._choose_file(self.window, _("Select font (.ttf, .otf)"), _("Select"), chosen,
-                             "Font files (*.ttf, *.otf)", ("*.ttf", "*.otf"))
+        dialogs._choose_file(
+            self.window,
+            _("Select font (.ttf, .otf)"),
+            _("Select"),
+            chosen,
+            "Font files (*.ttf, *.otf)",
+            ("*.ttf", "*.otf"),
+        )
 
     def _clear_font(self):
         self.window.set_setting("mod_custom_font", "")

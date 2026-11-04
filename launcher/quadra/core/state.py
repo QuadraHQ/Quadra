@@ -2,9 +2,9 @@ import threading
 from collections.abc import Mapping
 
 __all__ = [
-    "Subscribers",
-    "SettingsStore",
     "ObservableValue",
+    "SettingsStore",
+    "Subscribers",
     "same_value",
 ]
 

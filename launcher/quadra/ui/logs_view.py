@@ -45,7 +45,9 @@ class GameLogsView(Gtk.Box):
         # thread. Results of an older polling run are dropped.
         self._server_generation = 0
         self._server_lookup = False
-        window.watch_setting("server_location_lookup", self._follow_server_location_lookup)
+        window.watch_setting(
+            "server_location_lookup", self._follow_server_location_lookup
+        )
 
         bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         bar.set_margin_start(16)

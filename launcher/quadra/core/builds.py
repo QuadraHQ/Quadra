@@ -11,13 +11,13 @@ from . import files, locations
 
 __all__ = [
     "SHIM_STAMP",
-    "_shim_sources_hash",
-    "build_shim",
-    "shim_built",
     "_metal_sources_hash",
-    "metal_built",
+    "_shim_sources_hash",
     "build_metal",
+    "build_shim",
+    "metal_built",
     "missing_tools",
+    "shim_built",
 ]
 
 SHIM_STAMP = locations.BUILD_DIR / "sources.sha256"
@@ -27,7 +27,9 @@ def _shim_sources_hash():
     """Hash of everything the shim build uses, and of the launcher version."""
     digest = hashlib.sha256(__version__.encode())
     digest.update(str(locations.DARLING_SYSROOT).encode())
-    digest.update(str(locations.DARLING_RUNTIME["metadata"].get("source_revision", "")).encode())
+    digest.update(
+        str(locations.DARLING_RUNTIME["metadata"].get("source_revision", "")).encode()
+    )
     for path in sorted(
         [
             *(locations.PROJECT / "darling" / "shim").glob("*"),
@@ -100,7 +102,9 @@ def _metal_sources_hash():
     for path in sorted(sources):
         try:
             digest.update(
-                str(path.relative_to(locations.PROJECT)).encode() + b"\0" + path.read_bytes()
+                str(path.relative_to(locations.PROJECT)).encode()
+                + b"\0"
+                + path.read_bytes()
             )
         except OSError:
             pass
@@ -108,7 +112,9 @@ def _metal_sources_hash():
 
 
 def metal_built():
-    if not (locations.METAL_HOST_LIBRARY.exists() and locations.METAL_FRAMEWORK.exists()):
+    if not (
+        locations.METAL_HOST_LIBRARY.exists() and locations.METAL_FRAMEWORK.exists()
+    ):
         return False
     if locations.PREBUILT_SHIM:
         return True
@@ -142,7 +148,9 @@ def build_metal():
     )
     if result.returncode == 0:
         try:
-            files._write_atomically(locations.METAL_DIR / "sources.sha256", stamp + "\n")
+            files._write_atomically(
+                locations.METAL_DIR / "sources.sha256", stamp + "\n"
+            )
         except OSError:
             pass
     return result.returncode == 0, (result.stdout + result.stderr).strip()[-4000:]

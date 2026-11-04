@@ -20,7 +20,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Graphene", "1.0")
-from gi.repository import Adw, Gdk, GLib, Graphene, Gsk, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, GLib, Graphene, Gsk, Gtk, Pango
 
 FONT_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
 
@@ -43,24 +43,50 @@ WARN = "#8a8a8a"
 FOCUS_LINE = "#4d4d4d"
 
 _NAMED_COLORS = {
-    "window_bg_color": NIGHT, "window_fg_color": TEXT,
-    "view_bg_color": CHROME, "view_fg_color": TEXT,
-    "headerbar_bg_color": CHROME, "headerbar_fg_color": TEXT,
-    "headerbar_border_color": LINE_LO, "headerbar_backdrop_color": CHROME,
-    "headerbar_shade_color": "rgba(0, 0, 0, 0)", "headerbar_darker_shade_color": "rgba(0, 0, 0, 0)",
-    "sidebar_bg_color": CHROME, "sidebar_fg_color": TEXT, "sidebar_backdrop_color": CHROME,
-    "sidebar_shade_color": "rgba(0, 0, 0, 0)", "sidebar_border_color": LINE_LO,
-    "secondary_sidebar_bg_color": CHROME, "secondary_sidebar_fg_color": TEXT,
-    "card_bg_color": "rgba(30, 30, 30, 0.4)", "card_fg_color": TEXT, "card_shade_color": LINE_LO,
-    "popover_bg_color": CHROME, "popover_fg_color": TEXT, "popover_shade_color": "rgba(0, 0, 0, 0)",
-    "dialog_bg_color": SURFACE, "dialog_fg_color": TEXT,
-    "thumbnail_bg_color": RAISE, "thumbnail_fg_color": TEXT,
-    "accent_bg_color": ACCENT, "accent_fg_color": NIGHT, "accent_color": ACCENT,
-    "destructive_bg_color": RAISE, "destructive_fg_color": TEXT, "destructive_color": TEXT,
-    "success_bg_color": ACCENT, "success_fg_color": NIGHT, "success_color": ACCENT,
-    "warning_bg_color": ACCENT2, "warning_fg_color": NIGHT, "warning_color": ACCENT2,
-    "error_bg_color": RAISE, "error_fg_color": TEXT, "error_color": TEXT,
-    "shade_color": "rgba(0, 0, 0, 0.5)", "scrollbar_outline_color": "rgba(0, 0, 0, 0)",
+    "window_bg_color": NIGHT,
+    "window_fg_color": TEXT,
+    "view_bg_color": CHROME,
+    "view_fg_color": TEXT,
+    "headerbar_bg_color": CHROME,
+    "headerbar_fg_color": TEXT,
+    "headerbar_border_color": LINE_LO,
+    "headerbar_backdrop_color": CHROME,
+    "headerbar_shade_color": "rgba(0, 0, 0, 0)",
+    "headerbar_darker_shade_color": "rgba(0, 0, 0, 0)",
+    "sidebar_bg_color": CHROME,
+    "sidebar_fg_color": TEXT,
+    "sidebar_backdrop_color": CHROME,
+    "sidebar_shade_color": "rgba(0, 0, 0, 0)",
+    "sidebar_border_color": LINE_LO,
+    "secondary_sidebar_bg_color": CHROME,
+    "secondary_sidebar_fg_color": TEXT,
+    "card_bg_color": "rgba(30, 30, 30, 0.4)",
+    "card_fg_color": TEXT,
+    "card_shade_color": LINE_LO,
+    "popover_bg_color": CHROME,
+    "popover_fg_color": TEXT,
+    "popover_shade_color": "rgba(0, 0, 0, 0)",
+    "dialog_bg_color": SURFACE,
+    "dialog_fg_color": TEXT,
+    "thumbnail_bg_color": RAISE,
+    "thumbnail_fg_color": TEXT,
+    "accent_bg_color": ACCENT,
+    "accent_fg_color": NIGHT,
+    "accent_color": ACCENT,
+    "destructive_bg_color": RAISE,
+    "destructive_fg_color": TEXT,
+    "destructive_color": TEXT,
+    "success_bg_color": ACCENT,
+    "success_fg_color": NIGHT,
+    "success_color": ACCENT,
+    "warning_bg_color": ACCENT2,
+    "warning_fg_color": NIGHT,
+    "warning_color": ACCENT2,
+    "error_bg_color": RAISE,
+    "error_fg_color": TEXT,
+    "error_color": TEXT,
+    "shade_color": "rgba(0, 0, 0, 0.5)",
+    "scrollbar_outline_color": "rgba(0, 0, 0, 0)",
 }
 
 _CSS = """
@@ -579,36 +605,88 @@ button.suggested-action:disabled { background-color: transparent; border-color: 
 
 def _stylesheet(appearance="monochrome"):
     palette = {
-        "ui": UI_FONT, "mono": MONO_FONT, "night": NIGHT, "chrome": CHROME, "surface": SURFACE,
-        "raise_": RAISE, "line": LINE, "line_lo": LINE_LO, "text": TEXT, "dim": DIM, "faint": FAINT,
-        "accent": ACCENT, "accent2": ACCENT2, "warn": WARN, "focus": FOCUS_LINE,
+        "ui": UI_FONT,
+        "mono": MONO_FONT,
+        "night": NIGHT,
+        "chrome": CHROME,
+        "surface": SURFACE,
+        "raise_": RAISE,
+        "line": LINE,
+        "line_lo": LINE_LO,
+        "text": TEXT,
+        "dim": DIM,
+        "faint": FAINT,
+        "accent": ACCENT,
+        "accent2": ACCENT2,
+        "warn": WARN,
+        "focus": FOCUS_LINE,
     }
     colors = dict(_NAMED_COLORS)
     if appearance == "grid":
-        palette.update(night="#10141b", chrome="#121820", surface="#18212c",
-                       raise_="#202b38", line="#344458", line_lo="#263343",
-                       text="#edf2f8", dim="#acb9ca", faint="#8493a7",
-                       accent="#a6c8ff", accent2="#c1d8fa", warn="#b0c3de", focus="#7199ce")
+        palette.update(
+            night="#10141b",
+            chrome="#121820",
+            surface="#18212c",
+            raise_="#202b38",
+            line="#344458",
+            line_lo="#263343",
+            text="#edf2f8",
+            dim="#acb9ca",
+            faint="#8493a7",
+            accent="#a6c8ff",
+            accent2="#c1d8fa",
+            warn="#b0c3de",
+            focus="#7199ce",
+        )
         for name in ("window_bg_color",):
             colors[name] = palette["night"]
-        for name in ("view_bg_color", "headerbar_bg_color", "headerbar_backdrop_color",
-                     "sidebar_bg_color", "sidebar_backdrop_color", "secondary_sidebar_bg_color", "popover_bg_color"):
+        for name in (
+            "view_bg_color",
+            "headerbar_bg_color",
+            "headerbar_backdrop_color",
+            "sidebar_bg_color",
+            "sidebar_backdrop_color",
+            "secondary_sidebar_bg_color",
+            "popover_bg_color",
+        ):
             colors[name] = palette["chrome"]
-        for name in ("window_fg_color", "view_fg_color", "headerbar_fg_color", "sidebar_fg_color",
-                     "secondary_sidebar_fg_color", "popover_fg_color", "dialog_fg_color", "card_fg_color"):
+        for name in (
+            "window_fg_color",
+            "view_fg_color",
+            "headerbar_fg_color",
+            "sidebar_fg_color",
+            "secondary_sidebar_fg_color",
+            "popover_fg_color",
+            "dialog_fg_color",
+            "card_fg_color",
+        ):
             colors[name] = palette["text"]
-        colors.update(accent_color=palette["accent"], accent_bg_color="#9cc3ff", accent_fg_color="#0c1829",
-                      dialog_bg_color=palette["surface"], card_bg_color="rgba(24, 33, 44, 0.94)",
-                      card_shade_color=palette["line_lo"], sidebar_border_color=palette["line_lo"])
-    names = "".join(f"@define-color {name} {value};\n" for name, value in colors.items())
+        colors.update(
+            accent_color=palette["accent"],
+            accent_bg_color="#9cc3ff",
+            accent_fg_color="#0c1829",
+            dialog_bg_color=palette["surface"],
+            card_bg_color="rgba(24, 33, 44, 0.94)",
+            card_shade_color=palette["line_lo"],
+            sidebar_border_color=palette["line_lo"],
+        )
+    names = "".join(
+        f"@define-color {name} {value};\n" for name, value in colors.items()
+    )
     css = names + _CSS % palette + _LAUNCHER_CSS % palette
     if appearance == "grid":
         css += _GRID_CSS
     # libadwaita 1.6+ styles with CSS variables (GTK 4.16 parses them); older
     # ones use the named colors above and would warn about this block.
     if (Gtk.get_major_version(), Gtk.get_minor_version()) >= (4, 16):
-        css += ":root {\n" + "".join(
-            f"  --{name.replace('_', '-')}: {value};\n" for name, value in colors.items()) + "}\n"
+        css += (
+            ":root {\n"
+            + "".join(
+                f"  --{name.replace('_', '-')}: {value};\n"
+                for name, value in colors.items()
+            )
+            + "}\n"
+        )
     return css
 
 
@@ -618,6 +696,7 @@ def register_fonts():
     try:
         gi.require_version("PangoCairo", "1.0")
         from gi.repository import PangoCairo
+
         fontmap = PangoCairo.FontMap.get_default()
     except (ValueError, ImportError):
         pass
@@ -653,7 +732,9 @@ def follow_color_scheme(provider):
 
     def show_color_scheme(*_args):
         provider.props.prefers_color_scheme = (
-            Gtk.InterfaceColorScheme.DARK if manager.get_dark() else Gtk.InterfaceColorScheme.LIGHT
+            Gtk.InterfaceColorScheme.DARK
+            if manager.get_dark()
+            else Gtk.InterfaceColorScheme.LIGHT
         )
 
     show_color_scheme()
@@ -668,7 +749,12 @@ def follow_color_scheme(provider):
 
 def install(appearance="monochrome"):
     """Replace our provider, or remove it completely for native GNOME."""
-    global _provider, _provider_display, _stop_following_color_scheme, _native_scheme, _fonts_registered
+    global \
+        _provider, \
+        _provider_display, \
+        _stop_following_color_scheme, \
+        _native_scheme, \
+        _fonts_registered
     manager = Adw.StyleManager.get_default()
     if _native_scheme is None:
         _native_scheme = manager.get_color_scheme()
@@ -688,7 +774,8 @@ def install(appearance="monochrome"):
     provider.load_from_string(_stylesheet(appearance))
     _provider_display = Gdk.Display.get_default()
     Gtk.StyleContext.add_provider_for_display(
-        _provider_display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+        _provider_display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+    )
     _provider = provider
 
 
@@ -741,9 +828,26 @@ class AppearanceLayer(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.append(child)
         self.monochrome = False
-        self._matrix = Graphene.Matrix().init_from_float([
-            .2126, .2126, .2126, 0, .7152, .7152, .7152, 0,
-            .0722, .0722, .0722, 0, 0, 0, 0, 1])
+        self._matrix = Graphene.Matrix().init_from_float(
+            [
+                0.2126,
+                0.2126,
+                0.2126,
+                0,
+                0.7152,
+                0.7152,
+                0.7152,
+                0,
+                0.0722,
+                0.0722,
+                0.0722,
+                0,
+                0,
+                0,
+                0,
+                1,
+            ]
+        )
         self._offset = Graphene.Vec4().init(0, 0, 0, 0)
         self._opaque = Gdk.RGBA()
         self._opaque.parse("#000000")
@@ -779,6 +883,7 @@ class AppearanceLayer(Gtk.Box):
 
 # ------------------------------------------------------------------ backdrop
 
+
 class Backdrop(Gtk.Picture):
     """The line field behind the windows, after the site's topology
     wallpaper: points wander along a smooth flow field and leave faint
@@ -788,10 +893,10 @@ class Backdrop(Gtk.Picture):
 
     WIDTH, HEIGHT = 1280, 800
     POINTS = 520
-    TICKS = 190        # at 40 ms: about eight seconds of drawing in
-    STEPS = 3          # moves of a point per tick
-    MARK = 15          # what one visit adds to a pixel
-    CEILING = 112      # where a line stops getting brighter (the site's grey)
+    TICKS = 190  # at 40 ms: about eight seconds of drawing in
+    STEPS = 3  # moves of a point per tick
+    MARK = 15  # what one visit adds to a pixel
+    CEILING = 112  # where a line stops getting brighter (the site's grey)
 
     def __init__(self):
         super().__init__(can_shrink=True, hexpand=True, vexpand=True)
@@ -813,13 +918,19 @@ class Backdrop(Gtk.Picture):
         self._lattice = [rng.random() for _ in range(self._columns * self._rows)]
         self._points = [self._spawn() for _ in range(self.POINTS)]
         settings = Gtk.Settings.get_default()
-        self._animate = bool(settings is None or settings.get_property("gtk-enable-animations"))
+        self._animate = bool(
+            settings is None or settings.get_property("gtk-enable-animations")
+        )
         self.connect("map", self._start)
         self.connect("unmap", self._pause)
 
     def _spawn(self):
         rng = self._rng
-        return [rng.uniform(0, self.WIDTH), rng.uniform(0, self.HEIGHT), rng.randint(60, 260)]
+        return [
+            rng.uniform(0, self.WIDTH),
+            rng.uniform(0, self.HEIGHT),
+            rng.randint(60, 260),
+        ]
 
     def _angle(self, x, y):
         gx, gy = x / self._cell, y / self._cell
@@ -830,7 +941,10 @@ class Backdrop(Gtk.Picture):
         lattice, columns = self._lattice, self._columns
         at = iy * columns + ix
         top = lattice[at] + (lattice[at + 1] - lattice[at]) * fx
-        bottom = lattice[at + columns] + (lattice[at + columns + 1] - lattice[at + columns]) * fx
+        bottom = (
+            lattice[at + columns]
+            + (lattice[at + columns + 1] - lattice[at + columns]) * fx
+        )
         return (top + (bottom - top) * fy) * math.tau * 2.0
 
     def _start(self, *_args):
@@ -859,13 +973,16 @@ class Backdrop(Gtk.Picture):
                     continue
                 at = int(y) * width + int(x)
                 value = pixels[at] + mark
-                pixels[at] = value if value < ceiling else ceiling
+                pixels[at] = min(ceiling, value)
             point[0], point[1], point[2] = x, y, life
         self._ticks += 1 if self._animate else 8
         done = self._ticks >= self.TICKS
         if self._animate or done:
-            self.set_paintable(Gdk.MemoryTexture.new(
-                width, height, self._format, GLib.Bytes.new(bytes(pixels)), width))
+            self.set_paintable(
+                Gdk.MemoryTexture.new(
+                    width, height, self._format, GLib.Bytes.new(bytes(pixels)), width
+                )
+            )
         if done:
             self._timer = 0
             self._points = []
@@ -875,9 +992,12 @@ class Backdrop(Gtk.Picture):
 
 # ------------------------------------------------------------------- widgets
 
+
 def dot(state=None):
     """A small square that is filled, grey or hollow; `set_dot` changes it."""
-    widget = Gtk.Box(css_classes=["dot"], valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER)
+    widget = Gtk.Box(
+        css_classes=["dot"], valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER
+    )
     widget.set_size_request(7, 7)
     set_dot(widget, state)
     return widget
@@ -893,8 +1013,8 @@ def set_dot(widget, state):
             widget.remove_css_class(name)
 
 
-CONTENT_WIDTH = 720   # the content window, where the launcher window allows it
-COLUMN_WIDTH = 690    # settings rows inside it (their margins included)
+CONTENT_WIDTH = 720  # the content window, where the launcher window allows it
+COLUMN_WIDTH = 690  # settings rows inside it (their margins included)
 
 
 class Strut(Gtk.Widget):
@@ -931,14 +1051,21 @@ class Win(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, css_classes=["win"])
         self.set_overflow(Gtk.Overflow.HIDDEN)
         self.bar = Gtk.Box(css_classes=["win-bar"])
-        self.title = Gtk.Label(label=title, xalign=0, hexpand=True, css_classes=["win-title"],
-                               ellipsize=Pango.EllipsizeMode.END)
+        self.title = Gtk.Label(
+            label=title,
+            xalign=0,
+            hexpand=True,
+            css_classes=["win-title"],
+            ellipsize=Pango.EllipsizeMode.END,
+        )
         self.bar.append(self.title)
         self.note = Gtk.Label(css_classes=["win-note"], visible=False)
         self.bar.append(self.note)
         self.append(self.bar)
-        self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                            css_classes=["win-body", "padded"] if padded else ["win-body"])
+        self.body = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            css_classes=["win-body", "padded"] if padded else ["win-body"],
+        )
         self.body.set_vexpand(True)
         self.append(self.body)
         if child is not None:
@@ -964,8 +1091,12 @@ class Fact(Gtk.Box):
         self.dot = dot()
         self.dot.set_visible(dotted)
         self.append(self.dot)
-        self.append(Gtk.Label(label=name, xalign=0, hexpand=True, css_classes=["fact-name"]))
-        self.note = Gtk.Label(xalign=1, css_classes=["fact-note"], ellipsize=Pango.EllipsizeMode.START)
+        self.append(
+            Gtk.Label(label=name, xalign=0, hexpand=True, css_classes=["fact-name"])
+        )
+        self.note = Gtk.Label(
+            xalign=1, css_classes=["fact-note"], ellipsize=Pango.EllipsizeMode.START
+        )
         self.append(self.note)
 
     def set(self, state, note):
@@ -986,9 +1117,15 @@ class LinkList(Gtk.Box):
 
     def add(self, name, title, action, note=""):
         line = Gtk.Box(spacing=9)
-        line.append(Gtk.Label(label=title, xalign=0, hexpand=True, css_classes=["link-title"]))
-        note_label = Gtk.Label(label=note, xalign=1, css_classes=["link-note"],
-                               ellipsize=Pango.EllipsizeMode.END)
+        line.append(
+            Gtk.Label(label=title, xalign=0, hexpand=True, css_classes=["link-title"])
+        )
+        note_label = Gtk.Label(
+            label=note,
+            xalign=1,
+            css_classes=["link-note"],
+            ellipsize=Pango.EllipsizeMode.END,
+        )
         line.append(note_label)
         button = Gtk.Button(child=line, css_classes=["link"])
         button.connect("clicked", lambda *_args: action())
@@ -1016,7 +1153,9 @@ class Console(Gtk.Box):
     STATUS = {"ok": "[  OK  ]", "wait": "[ WAIT ]", "failed": "[FAILED]"}
 
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, css_classes=["console"], spacing=3)
+        super().__init__(
+            orientation=Gtk.Orientation.VERTICAL, css_classes=["console"], spacing=3
+        )
         self.lines = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         self.append(self.lines)
         self.prompt = Gtk.Label(xalign=0, css_classes=["prompt"], wrap=True)
@@ -1036,11 +1175,24 @@ class Console(Gtk.Box):
             child = following
         for status, text in lines:
             row = Gtk.Box(spacing=9, css_classes=[] if status else ["plain"])
-            mark = Gtk.Label(label=self.STATUS.get(status, " " * 8), xalign=0, yalign=0, valign=Gtk.Align.START,
-                             css_classes=["st", status] if status else ["st"])
+            mark = Gtk.Label(
+                label=self.STATUS.get(status, " " * 8),
+                xalign=0,
+                yalign=0,
+                valign=Gtk.Align.START,
+                css_classes=["st", status] if status else ["st"],
+            )
             row.append(mark)
-            row.append(Gtk.Label(label=text, xalign=0, hexpand=True, wrap=True, selectable=True,
-                                 css_classes=["msg"]))
+            row.append(
+                Gtk.Label(
+                    label=text,
+                    xalign=0,
+                    hexpand=True,
+                    wrap=True,
+                    selectable=True,
+                    css_classes=["msg"],
+                )
+            )
             self.lines.append(row)
         self.prompt.set_label(f"{prompt} ▋" if prompt else "")
 
@@ -1055,14 +1207,22 @@ def tabs(stack):
     for index in range(pages.get_n_items()):
         page = pages.get_item(index)
         name = page.get_name()
-        button = Gtk.ToggleButton(label=(page.get_title() or name).lower(), css_classes=["tab"])
+        button = Gtk.ToggleButton(
+            label=(page.get_title() or name).lower(), css_classes=["tab"]
+        )
         button.set_visible(page.get_visible())
-        page.connect("notify::visible", lambda p, _pspec, b=button: b.set_visible(p.get_visible()))
+        page.connect(
+            "notify::visible",
+            lambda p, _pspec, b=button: b.set_visible(p.get_visible()),
+        )
         if first is None:
             first = button
         else:
             button.set_group(first)
-        button.connect("toggled", lambda b, n=name: b.get_active() and stack.set_visible_child_name(n))
+        button.connect(
+            "toggled",
+            lambda b, n=name: b.get_active() and stack.set_visible_child_name(n),
+        )
         box.append(button)
         buttons[name] = button
 
@@ -1074,4 +1234,6 @@ def tabs(stack):
     stack.connect("notify::visible-child-name", follow)
     follow()
     # In line with the rows below, whatever the width.
-    return Adw.Clamp(child=box, maximum_size=COLUMN_WIDTH, tightening_threshold=COLUMN_WIDTH)
+    return Adw.Clamp(
+        child=box, maximum_size=COLUMN_WIDTH, tightening_threshold=COLUMN_WIDTH
+    )

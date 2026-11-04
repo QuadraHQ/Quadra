@@ -10,13 +10,13 @@ from ..i18n import _
 from . import builds, config, locations
 
 __all__ = [
-    "REPO_URL",
-    "RELEASES_URL",
     "LAUNCHER_RELEASE_URL",
     "LAUNCHER_SPARSE_PATTERNS",
-    "parse_version_tuple",
-    "check_launcher_update",
+    "RELEASES_URL",
+    "REPO_URL",
     "_git",
+    "check_launcher_update",
+    "parse_version_tuple",
     "update_launcher",
 ]
 
@@ -55,7 +55,10 @@ def check_launcher_update():
 
 def _git(*args, input=None):
     return subprocess.run(
-        ["git", "-C", str(locations.PROJECT), *args], input=input, capture_output=True, text=True
+        ["git", "-C", str(locations.PROJECT), *args],
+        input=input,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -127,7 +130,10 @@ def update_launcher(progress=None):
     install_script = locations.PROJECT / "launcher" / "install.sh"
     if install_script.exists():
         subprocess.run(
-            [str(install_script)], cwd=str(locations.PROJECT), check=True, capture_output=True
+            [str(install_script)],
+            cwd=str(locations.PROJECT),
+            check=True,
+            capture_output=True,
         )
 
     if progress:

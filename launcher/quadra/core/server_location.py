@@ -12,14 +12,14 @@ from . import locations, logs
 
 __all__ = [
     "SERVER_IP_PATTERN",
-    "SERVER_LOG_TAIL",
     "SERVER_LOCATION_RETRY",
+    "SERVER_LOG_TAIL",
+    "_latest_roblox_log",
     "_server_location_cache",
     "_server_location_lock",
-    "_latest_roblox_log",
+    "detect_server_location",
     "extract_server_ip",
     "query_server_location",
-    "detect_server_location",
 ]
 
 SERVER_IP_PATTERN = re.compile(r"Connection accepted from\s+(\d{1,3}(?:\.\d{1,3}){3})")

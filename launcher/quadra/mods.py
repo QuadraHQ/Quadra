@@ -6,17 +6,18 @@ and user-defined file overlays onto RobloxPlayer.app/Contents/Resources/content.
 
 from __future__ import annotations
 
-import json
 import contextvars
+import json
 import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Any
 
-from . import core
-
-from . import modguard  # noqa: E402
+from . import (
+    core,
+    modguard,
+)
 
 log = logging.getLogger("quadra.mods")
 
@@ -27,6 +28,7 @@ _BACKUP = contextvars.ContextVar("mods_backup_dir", default=None)
 
 def _backup_dir():
     return _BACKUP.get() or MODS_BACKUP_DIR
+
 
 MODS_DIR = core.DATA_DIR / "modifications"
 MODS_BACKUP_DIR = core.DATA_DIR / "mods_backup"
@@ -96,7 +98,11 @@ def restore_all_mods(content_dir: Path | None = None):
     shutil.rmtree(backups, ignore_errors=True)
 
 
-def apply_mods(settings: dict[str, Any], content_dir: Path | None = None, backup_dir: Path | None = None):
+def apply_mods(
+    settings: dict[str, Any],
+    content_dir: Path | None = None,
+    backup_dir: Path | None = None,
+):
     """Applies user selected mod presets and custom folder overrides. With
     `content_dir` and `backup_dir` it works on another client's files (Rosemary)."""
     token = _BACKUP.set(Path(backup_dir)) if backup_dir is not None else None
@@ -142,7 +148,9 @@ def _apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
     # 2. Old character movement sounds
     if settings.get("mod_old_character_sounds", False):
         sound_map = {
-            "sounds/action_footsteps_plastic.mp3": BUILTIN_MODS_DIR / "sounds" / "OldWalk.mp3",
+            "sounds/action_footsteps_plastic.mp3": BUILTIN_MODS_DIR
+            / "sounds"
+            / "OldWalk.mp3",
             "sounds/action_jump.mp3": BUILTIN_MODS_DIR / "sounds" / "OldJump.mp3",
             "sounds/action_get_up.mp3": BUILTIN_MODS_DIR / "sounds" / "OldGetUp.mp3",
             "sounds/action_falling.mp3": BUILTIN_MODS_DIR / "sounds" / "Empty.mp3",
@@ -201,7 +209,9 @@ def _apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
                     try:
                         shutil.copy2(src_cursor, dst_cursor)
                     except OSError as e:
-                        log.warning("Failed to copy custom cursor %s: %s", src_cursor.name, e)
+                        log.warning(
+                            "Failed to copy custom cursor %s: %s", src_cursor.name, e
+                        )
                 log.info("Applied custom cursor folder: %s", p)
 
     # 4. Custom font
@@ -226,14 +236,24 @@ def _apply_mods(settings: dict[str, Any], content_dir: Path | None = None):
                     _backup_if_needed(json_file, rel_json)
                     try:
                         data = json.loads(json_file.read_text(encoding="utf-8"))
-                        if isinstance(data, dict) and "faces" in data and isinstance(data["faces"], list):
+                        if (
+                            isinstance(data, dict)
+                            and "faces" in data
+                            and isinstance(data["faces"], list)
+                        ):
                             for face in data["faces"]:
                                 if isinstance(face, dict):
                                     face["assetId"] = asset_uri
-                            json_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                            json_file.write_text(
+                                json.dumps(data, indent=2), encoding="utf-8"
+                            )
                     except Exception as e:
-                        log.warning("Failed to patch font family %s: %s", json_file.name, e)
-                log.info("Applied custom font %s across all font families.", font_path.name)
+                        log.warning(
+                            "Failed to patch font family %s: %s", json_file.name, e
+                        )
+                log.info(
+                    "Applied custom font %s across all font families.", font_path.name
+                )
 
     # 5. User custom modifications folder (overlay)
     if settings.get("enable_custom_mods", True) and MODS_DIR.is_dir():

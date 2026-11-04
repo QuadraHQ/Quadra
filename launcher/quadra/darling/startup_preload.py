@@ -2,12 +2,13 @@
 
 No downloads, GPU asset uploads or shader/state guesses. Client bytes stay local.
 """
+
 import hashlib
 import os
-from pathlib import Path
 import stat
 import struct
 import time
+from pathlib import Path
 
 MAX_PACK_BYTES = 256 << 20
 MAX_LIBRARY_BYTES = 64 << 20
@@ -19,8 +20,25 @@ MAX_SCAN = 8192
 MAX_RESOURCE_BYTES = 128 << 20
 MEMORY_RESERVE = 768 << 20
 RESOURCE_SECONDS = 3
-RESOURCE_SUFFIXES = frozenset((".ttf", ".otf", ".dds", ".tex", ".ktx", ".ktx2", ".png",
-                               ".jpg", ".jpeg", ".mesh", ".rbxm", ".rbxmx", ".ogg", ".mp3", ".wav"))
+RESOURCE_SUFFIXES = frozenset(
+    (
+        ".ttf",
+        ".otf",
+        ".dds",
+        ".tex",
+        ".ktx",
+        ".ktx2",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".mesh",
+        ".rbxm",
+        ".rbxmx",
+        ".ogg",
+        ".mp3",
+        ".wav",
+    )
+)
 
 
 def available_memory():
@@ -34,8 +52,11 @@ def available_memory():
     except (OSError, ValueError, IndexError):
         pass
     try:
-        group = next(line[4:] for line in Path("/proc/self/cgroup").read_text().splitlines()
-                     if line.startswith("0::/"))
+        group = next(
+            line[4:]
+            for line in Path("/proc/self/cgroup").read_text().splitlines()
+            if line.startswith("0::/")
+        )
         root = Path("/sys/fs/cgroup")
         directory = root / group
         if ".." in directory.parts:
@@ -73,7 +94,9 @@ def resource_budget(available):
 
 
 def _open_regular(path):
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    descriptor = os.open(
+        path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    )
     try:
         if not stat.S_ISREG(os.fstat(descriptor).st_mode):
             raise ValueError("preload input is not a regular file")
@@ -89,8 +112,16 @@ def library_ranges(stream):
     header = stream.read(20)
     if len(header) != 20 or length > MAX_PACK_BYTES:
         raise ValueError("shader pack has an invalid size")
-    magic, version, variants, defines, options, names, count, _ = struct.unpack("<4s6HI", header)
-    if magic != b"RBXS" or version != 11 or not variants or not names or not 0 < count <= MAX_PACK_ENTRIES:
+    magic, version, variants, defines, options, names, count, _ = struct.unpack(
+        "<4s6HI", header
+    )
+    if (
+        magic != b"RBXS"
+        or version != 11
+        or not variants
+        or not names
+        or not 0 < count <= MAX_PACK_ENTRIES
+    ):
         raise ValueError("unsupported shader pack layout")
     table = 20 + variants * 64 + names * 68 + defines * 64 + options * 65
     source = table + count * 64
@@ -104,8 +135,15 @@ def library_ranges(stream):
     for index in range(count):
         offset, size = struct.unpack_from("<II", entries, index * 64 + 16)
         stage, variant, name = struct.unpack_from("<BBH", entries, index * 64 + 28)
-        if (stage not in b"vpc" or variant >= variants or name >= names or not size
-                or size > MAX_LIBRARY_BYTES or offset < source or offset + size > length):
+        if (
+            stage not in b"vpc"
+            or variant >= variants
+            or name >= names
+            or not size
+            or size > MAX_LIBRARY_BYTES
+            or offset < source
+            or offset + size > length
+        ):
             raise ValueError("shader pack payload exceeds its bounds")
         ranges.add((offset, size))
     ordered = sorted(ranges)
@@ -126,10 +164,11 @@ def _library(payload):
         if start + 88 <= len(payload):
             fields = struct.unpack_from("<9Q", payload, start + 16)
             size = fields[0]
-            if (88 <= size <= len(payload) - start
-                    and all(offset <= size and length <= size - offset
-                            for offset, length in zip(fields[1::2], fields[2::2]))):
-                return payload[start:start + size]
+            if 88 <= size <= len(payload) - start and all(
+                offset <= size and length <= size - offset
+                for offset, length in zip(fields[1::2], fields[2::2])
+            ):
+                return payload[start : start + size]
         position = start + 4
     raise ValueError("payload has no bounded Metal library")
 
@@ -162,13 +201,25 @@ def prepare_libraries(path, prepare, progress):
             except (OSError, ValueError):
                 failed += 1
             progress(completed, total, failed)
-    return {"completed": completed, "total": total, "failed": failed, "prepared": prepared,
-            "input_bytes": read, "status": "limited" if completed < total else "partial" if failed else "complete"}
+    return {
+        "completed": completed,
+        "total": total,
+        "failed": failed,
+        "prepared": prepared,
+        "input_bytes": read,
+        "status": "limited"
+        if completed < total
+        else "partial"
+        if failed
+        else "complete",
+    }
 
 
 def resource_files(root):
     root = Path(root)
-    directories = [root / name for name in ("content", "PlatformContent", "ExtraContent")]
+    directories = [
+        root / name for name in ("content", "PlatformContent", "ExtraContent")
+    ]
     files = []
     scanned = 0
     while directories and scanned < MAX_SCAN and len(files) < MAX_RESOURCE_FILES:
@@ -181,14 +232,23 @@ def resource_files(root):
                     scanned += 1
                     if entry.is_dir(follow_symlinks=False) and len(directories) < 256:
                         directories.append(Path(entry.path))
-                    elif entry.is_file(follow_symlinks=False) and Path(entry.name).suffix.lower() in RESOURCE_SUFFIXES:
+                    elif (
+                        entry.is_file(follow_symlinks=False)
+                        and Path(entry.name).suffix.lower() in RESOURCE_SUFFIXES
+                    ):
                         files.append(Path(entry.path))
                     if scanned >= MAX_SCAN or len(files) >= MAX_RESOURCE_FILES:
                         break
         except OSError:
             continue
     # Warm fonts and native textures before the larger collection of small images/models.
-    return sorted(files, key=lambda p: (p.suffix.lower() not in (".ttf", ".otf", ".dds", ".tex"), str(p)))
+    return sorted(
+        files,
+        key=lambda p: (
+            p.suffix.lower() not in (".ttf", ".otf", ".dds", ".tex"),
+            str(p),
+        ),
+    )
 
 
 def warm_resources(root, progress, maximum=None, seconds=RESOURCE_SECONDS):
@@ -214,5 +274,11 @@ def warm_resources(root, progress, maximum=None, seconds=RESOURCE_SECONDS):
         completed += 1
         progress(completed, len(files), failed)
     limited = read >= budget or completed < len(files)
-    return {"completed": completed, "total": len(files), "failed": failed, "read_bytes": read,
-            "budget_bytes": budget, "status": "limited" if limited else "partial" if failed else "complete"}
+    return {
+        "completed": completed,
+        "total": len(files),
+        "failed": failed,
+        "read_bytes": read,
+        "budget_bytes": budget,
+        "status": "limited" if limited else "partial" if failed else "complete",
+    }

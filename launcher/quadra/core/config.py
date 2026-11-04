@@ -10,10 +10,10 @@ __all__ = [
     "DEFAULT_SETTINGS",
     "TRACE_ENV",
     "TRACE_ENV_INHERITED",
-    "load_settings",
-    "save_settings",
     "clear_last_error",
     "format_playtime",
+    "load_settings",
+    "save_settings",
 ]
 
 DEFAULT_SETTINGS = {
@@ -211,7 +211,10 @@ def load_settings():
 
 
 def save_settings(settings):
-    files._write_atomically(locations.SETTINGS_FILE, json.dumps(dict(settings), indent=2, ensure_ascii=False))
+    files._write_atomically(
+        locations.SETTINGS_FILE,
+        json.dumps(dict(settings), indent=2, ensure_ascii=False),
+    )
 
 
 def clear_last_error():

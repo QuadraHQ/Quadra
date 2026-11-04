@@ -2,6 +2,7 @@
 command. GIO only knows a fixed list of terminals (older GLib not even kitty,
 Alacritty, foot or WezTerm) and fails with "Unable to find terminal required
 for application" otherwise; it remains the caller's last resort."""
+
 import os
 import shlex
 import shutil
@@ -61,7 +62,9 @@ def command(argv, environ=None, which=None):
             name = os.path.basename(terminal)
             return [terminal, *preferred[1:], *EXEC_ARGUMENTS.get(name, ["-e"]), *argv]
     desktops = environ.get("XDG_CURRENT_DESKTOP", "").lower().split(":")
-    names = [name for desktop in desktops for name in DESKTOP_TERMINALS.get(desktop, ())]
+    names = [
+        name for desktop in desktops for name in DESKTOP_TERMINALS.get(desktop, ())
+    ]
     names.append("x-terminal-emulator")
     names.extend(EXEC_ARGUMENTS)
     for name in dict.fromkeys(names):

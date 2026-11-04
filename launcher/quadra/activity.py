@@ -24,7 +24,9 @@ class ActivityWatcher:
         self.log_path = log_path
         self.callback = callback
         self._stopped = threading.Event()
-        self._thread = threading.Thread(target=self._run, name="quadra-activity", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="quadra-activity", daemon=True
+        )
 
     def start(self):
         self._thread.start()

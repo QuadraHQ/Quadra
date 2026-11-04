@@ -31,7 +31,14 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import core, gpus, studio_deploy, studio_gamemode, studio_registry, studio_webview
+from . import (
+    core,
+    gpus,
+    studio_deploy,
+    studio_gamemode,
+    studio_registry,
+    studio_webview,
+)
 from .i18n import _
 
 log = logging.getLogger(__name__)
@@ -55,8 +62,10 @@ WINE_RELEASES = "https://github.com/vinegarhq/kombucha"
 DXVK_RELEASES = "https://github.com/doitsujin/dxvk"
 # DXVK-Sarek runs on GPUs and drivers without Vulkan 1.3; Vinegar's tested build.
 SAREK_VERSION = "1.11.0"
-SAREK_URL = (f"https://github.com/pythonlover02/DXVK-Sarek/releases/download/v{SAREK_VERSION}/"
-             f"dxvk-sarek-async-v{SAREK_VERSION}.tar.gz")
+SAREK_URL = (
+    f"https://github.com/pythonlover02/DXVK-Sarek/releases/download/v{SAREK_VERSION}/"
+    f"dxvk-sarek-async-v{SAREK_VERSION}.tar.gz"
+)
 DXVK_DLLS = ("d3d8.dll", "d3d9.dll", "d3d10core.dll", "d3d11.dll", "dxgi.dll")
 
 # renderer: (the graphics API Studio is told to use, DXVK variant, backend of Wine's
@@ -70,8 +79,10 @@ RENDERERS = {
 }
 GRAPHICS_APIS = ("D3D11", "Vulkan", "D3D11FL10", "OpenGL")
 # Keys of the registry that make up the sign-in and settings backup.
-BACKUP_KEYS = {"studio": r"HKCU\Software\Roblox\RobloxStudio",
-               "credentials": r"HKCU\Software\Wine\Credential Manager"}
+BACKUP_KEYS = {
+    "studio": r"HKCU\Software\Roblox\RobloxStudio",
+    "credentials": r"HKCU\Software\Wine\Credential Manager",
+}
 CHANNEL_KEY = r"HKCU\Software\ROBLOX Corporation\Environments\RobloxStudio\Channel"
 VERSION_PATTERN = re.compile(r"version-[0-9a-f]{8,32}")
 CHANNEL_PATTERN = re.compile(r"[A-Za-z0-9_.-]{1,64}")
@@ -127,8 +138,6 @@ APP_SETTINGS = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-
-
 class Options:
     """The Studio settings, checked: a hand-edited or damaged value falls back
     to its default instead of breaking a launch."""
@@ -155,7 +164,11 @@ class Options:
         channel = get("studio_channel", str).strip()
         self.channel = channel if CHANNEL_PATTERN.fullmatch(channel) else ""
         flags = get("studio_fflags", dict)
-        self.fflags = {name: value for name, value in flags.items() if isinstance(name, str) and name}
+        self.fflags = {
+            name: value
+            for name, value in flags.items()
+            if isinstance(name, str) and name
+        }
 
     @property
     def dxvk(self):
@@ -189,8 +202,9 @@ def installed_version():
 
 
 def _open(url, timeout=30):
-    return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Quadra"}),
-                                  timeout=timeout)
+    return urllib.request.urlopen(
+        urllib.request.Request(url, headers={"User-Agent": "Quadra"}), timeout=timeout
+    )
 
 
 def _latest_tag(releases):
@@ -203,12 +217,20 @@ def _latest_tag(releases):
 def wine_releases():
     """Kombucha's release tags, newest first, for the choice in Settings. The
     "unstable" ones are Wine's latest commit: they may break Studio."""
-    request = urllib.request.Request("https://api.github.com/repos/vinegarhq/kombucha/releases?per_page=30",
-                                     headers={"User-Agent": "Quadra", "Accept": "application/vnd.github+json"})
+    request = urllib.request.Request(
+        "https://api.github.com/repos/vinegarhq/kombucha/releases?per_page=30",
+        headers={"User-Agent": "Quadra", "Accept": "application/vnd.github+json"},
+    )
     with urllib.request.urlopen(request, timeout=15) as response:
         releases = json.load(response)
-    return [release["tag_name"] for release in releases
-            if any(asset["name"] == f"kombucha-{release['tag_name']}.tar.xz" for asset in release["assets"])]
+    return [
+        release["tag_name"]
+        for release in releases
+        if any(
+            asset["name"] == f"kombucha-{release['tag_name']}.tar.xz"
+            for asset in release["assets"]
+        )
+    ]
 
 
 def _download(url, target, progress=None, label="", digest=None):
@@ -217,7 +239,11 @@ def _download(url, target, progress=None, label="", digest=None):
     that ends early raises instead of leaving a short file."""
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + ".part")
-    source = studio_deploy.open_first(url) if isinstance(url, (list, tuple)) else _open(url, timeout=60)
+    source = (
+        studio_deploy.open_first(url)
+        if isinstance(url, (list, tuple))
+        else _open(url, timeout=60)
+    )
     with source as response, open(partial, "wb") as out:
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
@@ -227,8 +253,15 @@ def _download(url, target, progress=None, label="", digest=None):
                 digest.update(chunk)
             done += len(chunk)
             if progress and total:
-                progress(done / total, _("{label}: {done} of {total} MB", label=label,
-                                         done=done >> 20, total=total >> 20))
+                progress(
+                    done / total,
+                    _(
+                        "{label}: {done} of {total} MB",
+                        label=label,
+                        done=done >> 20,
+                        total=total >> 20,
+                    ),
+                )
     if total and done != total:
         partial.unlink(missing_ok=True)
         raise OSError(f"{url}: got {done} of {total} bytes")
@@ -251,19 +284,25 @@ def _wine_env(options=None, launching=False):
     if options.dxvk:
         overrides += ";d3d9,d3d10core,d3d11,dxgi=n,b"
     api, _dxvk, backend = RENDERERS[options.renderer]
-    env.update({
-        "WINEPREFIX": str(PREFIX),
-        # Studio's own log arrives as Wine's "seh" warnings (OutputDebugString); the rest is quiet.
-        "WINEDEBUG": "err-kerberos,err-ntlm,err-combase,fixme-all,warn+seh" if launching else "-all",
-        "WINEDLLOVERRIDES": overrides,
-        "XR_LOADER_DEBUG": "none",
-        "WINE_D3D_CONFIG": f"renderer={backend}",
-        "DXVK_LOG_LEVEL": "warn" if launching else "none",
-        "DXVK_LOG_PATH": "none",
-        "DXVK_STATE_CACHE_PATH": str(core.CACHE_DIR),
-    })
+    env.update(
+        {
+            "WINEPREFIX": str(PREFIX),
+            # Studio's own log arrives as Wine's "seh" warnings (OutputDebugString); the rest is quiet.
+            "WINEDEBUG": "err-kerberos,err-ntlm,err-combase,fixme-all,warn+seh"
+            if launching
+            else "-all",
+            "WINEDLLOVERRIDES": overrides,
+            "XR_LOADER_DEBUG": "none",
+            "WINE_D3D_CONFIG": f"renderer={backend}",
+            "DXVK_LOG_LEVEL": "warn" if launching else "none",
+            "DXVK_LOG_PATH": "none",
+            "DXVK_STATE_CACHE_PATH": str(core.CACHE_DIR),
+        }
+    )
     if options.webview:
-        env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = studio_webview.browser_arguments(options.renderer)
+        env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = studio_webview.browser_arguments(
+            options.renderer
+        )
     if options.renderer == "vulkan":
         env.update(_vulkan_layer_environment())
     if launching:
@@ -277,7 +316,9 @@ def _gpu_environment(options):
         return {}
     try:
         adapter = gpus.selected_gpu(options.gpu)
-        return gpus.gpu_environment(adapter, "opengl" if RENDERERS[options.renderer][2] == "gl" else "vulkan")
+        return gpus.gpu_environment(
+            adapter, "opengl" if RENDERERS[options.renderer][2] == "gl" else "vulkan"
+        )
     except RuntimeError as error:
         log.warning("Studio keeps the default GPU: %s", error)
         return {}
@@ -298,38 +339,69 @@ def _vulkan_layer_environment():
     directory = core.CACHE_DIR / "studio-layer"
     directory.mkdir(parents=True, exist_ok=True)
     manifest = directory / "VkLayer_QUADRA_studio.json"
-    text = json.dumps({"file_format_version": "1.0.0", "layer": {
-        "name": "VK_LAYER_QUADRA_studio", "type": "GLOBAL", "library_path": str(library),
-        "api_version": "1.0.0", "implementation_version": "1", "description": "Quadra Studio layer",
-        "functions": {"vkGetInstanceProcAddr": "QuadraStudioLayer_GetInstanceProcAddr",
-                      "vkGetDeviceProcAddr": "QuadraStudioLayer_GetDeviceProcAddr"}}}, indent=2)
+    text = json.dumps(
+        {
+            "file_format_version": "1.0.0",
+            "layer": {
+                "name": "VK_LAYER_QUADRA_studio",
+                "type": "GLOBAL",
+                "library_path": str(library),
+                "api_version": "1.0.0",
+                "implementation_version": "1",
+                "description": "Quadra Studio layer",
+                "functions": {
+                    "vkGetInstanceProcAddr": "QuadraStudioLayer_GetInstanceProcAddr",
+                    "vkGetDeviceProcAddr": "QuadraStudioLayer_GetDeviceProcAddr",
+                },
+            },
+        },
+        indent=2,
+    )
     if not manifest.exists() or manifest.read_text() != text:
         manifest.write_text(text)
-    return {"VK_LAYER_PATH": str(directory), "VK_ADD_LAYER_PATH": str(directory),
-            "VK_INSTANCE_LAYERS": "VK_LAYER_QUADRA_studio", "VK_LOADER_LAYERS_ENABLE": "VK_LAYER_QUADRA_studio"}
+    return {
+        "VK_LAYER_PATH": str(directory),
+        "VK_ADD_LAYER_PATH": str(directory),
+        "VK_INSTANCE_LAYERS": "VK_LAYER_QUADRA_studio",
+        "VK_LOADER_LAYERS_ENABLE": "VK_LAYER_QUADRA_studio",
+    }
 
 
 def _wine(*args, options=None, **kwargs):
     root = wine_root(options)
-    return subprocess.run([str(root / "bin" / "wine"), *map(str, args)], env=_wine_env(options),
-                          stdin=subprocess.DEVNULL, **kwargs)
+    return subprocess.run(
+        [str(root / "bin" / "wine"), *map(str, args)],
+        env=_wine_env(options),
+        stdin=subprocess.DEVNULL,
+        **kwargs,
+    )
 
 
 def _wineserver(*args, options=None, **kwargs):
     root = wine_root(options)
-    return subprocess.run([str(root / "bin" / "wineserver"), *args], env=_wine_env(options),
-                          stdin=subprocess.DEVNULL, **kwargs)
+    return subprocess.run(
+        [str(root / "bin" / "wineserver"), *args],
+        env=_wine_env(options),
+        stdin=subprocess.DEVNULL,
+        **kwargs,
+    )
 
 
 def _quiet_wine(options, *args):
     """A Wine command run to completion, with everything it started."""
-    result = _wine(*args, options=options, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = _wine(
+        *args, options=options, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
     _wineserver("--wait", options=options)
     return result
 
 
 def _wine_identity(state, options):
-    return f"custom:{wine_root(options)}" if wine_root(options) != WINE else state.get("wine")
+    return (
+        f"custom:{wine_root(options)}"
+        if wine_root(options) != WINE
+        else state.get("wine")
+    )
 
 
 def _ensure_wine(state, progress, options=None):
@@ -347,15 +419,23 @@ def _ensure_wine(state, progress, options=None):
     if tag == installed:
         return
     name = f"kombucha-{tag}.tar.xz"
-    archive = _download(f"{WINE_RELEASES}/releases/download/{urllib.parse.quote(tag)}/"
-                        f"{urllib.parse.quote(name)}", core.DOWNLOADS / name, progress, "Wine")
+    archive = _download(
+        f"{WINE_RELEASES}/releases/download/{urllib.parse.quote(tag)}/"
+        f"{urllib.parse.quote(name)}",
+        core.DOWNLOADS / name,
+        progress,
+        "Wine",
+    )
     progress(1, _("Unpacking Wine"))
     if installed:
         # A wineserver of the old build would refuse the new one.
         _wineserver("-k", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     shutil.rmtree(WINE, ignore_errors=True)
     WINE.mkdir(parents=True)
-    subprocess.run(["tar", "-xJf", str(archive), "-C", str(WINE), "--strip-components=1"], check=True)
+    subprocess.run(
+        ["tar", "-xJf", str(archive), "-C", str(WINE), "--strip-components=1"],
+        check=True,
+    )
     archive.unlink()
     state["wine"] = tag
     _save_state(state)
@@ -363,7 +443,10 @@ def _ensure_wine(state, progress, options=None):
 
 def _user_directory(name, fallback):
     """XDG user directory (DOCUMENTS, PICTURES) without a GTK dependency."""
-    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "user-dirs.dirs"
+    config = (
+        Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        / "user-dirs.dirs"
+    )
     try:
         for line in config.read_text().splitlines():
             match = re.fullmatch(rf'XDG_{name}_DIR="(.*)"', line.strip())
@@ -416,8 +499,14 @@ def _ensure_prefix(state, progress, options=None):
     if fresh:
         # Studio's folders belong to the user, not to a prefix that may be recreated.
         APPDATA.mkdir(parents=True, exist_ok=True)
-        _import_registry(options, studio_registry.folders_reg(
-            APPDATA, _user_directory("DOCUMENTS", "Documents"), _user_directory("PICTURES", "Pictures")))
+        _import_registry(
+            options,
+            studio_registry.folders_reg(
+                APPDATA,
+                _user_directory("DOCUMENTS", "Documents"),
+                _user_directory("PICTURES", "Pictures"),
+            ),
+        )
         restore_settings(options)
         # Wine reads the shell folders when it starts.
         _wineserver("-k", options=options)
@@ -432,7 +521,9 @@ def _ensure_prefix(state, progress, options=None):
 
 def _ensure_webview(state, progress, options):
     wine = lambda *arguments: _quiet_wine(options, *arguments)
-    studio_webview.ensure(PREFIX, wine, _download, core.DOWNLOADS, studio_webview.VERSION, progress)
+    studio_webview.ensure(
+        PREFIX, wine, _download, core.DOWNLOADS, studio_webview.VERSION, progress
+    )
     state["webview"] = studio_webview.VERSION
     _save_state(state)
 
@@ -448,7 +539,11 @@ def _ensure_graphics(state, progress, options):
             _save_state(state)
         return
     if variant == "sarek":
-        wanted, url, name = f"sarek-{SAREK_VERSION}", SAREK_URL, SAREK_URL.rsplit("/", 1)[1]
+        wanted, url, name = (
+            f"sarek-{SAREK_VERSION}",
+            SAREK_URL,
+            SAREK_URL.rsplit("/", 1)[1],
+        )
     else:
         try:
             tag = _latest_tag(DXVK_RELEASES)
@@ -469,7 +564,10 @@ def _ensure_graphics(state, progress, options):
         for member in bundle.getmembers():
             path = Path(member.name)
             if member.isfile() and path.suffix == ".dll" and path.parent.name == "x64":
-                with bundle.extractfile(member) as source, open(APP / path.name, "wb") as out:
+                with (
+                    bundle.extractfile(member) as source,
+                    open(APP / path.name, "wb") as out,
+                ):
                     shutil.copyfileobj(source, out)
     state["dxvk_applied"] = wanted
     _save_state(state)
@@ -482,7 +580,9 @@ def latest_version():
 
 def _cookie():
     try:
-        return studio_registry.roblosecurity((PREFIX / "user.reg").read_text(errors="replace"))
+        return studio_registry.roblosecurity(
+            (PREFIX / "user.reg").read_text(errors="replace")
+        )
     except OSError:
         return None
 
@@ -495,12 +595,15 @@ def deployment(options):
 
 def _manifest(version, channel=""):
     """[(name, md5, packed size)] from rbxPkgManifest.txt."""
-    with studio_deploy.open_first(studio_deploy.package_urls(version, channel, "rbxPkgManifest.txt"),
-                                  timeout=30) as response:
+    with studio_deploy.open_first(
+        studio_deploy.package_urls(version, channel, "rbxPkgManifest.txt"), timeout=30
+    ) as response:
         lines = response.read().decode().split()
     if not lines or lines[0] != "v0":
         raise RuntimeError(_("Unknown Studio package manifest format"))
-    return [(lines[i], lines[i + 1], int(lines[i + 2])) for i in range(1, len(lines) - 3, 4)]
+    return [
+        (lines[i], lines[i + 1], int(lines[i + 2])) for i in range(1, len(lines) - 3, 4)
+    ]
 
 
 def _extract(archive, target):
@@ -521,7 +624,9 @@ def _install_studio(state, version, channel, progress, options):
     if unknown:
         # A new package: Roblox's bootstrapper knows its folder, we do not yet.
         core.CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        (core.CACHE_DIR / "studio-unknown-packages.txt").write_text("\n".join(unknown) + "\n")
+        (core.CACHE_DIR / "studio-unknown-packages.txt").write_text(
+            "\n".join(unknown) + "\n"
+        )
     total = sum(size for _name, _md5, size in packages) or 1
     done = 0
     staging = APP.with_name(APP.name + ".new")
@@ -534,7 +639,11 @@ def _install_studio(state, version, channel, progress, options):
         for _attempt in range(3):
             digest = hashlib.md5()  # hashed while downloading: no second read
             try:
-                _download(studio_deploy.package_urls(version, channel, name), archive, digest=digest)
+                _download(
+                    studio_deploy.package_urls(version, channel, name),
+                    archive,
+                    digest=digest,
+                )
             except OSError:
                 continue
             if digest.hexdigest() == md5:
@@ -544,8 +653,14 @@ def _install_studio(state, version, channel, progress, options):
     with ThreadPoolExecutor(max_workers=4) as pool:
         for (name, _md5, size), archive in pool.map(fetch, packages):
             done += size
-            progress(done / total, _("Roblox Studio: {done} of {total} MB",
-                                     done=done >> 20, total=total >> 20))
+            progress(
+                done / total,
+                _(
+                    "Roblox Studio: {done} of {total} MB",
+                    done=done >> 20,
+                    total=total >> 20,
+                ),
+            )
             _extract(archive, staging / PACKAGE_DIRS.get(name, ""))
             archive.unlink()
     (staging / "AppSettings.xml").write_text(APP_SETTINGS)
@@ -556,7 +671,17 @@ def _install_studio(state, version, channel, progress, options):
     if studio_deploy.is_live(channel):
         _quiet_wine(options, "reg", "delete", CHANNEL_KEY, "/v", "www.roblox.com", "/f")
     else:
-        _quiet_wine(options, "reg", "add", CHANNEL_KEY, "/v", "www.roblox.com", "/d", channel, "/f")
+        _quiet_wine(
+            options,
+            "reg",
+            "add",
+            CHANNEL_KEY,
+            "/v",
+            "www.roblox.com",
+            "/d",
+            channel,
+            "/f",
+        )
     state["studio"], state["channel"] = version, channel
     state.pop("dxvk_applied", None)  # the folder was replaced, DXVK's DLLs with it
     _save_state(state)
@@ -577,27 +702,45 @@ def install(progress=lambda fraction, text: None, settings=None):
     try:
         version, channel = deployment(options)
     except studio_deploy.BadChannel as error:
-        raise ChannelError(_("The Studio channel {channel} does not exist or is not open to this account",
-                             channel=str(error))) from None
+        raise ChannelError(
+            _(
+                "The Studio channel {channel} does not exist or is not open to this account",
+                channel=str(error),
+            )
+        ) from None
     except OSError:
         if not installed_version():
             raise
         version = None  # offline: the installed Studio is started as it is
-    if version and (version != installed_version() or channel != state.get("channel", "")):
-        steps.append((0.35, 0.95, lambda p: _install_studio(state, version, channel, p, options)))
+    if version and (
+        version != installed_version() or channel != state.get("channel", "")
+    ):
+        steps.append(
+            (0.35, 0.95, lambda p: _install_studio(state, version, channel, p, options))
+        )
     steps.append((0.95, 1.00, lambda p: _ensure_graphics(state, p, options)))
     for start, end, step in steps:
-        step(lambda fraction, text, s=start, e=end: progress(s + (e - s) * min(fraction, 1), text))
+        step(
+            lambda fraction, text, s=start, e=end: progress(
+                s + (e - s) * min(fraction, 1), text
+            )
+        )
     progress(1, _("Done"))
 
 
 def needs_install():
     state = _state()
-    return not (installed_version() and (state.get("wine") or wine_root(Options(core.load_settings())) != WINE))
+    return not (
+        installed_version()
+        and (state.get("wine") or wine_root(Options(core.load_settings())) != WINE)
+    )
 
 
 def running():
-    return any(re.search(r"RobloxStudioBeta\.exe", args) for _pid, args in core._user_processes())
+    return any(
+        re.search(r"RobloxStudioBeta\.exe", args)
+        for _pid, args in core._user_processes()
+    )
 
 
 def _wine_argument(argument):
@@ -613,8 +756,12 @@ def _wine_argument(argument):
 def system_prefers_dark():
     """The desktop's light/dark preference; light when it cannot be read."""
     try:
-        result = subprocess.run(["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
-                                capture_output=True, text=True, timeout=3)
+        result = subprocess.run(
+            ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
         return "dark" in result.stdout
     except (OSError, subprocess.SubprocessError):
         return False
@@ -658,8 +805,15 @@ def backup_settings(options=None):
         target = BACKUPS / f"{name}.reg"
         partial = BACKUPS / f"{name}.reg.part"
         result = _wine(  # a missing key makes reg fail: nothing to save then
-            "reg", "export", key, "Z:" + str(partial).replace("/", "\\"), "/y", options=options,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            "reg",
+            "export",
+            key,
+            "Z:" + str(partial).replace("/", "\\"),
+            "/y",
+            options=options,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         if result.returncode == 0 and partial.exists():
             partial.chmod(0o600)
             partial.replace(target)
@@ -676,8 +830,14 @@ def restore_settings(options=None):
     for name in BACKUP_KEYS:
         path = BACKUPS / f"{name}.reg"
         if path.is_file():
-            result = _wine("reg", "import", "Z:" + str(path).replace("/", "\\"), options=options,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            result = _wine(
+                "reg",
+                "import",
+                "Z:" + str(path).replace("/", "\\"),
+                options=options,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             restored = restored or result.returncode == 0
     _wineserver("--wait", options=options)
     return restored
@@ -703,9 +863,15 @@ def launch(arguments=(), settings=None):
         path.unlink(missing_ok=True)
     log_path = core.LOGS / time.strftime("studio-%Y%m%d-%H%M%S.log")
     out = open(log_path, "wb")
-    process = subprocess.Popen([str(wine_root(options) / "bin" / "wine"), str(EXECUTABLE), *arguments],
-                               cwd=str(APP), env=_wine_env(options, launching=True), stdin=subprocess.DEVNULL,
-                               stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+    process = subprocess.Popen(
+        [str(wine_root(options) / "bin" / "wine"), str(EXECUTABLE), *arguments],
+        cwd=str(APP),
+        env=_wine_env(options, launching=True),
+        stdin=subprocess.DEVNULL,
+        stdout=out,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
     out.close()
     process.log_path = log_path
     return process
@@ -746,15 +912,20 @@ def supervise(process, options):
     stop = threading.Event()
     presence = follower = None
     if options.gamemode:
-        threading.Thread(target=studio_gamemode.register, args=(process.pid,), daemon=True).start()
+        threading.Thread(
+            target=studio_gamemode.register, args=(process.pid,), daemon=True
+        ).start()
     if options.discord:
         from . import discord, studio_presence
+
         try:
             presence = studio_presence.StudioPresence(discord.DiscordRPC())
         except RuntimeError as error:
             log.info("Discord presence is not available: %s", error)
     if presence:
-        follower = threading.Thread(target=_follow, args=(process.log_path, presence.feed, stop), daemon=True)
+        follower = threading.Thread(
+            target=_follow, args=(process.log_path, presence.feed, stop), daemon=True
+        )
         follower.start()
     process.wait()
     try:
@@ -801,6 +972,10 @@ def spawn(arguments=()):
     """Starts `quadrahq --studio` as a process of its own, so that Studio's
     GameMode, presence and settings backup outlive the launcher window."""
     entry = Path(__file__).resolve().parents[1] / "quadrahq-launcher"
-    return subprocess.Popen([sys.executable, str(entry), "--studio", "--no-update", *arguments],
-                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                            start_new_session=True)
+    return subprocess.Popen(
+        [sys.executable, str(entry), "--studio", "--no-update", *arguments],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )

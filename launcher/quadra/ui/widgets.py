@@ -6,15 +6,15 @@ from .. import fflag_allowlist, theme
 from ..i18n import _
 
 __all__ = [
-    "_button_row",
-    "_add_tabs",
     "ComboRow",
+    "_add_tabs",
+    "_button_row",
     "_follow_setting",
-    "bind_switch",
-    "bind_combo",
-    "bind_spin",
     "_ignored_marker",
     "_page_sidebar",
+    "bind_combo",
+    "bind_spin",
+    "bind_switch",
 ]
 
 
@@ -108,9 +108,12 @@ def _follow_setting(window, row, handler, key, show):
 def bind_switch(window, row, key, default=False):
     row.set_active(bool(window.settings.get(key, default)))
     handler = row.connect(
-        "notify::active", lambda changed, _pspec: window.set_setting(key, changed.get_active())
+        "notify::active",
+        lambda changed, _pspec: window.set_setting(key, changed.get_active()),
     )
-    _follow_setting(window, row, handler, key, lambda value: row.set_active(bool(value)))
+    _follow_setting(
+        window, row, handler, key, lambda value: row.set_active(bool(value))
+    )
     return row
 
 
@@ -125,16 +128,30 @@ def bind_combo(window, row, key, codes, default=None):
         "notify::selected",
         lambda changed, _pspec: window.set_setting(key, codes[changed.get_selected()]),
     )
-    _follow_setting(window, row, handler, key, lambda value: row.set_selected(index_of(value)))
+    _follow_setting(
+        window, row, handler, key, lambda value: row.set_selected(index_of(value))
+    )
     return row
 
 
-def bind_spin(window, row, key, default, to_setting=lambda value: value, to_row=lambda value: value):
+def bind_spin(
+    window,
+    row,
+    key,
+    default,
+    to_setting=lambda value: value,
+    to_row=lambda value: value,
+):
     row.set_value(to_row(window.settings.get(key, default)))
     handler = row.connect(
-        "notify::value", lambda changed, _pspec: window.set_setting(key, to_setting(changed.get_value()))
+        "notify::value",
+        lambda changed, _pspec: window.set_setting(
+            key, to_setting(changed.get_value())
+        ),
     )
-    _follow_setting(window, row, handler, key, lambda value: row.set_value(to_row(value)))
+    _follow_setting(
+        window, row, handler, key, lambda value: row.set_value(to_row(value))
+    )
     return row
 
 

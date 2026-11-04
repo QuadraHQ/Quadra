@@ -19,19 +19,19 @@ from ..roblox_downloads import open_public
 from . import config, fast_flags, locations, logs
 
 __all__ = [
-    "installed_version",
     "_validated_deployment",
-    "version_is_newer",
-    "latest_version",
-    "update_roblox",
-    "throttle_patch_state",
-    "run_throttle_patcher",
-    "remove_throttle_patch",
     "apply_throttle_patch",
+    "delete_roblox",
     "ensure_raknet_transport",
     "ensure_shader_compatibility",
-    "delete_roblox",
+    "installed_version",
+    "latest_version",
+    "remove_throttle_patch",
     "required_client_update",
+    "run_throttle_patcher",
+    "throttle_patch_state",
+    "update_roblox",
+    "version_is_newer",
 ]
 
 
@@ -176,7 +176,9 @@ def update_roblox(upload, progress=None, expected_version=None):
             new_bundle.rename(locations.APP_BUNDLE)
         except OSError:
             if had_bundle:
-                backup.rename(locations.APP_BUNDLE)  # never leave the user without a client
+                backup.rename(
+                    locations.APP_BUNDLE
+                )  # never leave the user without a client
             raise
     finally:
         shutil.rmtree(unpack, ignore_errors=True)
@@ -270,7 +272,6 @@ def apply_throttle_patch():
     elif "not found" in output:
         logging.getLogger("quadra").warning("Startup throttle patch: %s", output)
 
-
     # "already disabled" stays silent.
 
 
@@ -307,7 +308,13 @@ def ensure_raknet_transport():
 
 def ensure_shader_compatibility():
     """Repair the verified GLSL pack's HeightmapDebugPS parser failure."""
-    pack = locations.APP_BUNDLE / "Contents" / "Resources" / "shaders" / "shaders_glsl3.pack"
+    pack = (
+        locations.APP_BUNDLE
+        / "Contents"
+        / "Resources"
+        / "shaders"
+        / "shaders_glsl3.pack"
+    )
     if not pack.is_file():
         return "shader pack not installed"
     try:

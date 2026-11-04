@@ -37,9 +37,19 @@ def parse_locations(data):
         if not isinstance(entry, dict) or entry.get("inactive"):
             continue
         place = entry.get("location")
-        if not isinstance(place, dict) or not place.get("country") or not place.get("city"):
+        if (
+            not isinstance(place, dict)
+            or not place.get("country")
+            or not place.get("city")
+        ):
             continue
-        found.add((str(place["country"]), str(place.get("country_name") or place["country"]), str(place["city"])))
+        found.add(
+            (
+                str(place["country"]),
+                str(place.get("country_name") or place["country"]),
+                str(place["city"]),
+            )
+        )
     return sorted(found, key=lambda item: (item[1], item[2]))
 
 
@@ -94,11 +104,21 @@ def pick_server(place_id, key, *, avoid=(), opener=urllib.request.urlopen):
     except Exception as error:
         log.info("Region server lookup failed: %s", error)
         return None
-    servers = [s for s in data.get("servers", []) if isinstance(s, dict) and isinstance(s.get("server_id"), str)]
+    servers = [
+        s
+        for s in data.get("servers", [])
+        if isinstance(s, dict) and isinstance(s.get("server_id"), str)
+    ]
     # Not full when RoValra says so; most responses carry no player counts.
-    servers = [s for s in servers
-               if not (isinstance(s.get("playing"), int) and isinstance(s.get("max_players"), int)
-                       and s["playing"] >= s["max_players"])]
+    servers = [
+        s
+        for s in servers
+        if not (
+            isinstance(s.get("playing"), int)
+            and isinstance(s.get("max_players"), int)
+            and s["playing"] >= s["max_players"]
+        )
+    ]
     fresh = [s for s in servers if s["server_id"] not in avoid]
     chosen = random.choice(fresh or servers) if (fresh or servers) else None
     return chosen["server_id"] if chosen else None

@@ -8,16 +8,17 @@
   no Vulkan backend of its own (its device factory makes OpenGL and Metal
   devices only), so this is the native Vulkan route.
 """
+
 import ctypes
 import hashlib
 import json
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import tempfile
 import threading
+from pathlib import Path
 
 RENDERERS = ("opengl", "vulkan", "metal")
 _dependency_lock = threading.Lock()
@@ -25,20 +26,44 @@ _dependency_lock = threading.Lock()
 
 def mesa_egl_manifest():
     # Inside Flatpak, Mesa comes from the GL extension (GL/default), not /usr/share.
-    roots = ["/usr/share", "/usr/local/share", "/etc", "/app/share", "/run/opengl-driver/share"]
+    roots = [
+        "/usr/share",
+        "/usr/local/share",
+        "/etc",
+        "/app/share",
+        "/run/opengl-driver/share",
+    ]
     roots += [root for root in os.environ.get("XDG_DATA_DIRS", "").split(":") if root]
-    roots += [str(path) for path in sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*/share"))]
-    return next((Path(root) / "glvnd/egl_vendor.d/50_mesa.json" for root in roots
-                 if (Path(root) / "glvnd/egl_vendor.d/50_mesa.json").is_file()), None)
+    roots += [
+        str(path)
+        for path in sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*/share"))
+    ]
+    return next(
+        (
+            Path(root) / "glvnd/egl_vendor.d/50_mesa.json"
+            for root in roots
+            if (Path(root) / "glvnd/egl_vendor.d/50_mesa.json").is_file()
+        ),
+        None,
+    )
 
 
 def missing_vulkan_dependencies():
     missing = []
     if mesa_egl_manifest() is None:
         missing.append("Mesa EGL")
-    roots = ("/usr/lib", "/usr/lib64", "/usr/lib/x86_64-linux-gnu", "/usr/local/lib",
-             "/usr/local/lib64", "/app/lib", "/app/lib/x86_64-linux-gnu",
-             "/usr/lib/x86_64-linux-gnu/GL/default/lib", "/usr/lib/GL/default/lib", "/run/opengl-driver/lib")
+    roots = (
+        "/usr/lib",
+        "/usr/lib64",
+        "/usr/lib/x86_64-linux-gnu",
+        "/usr/local/lib",
+        "/usr/local/lib64",
+        "/app/lib",
+        "/app/lib/x86_64-linux-gnu",
+        "/usr/lib/x86_64-linux-gnu/GL/default/lib",
+        "/usr/lib/GL/default/lib",
+        "/run/opengl-driver/lib",
+    )
     extra = os.environ.get("LIBGL_DRIVERS_PATH", "").split(":")
     paths = [Path(root) / "dri/zink_dri.so" for root in roots]
     paths.extend(Path(root) / "zink_dri.so" for root in extra if root)
@@ -50,22 +75,43 @@ def missing_vulkan_dependencies():
 def _system_program(name):
     # Package managers execute as root: use system directories rather than a
     # launcher process's possibly customized PATH.
-    return next((str(Path(root) / name) for root in ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
-                 if (Path(root) / name).is_file() and os.access(Path(root) / name, os.X_OK)), None)
+    return next(
+        (
+            str(Path(root) / name)
+            for root in ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+            if (Path(root) / name).is_file() and os.access(Path(root) / name, os.X_OK)
+        ),
+        None,
+    )
 
 
 def _askpass_program():
     configured = os.environ.get("SUDO_ASKPASS", "")
-    if os.path.isabs(configured) and Path(configured).is_file() and os.access(configured, os.X_OK):
+    if (
+        os.path.isabs(configured)
+        and Path(configured).is_file()
+        and os.access(configured, os.X_OK)
+    ):
         return configured
     for name in ("ksshaskpass", "ssh-askpass"):
         executable = _system_program(name)
         if executable:
             return executable
-    return next((path for path in ("/usr/lib/ssh/ssh-askpass", "/usr/libexec/openssh/ssh-askpass",
-                                  "/usr/lib/openssh/gnome-ssh-askpass", "/usr/lib/gcr-ssh-askpass",
-                                  "/usr/lib/gcr4-ssh-askpass", "/usr/lib/git-core/git-gui--askpass")
-                 if Path(path).is_file() and os.access(path, os.X_OK)), None)
+    return next(
+        (
+            path
+            for path in (
+                "/usr/lib/ssh/ssh-askpass",
+                "/usr/libexec/openssh/ssh-askpass",
+                "/usr/lib/openssh/gnome-ssh-askpass",
+                "/usr/lib/gcr-ssh-askpass",
+                "/usr/lib/gcr4-ssh-askpass",
+                "/usr/lib/git-core/git-gui--askpass",
+            )
+            if Path(path).is_file() and os.access(path, os.X_OK)
+        ),
+        None,
+    )
 
 
 def _authenticated_install_command(command):
@@ -73,7 +119,12 @@ def _authenticated_install_command(command):
     run0 = _system_program("run0")
     if run0:
         # Default interactive polkit authentication enables the desktop prompt.
-        return [run0, "--description=Install Quadra Vulkan dependencies", "--", *command], {}
+        return [
+            run0,
+            "--description=Install Quadra Vulkan dependencies",
+            "--",
+            *command,
+        ], {}
     pkexec = _system_program("pkexec")
     if pkexec:
         return [pkexec, *command], {}
@@ -84,36 +135,67 @@ def _authenticated_install_command(command):
             # sudo reads the helper's output directly; the launcher never sees
             # or stores the password.
             return [sudo, "-A", "--", *command], {"SUDO_ASKPASS": askpass}
-        terminals = (("gnome-terminal", ["--wait", "--"]),
-                     ("konsole", ["--separate", "-e"]),
-                     ("xfce4-terminal", ["--disable-server", "--execute"]),
-                     ("kitty", ["--"]), ("alacritty", ["-e"]),
-                     ("foot", ["--"]), ("xterm", ["-e"]))
+        terminals = (
+            ("gnome-terminal", ["--wait", "--"]),
+            ("konsole", ["--separate", "-e"]),
+            ("xfce4-terminal", ["--disable-server", "--execute"]),
+            ("kitty", ["--"]),
+            ("alacritty", ["-e"]),
+            ("foot", ["--"]),
+            ("xterm", ["-e"]),
+        )
         for name, arguments in terminals:
             terminal = _system_program(name)
             if terminal:
                 return [terminal, *arguments, sudo, "--", *command], {}
-    raise RuntimeError("No administrator prompt is available. Install run0 or pkexec, or sudo with a graphical askpass helper or terminal, then select Vulkan again. You can also install Mesa EGL and Zink manually.")
+    raise RuntimeError(
+        "No administrator prompt is available. Install run0 or pkexec, or sudo with a graphical askpass helper or terminal, then select Vulkan again. You can also install Mesa EGL and Zink manually."
+    )
 
 
 def vulkan_install_command():
     """Return (argv, environment overrides), using fixed package arguments."""
     if Path("/.flatpak-info").is_file():
-        raise RuntimeError("Mesa EGL and Zink come from the Flatpak graphics runtime. Update the Flatpak runtime and try again.")
+        raise RuntimeError(
+            "Mesa EGL and Zink come from the Flatpak graphics runtime. Update the Flatpak runtime and try again."
+        )
     try:
         release = platform.freedesktop_os_release()
     except OSError:
         release = {}
     family = {release.get("ID", ""), *release.get("ID_LIKE", "").split()}
-    choices = (({"arch"}, "pacman", ["-S", "--needed", "--noconfirm", "mesa", "vulkan-icd-loader"]),
-               ({"debian", "ubuntu"}, "apt-get", ["install", "-y", "--no-install-recommends", "libegl-mesa0", "libgl1-mesa-dri", "libvulkan1"]),
-               ({"fedora", "rhel"}, "dnf", ["install", "-y", "mesa-libEGL", "mesa-dri-drivers", "vulkan-loader"]))
+    choices = (
+        (
+            {"arch"},
+            "pacman",
+            ["-S", "--needed", "--noconfirm", "mesa", "vulkan-icd-loader"],
+        ),
+        (
+            {"debian", "ubuntu"},
+            "apt-get",
+            [
+                "install",
+                "-y",
+                "--no-install-recommends",
+                "libegl-mesa0",
+                "libgl1-mesa-dri",
+                "libvulkan1",
+            ],
+        ),
+        (
+            {"fedora", "rhel"},
+            "dnf",
+            ["install", "-y", "mesa-libEGL", "mesa-dri-drivers", "vulkan-loader"],
+        ),
+    )
     identified = any(family & ids for ids, _manager, _arguments in choices)
     for ids, manager, arguments in choices:
         executable = _system_program(manager)
         if executable and (family & ids or not identified):
             return _authenticated_install_command([executable, *arguments])
-    raise RuntimeError("Automatic Vulkan dependency installation supports Arch, Debian/Ubuntu and Fedora. Install Mesa EGL and Zink with your package manager.")
+    raise RuntimeError(
+        "Automatic Vulkan dependency installation supports Arch, Debian/Ubuntu and Fedora. Install Mesa EGL and Zink with your package manager."
+    )
 
 
 def ensure_vulkan_dependencies():
@@ -122,14 +204,27 @@ def ensure_vulkan_dependencies():
         if not missing_vulkan_dependencies():
             return False
         command, auth_environment = vulkan_install_command()
-        result = subprocess.run(command, env={**os.environ, **auth_environment},
-                                stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        result = subprocess.run(
+            command,
+            env={**os.environ, **auth_environment},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+        )
         if result.returncode:
-            detail = "\n".join(part.strip() for part in (result.stderr, result.stdout) if part.strip())[-1500:]
-            raise RuntimeError("Vulkan dependencies were not installed. Authentication may have been cancelled.\n" + detail)
+            detail = "\n".join(
+                part.strip() for part in (result.stderr, result.stdout) if part.strip()
+            )[-1500:]
+            raise RuntimeError(
+                "Vulkan dependencies were not installed. Authentication may have been cancelled.\n"
+                + detail
+            )
         missing = missing_vulkan_dependencies()
         if missing:
-            raise RuntimeError("Installation finished, but these dependencies are still missing: " + ", ".join(missing))
+            raise RuntimeError(
+                "Installation finished, but these dependencies are still missing: "
+                + ", ".join(missing)
+            )
         return True
 
 
@@ -144,33 +239,58 @@ def mangohud_environment(renderer, enabled=False):
     variables = {"MANGOHUD": "1" if enabled else "0", "QUADRA_MANGOHUD_OPENGL": ""}
     if not enabled:
         return variables
-    variables.update({name: os.environ[name] for name in
-                      ("MANGOHUD_CONFIG", "MANGOHUD_CONFIGFILE") if name in os.environ})
+    variables.update(
+        {
+            name: os.environ[name]
+            for name in ("MANGOHUD_CONFIG", "MANGOHUD_CONFIGFILE")
+            if name in os.environ
+        }
+    )
     if variables.get("MANGOHUD") == "1" and renderer == "opengl":
-        roots = ("/usr/lib/mangohud", "/usr/lib64/mangohud",
-                 "/usr/lib/x86_64-linux-gnu/mangohud", "/usr/local/lib/mangohud",
-                 "/usr/local/lib64/mangohud", "/app/lib/mangohud",
-                 "/app/lib/x86_64-linux-gnu/mangohud",
-                 "/usr/lib/extensions/vulkan/MangoHud/lib/mangohud",
-                 "/usr/lib/extensions/vulkan/MangoHud/lib/x86_64-linux-gnu",
-                 str(Path.home() / ".local/share/MangoHud/usr/lib/mangohud"))
+        roots = (
+            "/usr/lib/mangohud",
+            "/usr/lib64/mangohud",
+            "/usr/lib/x86_64-linux-gnu/mangohud",
+            "/usr/local/lib/mangohud",
+            "/usr/local/lib64/mangohud",
+            "/app/lib/mangohud",
+            "/app/lib/x86_64-linux-gnu/mangohud",
+            "/usr/lib/extensions/vulkan/MangoHud/lib/mangohud",
+            "/usr/lib/extensions/vulkan/MangoHud/lib/x86_64-linux-gnu",
+            str(Path.home() / ".local/share/MangoHud/usr/lib/mangohud"),
+        )
         libraries = [Path(root) / "libMangoHud_opengl.so" for root in roots]
         custom = os.environ.get("MANGOHUD_OPENGL_LIBS")
         if custom:
             libraries[:0] = [Path(path) for path in custom.split(":") if path]
         library = next((path for path in libraries if path.is_file()), None)
         if library is None:
-            raise RuntimeError("MangoHud's OpenGL library is missing. Install MangoHud or turn it off in Settings.")
+            raise RuntimeError(
+                "MangoHud's OpenGL library is missing. Install MangoHud or turn it off in Settings."
+            )
         variables["QUADRA_MANGOHUD_OPENGL"] = str(library)
     return variables
 
 
 def vulkan_loader():
     """The host's Vulkan loader, or None."""
-    roots = ("/usr/lib", "/usr/lib64", "/usr/lib/x86_64-linux-gnu", "/usr/local/lib",
-             "/usr/local/lib64", "/app/lib", "/app/lib/x86_64-linux-gnu")
-    return next((str(Path(root) / "libvulkan.so.1") for root in roots
-                 if (Path(root) / "libvulkan.so.1").exists()), None)
+    roots = (
+        "/usr/lib",
+        "/usr/lib64",
+        "/usr/lib/x86_64-linux-gnu",
+        "/usr/local/lib",
+        "/usr/local/lib64",
+        "/app/lib",
+        "/app/lib/x86_64-linux-gnu",
+    )
+    return next(
+        (
+            str(Path(root) / "libvulkan.so.1")
+            for root in roots
+            if (Path(root) / "libvulkan.so.1").exists()
+        ),
+        None,
+    )
 
 
 def missing_metal_dependencies():
@@ -204,7 +324,9 @@ def metal_tuning_environment(settings):
         environment["MACOBLOX_METAL_PRESENT_MODE"] = settings["metal_present_mode"]
     if settings.get("metal_memory_priority", True) is False:
         environment["MACOBLOX_METAL_MEMORY_PRIORITY"] = "0"
-    threads = _whole(settings.get("metal_compile_threads", 0), 1, METAL_MAX_COMPILE_THREADS)
+    threads = _whole(
+        settings.get("metal_compile_threads", 0), 1, METAL_MAX_COMPILE_THREADS
+    )
     if threads:
         environment["MACOBLOX_METAL_COMPILE_THREADS"] = str(threads)
     warm = _whole(settings.get("metal_warm_states", 256), 0, METAL_MAX_WARM_STATES)
@@ -223,8 +345,16 @@ def metal_vram_cap(settings, measured):
     return min(cap, measured) if measured else cap
 
 
-def metal_environment(metal_dir, shader_cache, *, preload=True, preload_key="unscoped",
-                      diagnostics=False, diagnostics_file=None, tuning=None):
+def metal_environment(
+    metal_dir,
+    shader_cache,
+    *,
+    preload=True,
+    preload_key="unscoped",
+    diagnostics=False,
+    diagnostics_file=None,
+    tuning=None,
+):
     """Host and guest variables of the Metal renderer. metal_dir holds
     Metal.framework and libquadra_metal_host.so (darling/metal-vulkan/build.sh)."""
     metal_dir = Path(metal_dir)
@@ -249,13 +379,24 @@ def metal_environment(metal_dir, shader_cache, *, preload=True, preload_key="uns
 def _run_metal_probe(environment, host_library):
     """The probe process's (exit code, JSON answer, stderr tail), or raises RuntimeError where it
     cannot run at all."""
-    probe_environment = {name: value for name, value in environment.items() if name != "LD_PRELOAD"}
-    probe_environment.update(MACOBLOX_METAL_PRELOAD_IN_PROCESS="0", MACOBLOX_METAL_DIAGNOSTICS="0")
+    probe_environment = {
+        name: value for name, value in environment.items() if name != "LD_PRELOAD"
+    }
+    probe_environment.update(
+        MACOBLOX_METAL_PRELOAD_IN_PROCESS="0", MACOBLOX_METAL_DIAGNOSTICS="0"
+    )
     try:
-        result = subprocess.run([sys.executable, str(Path(__file__)), "--metal-probe", str(host_library)],
-                                env=probe_environment, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            [sys.executable, str(Path(__file__)), "--metal-probe", str(host_library)],
+            env=probe_environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
-        raise RuntimeError("Quadra M2VK could not open a Vulkan device. Select OpenGL in Settings.") from error
+        raise RuntimeError(
+            "Quadra M2VK could not open a Vulkan device. Select OpenGL in Settings."
+        ) from error
     try:
         data = json.loads(result.stdout.strip().splitlines()[-1])
     except (ValueError, IndexError):
@@ -266,7 +407,9 @@ def _run_metal_probe(environment, host_library):
 def _is_software(name, identity):
     if isinstance(identity, dict) and identity.get("kind") == "cpu":
         return True
-    return any(software in name.lower() for software in ("llvmpipe", "lavapipe", "swiftshader"))
+    return any(
+        software in name.lower() for software in ("llvmpipe", "lavapipe", "swiftshader")
+    )
 
 
 def validate_metal(environment, host_library):
@@ -275,9 +418,13 @@ def validate_metal(environment, host_library):
     name = data.get("device", "")
     if code or not name:
         reason = data.get("error") or stderr or f"probe exited with code {code}"
-        raise RuntimeError(f"Quadra M2VK is unavailable: {reason.rstrip('. ')}. Select OpenGL in Settings.")
+        raise RuntimeError(
+            f"Quadra M2VK is unavailable: {reason.rstrip('. ')}. Select OpenGL in Settings."
+        )
     if _is_software(name, data.get("identity")):
-        raise RuntimeError(f"Quadra M2VK found only a software Vulkan device ({name}). Install your GPU's Vulkan driver or select OpenGL.")
+        raise RuntimeError(
+            f"Quadra M2VK found only a software Vulkan device ({name}). Install your GPU's Vulkan driver or select OpenGL."
+        )
     return name
 
 
@@ -289,9 +436,16 @@ def metal_report(environment, host_library):
     except RuntimeError as error:
         return {"status": "fail", "error": str(error)}
     name = data.get("device", "")
-    report = {"device": name or None, "identity": data.get("identity"), "self_test": data.get("self_test")}
+    report = {
+        "device": name or None,
+        "identity": data.get("identity"),
+        "self_test": data.get("self_test"),
+    }
     if code or not name:
-        report.update(status="fail", error=data.get("error") or stderr or f"probe exited with code {code}")
+        report.update(
+            status="fail",
+            error=data.get("error") or stderr or f"probe exited with code {code}",
+        )
     elif _is_software(name, data.get("identity")):
         report["status"] = "software"
     else:
@@ -313,13 +467,19 @@ def _metal_probe(library):
     check_air = host.quadra_metal_host_check_air
     check_air.restype, check_air.argtypes = ctypes.c_int, ()
     if not check_air():
-        raise RuntimeError((last_error() or b"the LLVM shader upgrader is unavailable").decode(errors="replace"))
+        raise RuntimeError(
+            (last_error() or b"the LLVM shader upgrader is unavailable").decode(
+                errors="replace"
+            )
+        )
     release = ctypes.CFUNCTYPE(None, pointer)(words[1])
     device_create = ctypes.CFUNCTYPE(pointer, pointer)(words[2])
     device_info = ctypes.CFUNCTYPE(None, pointer, ctypes.c_char_p)(words[3])
     device = device_create(None)
     if not device:
-        raise RuntimeError((last_error() or b"no Vulkan device").decode(errors="replace"))
+        raise RuntimeError(
+            (last_error() or b"no Vulkan device").decode(errors="replace")
+        )
     info = ctypes.create_string_buffer(512)
     device_info(device, info)
     name = info.raw[:256].split(b"\0", 1)[0].decode(errors="replace")
@@ -331,7 +491,9 @@ def _metal_probe(library):
         self_test.restype, self_test.argtypes = ctypes.c_int, (pointer,)
         passed = bool(self_test(device))
         if not passed:
-            reason = (last_error() or b"the GPU did not run a test copy").decode(errors="replace")
+            reason = (last_error() or b"the GPU did not run a test copy").decode(
+                errors="replace"
+            )
             release(device)
             raise RuntimeError(f"{name}: {reason}")
     identity = None
@@ -339,7 +501,9 @@ def _metal_probe(library):
     if describe is not None:
         describe.restype, describe.argtypes = ctypes.c_char_p, (pointer,)
         try:
-            identity = json.loads((describe(device) or b"null").decode(errors="replace"))
+            identity = json.loads(
+                (describe(device) or b"null").decode(errors="replace")
+            )
         except ValueError:
             identity = None
     release(device)
@@ -359,7 +523,9 @@ def renderer_environment(renderer):
     # Mesa's driver override entirely. These are host paths, also in Flatpak.
     manifest = mesa_egl_manifest()
     if manifest is None:
-        raise RuntimeError("Vulkan (Zink) needs Mesa EGL and Zink. Install them or select OpenGL in Settings.")
+        raise RuntimeError(
+            "Vulkan (Zink) needs Mesa EGL and Zink. Install them or select OpenGL in Settings."
+        )
     return {
         "MESA_LOADER_DRIVER_OVERRIDE": "zink",
         "GALLIUM_DRIVER": "zink",
@@ -371,12 +537,16 @@ def renderer_environment(renderer):
 
 def wayland_vulkan_environment():
     """Add NVIDIA's X11-independent ICD without replacing other drivers."""
-    filters = {name: os.environ[name] for name in
-               ("VK_LOADER_DRIVERS_SELECT", "VK_LOADER_DRIVERS_DISABLE")
-               if name in os.environ}
-    overrides = {name: os.environ[name] for name in
-                 ("VK_DRIVER_FILES", "VK_ICD_FILENAMES", "VK_ADD_DRIVER_FILES")
-                 if name in os.environ}
+    filters = {
+        name: os.environ[name]
+        for name in ("VK_LOADER_DRIVERS_SELECT", "VK_LOADER_DRIVERS_DISABLE")
+        if name in os.environ
+    }
+    overrides = {
+        name: os.environ[name]
+        for name in ("VK_DRIVER_FILES", "VK_ICD_FILENAMES", "VK_ADD_DRIVER_FILES")
+        if name in os.environ
+    }
     if overrides:
         return {**filters, **overrides}
     # NVIDIA also exposes Vulkan through its EGL library. Its default GLX
@@ -384,36 +554,74 @@ def wayland_vulkan_environment():
     # Use an additional manifest: the loader keeps its ordinary ICD search,
     # including AMD/Intel drivers on machines with more than one GPU.
     roots = [Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))]
-    roots.extend(Path(root) for root in os.environ.get("XDG_CONFIG_DIRS", "/etc/xdg").split(":") if root)
+    roots.extend(
+        Path(root)
+        for root in os.environ.get("XDG_CONFIG_DIRS", "/etc/xdg").split(":")
+        if root
+    )
     roots.extend(Path(root) for root in ("/usr/local/etc", "/etc"))
     roots.append(Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")))
-    roots.extend(Path(root) for root in os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":") if root)
+    roots.extend(
+        Path(root)
+        for root in os.environ.get(
+            "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
+        ).split(":")
+        if root
+    )
     roots.append(Path("/app/share"))
-    roots.extend(path / "share" for path in
-                 sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*")))
+    roots.extend(
+        path / "share"
+        for path in sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*"))
+    )
     manifest = None
     for root in roots:
         for path in sorted((root / "vulkan/icd.d").glob("*.json")):
             try:
                 candidate = json.loads(path.read_text())
                 library = candidate["ICD"]["library_path"]
-                if not isinstance(library, str) or Path(library).name != "libGLX_nvidia.so.0":
+                if (
+                    not isinstance(library, str)
+                    or Path(library).name != "libGLX_nvidia.so.0"
+                ):
                     continue
                 if candidate["ICD"].get("library_arch") == "32":
                     continue
-                replacement = library.replace("libGLX_nvidia.so.0", "libEGL_nvidia.so.0")
+                replacement = library.replace(
+                    "libGLX_nvidia.so.0", "libEGL_nvidia.so.0"
+                )
                 if "/" in replacement:
                     egl = Path(replacement)
                     egl = egl if egl.is_absolute() else path.parent / egl
                 else:
-                    libraries = [Path(root) for root in os.environ.get("LD_LIBRARY_PATH", "").split(":") if root]
-                    libraries.extend(Path(root) for root in
-                                     ("/usr/lib", "/usr/lib64", "/usr/lib/x86_64-linux-gnu",
-                                      "/usr/lib/x86_64-linux-gnu/nvidia/current", "/usr/lib/nvidia/current",
-                                      "/usr/local/lib", "/app/lib", "/app/lib/x86_64-linux-gnu"))
-                    libraries.extend(root.parent / "lib" for root in roots if root.name == "share")
-                    egl = next((root / replacement for root in libraries
-                                if (root / replacement).is_file()), None)
+                    libraries = [
+                        Path(root)
+                        for root in os.environ.get("LD_LIBRARY_PATH", "").split(":")
+                        if root
+                    ]
+                    libraries.extend(
+                        Path(root)
+                        for root in (
+                            "/usr/lib",
+                            "/usr/lib64",
+                            "/usr/lib/x86_64-linux-gnu",
+                            "/usr/lib/x86_64-linux-gnu/nvidia/current",
+                            "/usr/lib/nvidia/current",
+                            "/usr/local/lib",
+                            "/app/lib",
+                            "/app/lib/x86_64-linux-gnu",
+                        )
+                    )
+                    libraries.extend(
+                        root.parent / "lib" for root in roots if root.name == "share"
+                    )
+                    egl = next(
+                        (
+                            root / replacement
+                            for root in libraries
+                            if (root / replacement).is_file()
+                        ),
+                        None,
+                    )
                 if egl is None or not egl.is_file():
                     continue
                 candidate["ICD"]["library_path"] = str(egl.resolve())
@@ -428,7 +636,10 @@ def wayland_vulkan_environment():
         return filters
     payload = json.dumps(manifest, sort_keys=True, indent=2) + "\n"
     digest = hashlib.sha256(payload.encode()).hexdigest()[:16]
-    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "quadrahq/vulkan"
+    cache = (
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        / "quadrahq/vulkan"
+    )
     # Preserve the source basename: Vulkan loader select/disable filters
     # match manifest names, so the extra ICD obeys the same user filters.
     target = (cache / f"nvidia-egl-{digest}" / basename).absolute()
@@ -436,12 +647,16 @@ def wayland_vulkan_environment():
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.is_file() or target.read_text() != payload:
-            with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, prefix=".nvidia-egl-", delete=False) as stream:
+            with tempfile.NamedTemporaryFile(
+                mode="w", dir=target.parent, prefix=".nvidia-egl-", delete=False
+            ) as stream:
                 temporary = Path(stream.name)
                 stream.write(payload)
             temporary.replace(target)
     except OSError as error:
-        raise RuntimeError("Native Wayland Vulkan could not prepare its NVIDIA driver cache. Select X11 in Settings.") from error
+        raise RuntimeError(
+            "Native Wayland Vulkan could not prepare its NVIDIA driver cache. Select X11 in Settings."
+        ) from error
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -453,12 +668,21 @@ def validate_vulkan(environment):
     # LD_PRELOAD holds Darling's no-root library (Flatpak). It is meant for
     # darling/darlingserver only and crashes this plain host process once
     # Mesa and the GPU driver load, so the probe runs without it.
-    probe_environment = {name: value for name, value in environment.items() if name != "LD_PRELOAD"}
+    probe_environment = {
+        name: value for name, value in environment.items() if name != "LD_PRELOAD"
+    }
     try:
-        result = subprocess.run([sys.executable, str(Path(__file__)), "--probe"],
-                                env=probe_environment, capture_output=True, text=True, timeout=20)
+        result = subprocess.run(
+            [sys.executable, str(Path(__file__)), "--probe"],
+            env=probe_environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
-        raise RuntimeError("Vulkan (Zink) could not initialize. Select OpenGL in Settings.") from error
+        raise RuntimeError(
+            "Vulkan (Zink) could not initialize. Select OpenGL in Settings."
+        ) from error
     try:
         data = json.loads(result.stdout)
     except ValueError:
@@ -468,16 +692,27 @@ def validate_vulkan(environment):
         reason = data.get("error") or renderer
         if not reason:
             # Show why the probe died instead of a generic message.
-            tail = "\n".join(part.strip() for part in (result.stderr or "", result.stdout or "") if part.strip())[-600:]
-            reason = f"probe exited with code {result.returncode} and no usable output" + (f":\n{tail}" if tail else "")
-        raise RuntimeError(f"Vulkan (Zink) is unavailable: {reason}. Select OpenGL in Settings.")
+            tail = "\n".join(
+                part.strip()
+                for part in (result.stderr or "", result.stdout or "")
+                if part.strip()
+            )[-600:]
+            reason = (
+                f"probe exited with code {result.returncode} and no usable output"
+                + (f":\n{tail}" if tail else "")
+            )
+        raise RuntimeError(
+            f"Vulkan (Zink) is unavailable: {reason}. Select OpenGL in Settings."
+        )
     return renderer
 
 
 def hardware_zink(renderer):
     name = renderer.lower()
-    return "zink" in name and not any(software in name for software in
-                                      ("llvmpipe", "lavapipe", "softpipe", "software", "swiftshader"))
+    return "zink" in name and not any(
+        software in name
+        for software in ("llvmpipe", "lavapipe", "softpipe", "software", "swiftshader")
+    )
 
 
 def _probe():
@@ -501,9 +736,20 @@ def _probe():
     default_visual = function(xlib, "XDefaultVisual", ptr, ptr, integer)
     visual_id = function(xlib, "XVisualIDFromVisual", ctypes.c_ulong, ptr)
     root_window = function(xlib, "XRootWindow", ctypes.c_ulong, ptr, integer)
-    create_window = function(xlib, "XCreateSimpleWindow", ctypes.c_ulong,
-                             ptr, ctypes.c_ulong, integer, integer, uint, uint,
-                             uint, ctypes.c_ulong, ctypes.c_ulong)
+    create_window = function(
+        xlib,
+        "XCreateSimpleWindow",
+        ctypes.c_ulong,
+        ptr,
+        ctypes.c_ulong,
+        integer,
+        integer,
+        uint,
+        uint,
+        uint,
+        ctypes.c_ulong,
+        ctypes.c_ulong,
+    )
     map_window = function(xlib, "XMapWindow", integer, ptr, ctypes.c_ulong)
     destroy_window = function(xlib, "XDestroyWindow", integer, ptr, ctypes.c_ulong)
     sync = function(xlib, "XSync", integer, ptr, integer)
@@ -512,7 +758,9 @@ def _probe():
     bind = function(egl, "eglBindAPI", integer, uint)
     choose = function(egl, "eglChooseConfig", integer, ptr, ptr, ptr, integer, ptr)
     config_attr = function(egl, "eglGetConfigAttrib", integer, ptr, ptr, integer, ptr)
-    create_surface = function(egl, "eglCreateWindowSurface", ptr, ptr, ptr, ctypes.c_ulong, ptr)
+    create_surface = function(
+        egl, "eglCreateWindowSurface", ptr, ptr, ptr, ctypes.c_ulong, ptr
+    )
     create_context = function(egl, "eglCreateContext", ptr, ptr, ptr, ptr, ptr)
     make_current = function(egl, "eglMakeCurrent", integer, ptr, ptr, ptr, ptr)
     swap = function(egl, "eglSwapBuffers", integer, ptr, ptr)
@@ -543,24 +791,37 @@ def _probe():
             raise RuntimeError("desktop OpenGL is unavailable")
         # Match the real default visual, which the guest GL subwindow uses.
         screen = default_screen(native) if not wayland_window else 0
-        required_visual = visual_id(default_visual(native, screen)) if not wayland_window else None
+        required_visual = (
+            visual_id(default_visual(native, screen)) if not wayland_window else None
+        )
         attrs = (integer * 9)(0x3033, 5, 0x3040, 8, 0x3024, 8, 0x3025, 0, 0x3038)
         configs, count = (ptr * 256)(), integer()
-        if not choose(display, attrs, configs, len(configs), ctypes.byref(count)) or not count.value:
+        if (
+            not choose(display, attrs, configs, len(configs), ctypes.byref(count))
+            or not count.value
+        ):
             raise RuntimeError("no desktop OpenGL window EGL configuration")
         config = None
-        for candidate in configs[:min(count.value, len(configs))]:
+        for candidate in configs[: min(count.value, len(configs))]:
             if wayland_window:
                 config = candidate
                 break
             value = integer()
-            if config_attr(display, candidate, 0x302E, ctypes.byref(value)) and value.value == required_visual:
+            if (
+                config_attr(display, candidate, 0x302E, ctypes.byref(value))
+                and value.value == required_visual
+            ):
                 config = candidate
                 break
         if not config:
             raise RuntimeError("no EGL window config matches the X11 screen visual")
-        window = wayland_window.surface if wayland_window else create_window(
-            native, root_window(native, screen), 0, 0, 16, 16, 0, 0, 0)
+        window = (
+            wayland_window.surface
+            if wayland_window
+            else create_window(
+                native, root_window(native, screen), 0, 0, 16, 16, 0, 0, 0
+            )
+        )
         if not window:
             raise RuntimeError("could not create an X11 test window")
         if not wayland_window:
@@ -568,7 +829,9 @@ def _probe():
             sync(native, 0)
         surface = create_surface(display, config, window, None)
         if not surface:
-            raise RuntimeError("could not create an EGL window surface for the screen visual")
+            raise RuntimeError(
+                "could not create an EGL window surface for the screen visual"
+            )
         secondary_drawable = None
         if wayland_window:
             # AppKit's main GL view and CALayer renderer own concurrent native
@@ -576,10 +839,14 @@ def _probe():
             secondary_drawable = wayland_window.create_drawable(0, 0, 16, 16)
             secondary_native = wayland_window.api.subwindow_surface(secondary_drawable)
             if not secondary_native or secondary_native == window:
-                raise RuntimeError("Native Wayland views must have separate EGL drawables")
+                raise RuntimeError(
+                    "Native Wayland views must have separate EGL drawables"
+                )
             secondary_surface = create_surface(display, config, secondary_native, None)
             if not secondary_surface:
-                raise RuntimeError("could not create concurrent Native Wayland EGL view surfaces")
+                raise RuntimeError(
+                    "could not create concurrent Native Wayland EGL view surfaces"
+                )
 
         def gl_function(name, result, *arguments):
             address = get_proc(name.encode())
@@ -588,10 +855,18 @@ def _probe():
             return ctypes.CFUNCTYPE(result, *arguments)(address)
 
         get_string = gl_function("glGetString", ctypes.c_char_p, uint)
-        clear_color = gl_function("glClearColor", None, ctypes.c_float, ctypes.c_float,
-                                  ctypes.c_float, ctypes.c_float)
+        clear_color = gl_function(
+            "glClearColor",
+            None,
+            ctypes.c_float,
+            ctypes.c_float,
+            ctypes.c_float,
+            ctypes.c_float,
+        )
         clear = gl_function("glClear", None, uint)
-        read_pixels = gl_function("glReadPixels", None, integer, integer, integer, integer, uint, uint, ptr)
+        read_pixels = gl_function(
+            "glReadPixels", None, integer, integer, integer, integer, uint, uint, ptr
+        )
         get_error = gl_function("glGetError", uint)
         gen_textures = gl_function("glGenTextures", None, integer, ptr)
         bind_texture = gl_function("glBindTexture", None, uint, uint)
@@ -605,7 +880,10 @@ def _probe():
             clear(0x4000)  # GL_COLOR_BUFFER_BIT
             pixel = (ctypes.c_ubyte * 4)()
             read_pixels(0, 0, 1, 1, 0x1908, 0x1401, pixel)  # RGBA/UNSIGNED_BYTE
-            if get_error() or any(abs(pixel[i] - expected) > 2 for i, expected in enumerate((64, 128, 191))):
+            if get_error() or any(
+                abs(pixel[i] - expected) > 2
+                for i, expected in enumerate((64, 128, 191))
+            ):
                 raise RuntimeError("EGL window rendering/readback failed")
             if not swap(display, drawable or surface):
                 raise RuntimeError("EGL window presentation failed")
@@ -613,10 +891,14 @@ def _probe():
         for attributes in (None, core_attrs):
             context = create_context(display, config, None, attributes)
             if not context or not make_current(display, surface, surface, context):
-                raise RuntimeError("Darling needs compatibility and OpenGL 4.1 core window contexts")
+                raise RuntimeError(
+                    "Darling needs compatibility and OpenGL 4.1 core window contexts"
+                )
             renderer = (get_string(0x1F01) or b"").decode(errors="replace")
             if not hardware_zink(renderer):
-                raise RuntimeError(f"expected hardware Zink, got {renderer or 'no renderer'}")
+                raise RuntimeError(
+                    f"expected hardware Zink, got {renderer or 'no renderer'}"
+                )
             present()
             if attributes is None:
                 make_current(display, None, None, None)
@@ -632,12 +914,18 @@ def _probe():
             shared = None
             try:
                 if not bind(0x30A2):
-                    raise RuntimeError("desktop OpenGL API could not be bound on the render thread")
+                    raise RuntimeError(
+                        "desktop OpenGL API could not be bound on the render thread"
+                    )
                 shared = create_context(display, config, context, core_attrs)
                 if not shared or not make_current(display, surface, surface, shared):
-                    raise RuntimeError("shared core context could not become current on the render thread")
+                    raise RuntimeError(
+                        "shared core context could not become current on the render thread"
+                    )
                 if not is_texture(texture.value):
-                    raise RuntimeError("OpenGL objects were not shared with the render thread")
+                    raise RuntimeError(
+                        "OpenGL objects were not shared with the render thread"
+                    )
                 present()
             except Exception as error:
                 failures.append(error)
@@ -656,14 +944,22 @@ def _probe():
         delete_textures(1, ctypes.byref(texture))
         if wayland_window:
             if not make_current(display, secondary_surface, secondary_surface, context):
-                raise RuntimeError("core context could not switch to the second Native Wayland view")
+                raise RuntimeError(
+                    "core context could not switch to the second Native Wayland view"
+                )
             present(secondary_surface)
             wayland_window.api.subwindow_frame(secondary_drawable, 2, 3, 32, 24)
             present(secondary_surface)
             width, height = integer(), integer()
-            if (not query_surface(display, secondary_surface, 0x3057, ctypes.byref(width)) or
-                    not query_surface(display, secondary_surface, 0x3056, ctypes.byref(height)) or
-                    (width.value, height.value) != (32, 24)):
+            if (
+                not query_surface(
+                    display, secondary_surface, 0x3057, ctypes.byref(width)
+                )
+                or not query_surface(
+                    display, secondary_surface, 0x3056, ctypes.byref(height)
+                )
+                or (width.value, height.value) != (32, 24)
+            ):
                 raise RuntimeError("Native Wayland EGL view resize failed")
             wayland_window.api.subwindow_visible(secondary_drawable, 0)
             wayland_window.api.subwindow_visible(secondary_drawable, 1)
@@ -674,12 +970,23 @@ def _probe():
             secondary_surface = None
             wayland_window.destroy_drawable(secondary_drawable)
             secondary_drawable = wayland_window.create_drawable(1, 1, 16, 16)
-            secondary_surface = create_surface(display, config, wayland_window.api.subwindow_surface(secondary_drawable), None)
-            if not secondary_surface or not make_current(display, secondary_surface, secondary_surface, context):
+            secondary_surface = create_surface(
+                display,
+                config,
+                wayland_window.api.subwindow_surface(secondary_drawable),
+                None,
+            )
+            if not secondary_surface or not make_current(
+                display, secondary_surface, secondary_surface, context
+            ):
                 raise RuntimeError("Native Wayland EGL view recreation failed")
             present(secondary_surface)
-        return {"renderer": renderer, "window_presentation": True, "shared_thread_context": True,
-                "separate_view_drawables": bool(wayland_window)}
+        return {
+            "renderer": renderer,
+            "window_presentation": True,
+            "shared_thread_context": True,
+            "separate_view_drawables": bool(wayland_window),
+        }
     finally:
         if initialized:
             make_current(display, None, None, None)

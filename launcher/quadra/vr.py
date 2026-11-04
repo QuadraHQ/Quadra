@@ -3,6 +3,7 @@
 The game's OpenXR loader runs as host code inside Darling, where HOME and
 the XDG directories are the guest's. The launcher therefore finds the runtime
 manifest the way the host's loader would and passes it explicitly."""
+
 import ctypes.util
 import json
 import os
@@ -65,7 +66,9 @@ def active_runtime(environ=None, home=None):
 
 
 def loader_installed():
-    return any(Path(path).exists() for path in LOADER_PATHS) or bool(ctypes.util.find_library("openxr_loader"))
+    return any(Path(path).exists() for path in LOADER_PATHS) or bool(
+        ctypes.util.find_library("openxr_loader")
+    )
 
 
 def runtime_name(manifest):
@@ -87,12 +90,15 @@ def validated_render_scale(value):
 def status():
     """(runtime manifest or None, a short description for the settings row)."""
     if not loader_installed():
-        return None, _("The OpenXR loader is not installed (package openxr or libopenxr-loader1).")
+        return None, _(
+            "The OpenXR loader is not installed (package openxr or libopenxr-loader1)."
+        )
     runtime = active_runtime()
     if runtime is None:
         return None, _("No OpenXR runtime found. Install and start WiVRn or Monado.")
-    return runtime, _("Uses {runtime}. Start it and connect the headset before playing.").format(
-        runtime=runtime_name(runtime))
+    return runtime, _(
+        "Uses {runtime}. Start it and connect the headset before playing."
+    ).format(runtime=runtime_name(runtime))
 
 
 def shim_variables(settings):
@@ -106,7 +112,16 @@ def shim_variables(settings):
     if runtime is None:
         return [], "VR: requested, but no OpenXR loader and runtime were found"
     mode = "openxr" if settings.get("vr_mirror", True) else "openxr-headset"
-    scale = validated_render_scale(settings.get("vr_render_scale", DEFAULT_RENDER_SCALE))
-    variables = [f"QUADRA_VR={mode}", f"QUADRA_VR_SCALE={scale}", f"QUADRA_XR_RUNTIME_JSON={runtime}"]
-    return variables, f"VR: {runtime_name(runtime)} ({runtime}); render scale {scale}%; " \
-                      f"{'mirrored in the game window' if mode == 'openxr' else 'headset only'}"
+    scale = validated_render_scale(
+        settings.get("vr_render_scale", DEFAULT_RENDER_SCALE)
+    )
+    variables = [
+        f"QUADRA_VR={mode}",
+        f"QUADRA_VR_SCALE={scale}",
+        f"QUADRA_XR_RUNTIME_JSON={runtime}",
+    ]
+    return (
+        variables,
+        f"VR: {runtime_name(runtime)} ({runtime}); render scale {scale}%; "
+        f"{'mirrored in the game window' if mode == 'openxr' else 'headset only'}",
+    )

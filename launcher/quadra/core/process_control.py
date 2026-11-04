@@ -14,38 +14,38 @@ from ..darling.rootless_scope import rootless_process_in_prefix
 from . import locations
 
 __all__ = [
-    "_user_commands",
-    "_user_processes",
-    "roblox_pids",
-    "limit_roblox_cpus",
+    "PLAYER_NICE",
+    "SERVER_NICE",
+    "_container_processes",
+    "_darling_processes",
     "_darlingservers",
     "_foreign_darlingservers",
-    "_server_for_prefix",
-    "_mountinfo_prefix",
-    "_process_prefix",
-    "_process_in_prefix",
-    "_mount_namespace",
-    "_prefix_namespaces",
-    "_roblox_process_in_prefix",
-    "_darling_processes",
-    "_container_processes",
-    "_orphaned_darling_processes",
-    "_terminate",
-    "_terminate_scoped",
-    "_signal_scoped",
-    "_terminate_roblox",
     "_kill_crash_handlers",
-    "_terminate_frontend",
-    "clear_orphaned_darling",
-    "SERVER_NICE",
-    "PLAYER_NICE",
+    "_mount_namespace",
+    "_mountinfo_prefix",
     "_nice_target",
-    "_raise_priority",
-    "_with_descendants",
-    "raise_darling_priority",
-    "darlingserver_running",
-    "stop_roblox",
+    "_orphaned_darling_processes",
+    "_prefix_namespaces",
+    "_process_in_prefix",
+    "_process_prefix",
     "_process_state",
+    "_raise_priority",
+    "_roblox_process_in_prefix",
+    "_server_for_prefix",
+    "_signal_scoped",
+    "_terminate",
+    "_terminate_frontend",
+    "_terminate_roblox",
+    "_terminate_scoped",
+    "_user_commands",
+    "_user_processes",
+    "_with_descendants",
+    "clear_orphaned_darling",
+    "darlingserver_running",
+    "limit_roblox_cpus",
+    "raise_darling_priority",
+    "roblox_pids",
+    "stop_roblox",
 ]
 
 
@@ -109,7 +109,10 @@ def _foreign_darlingservers():
     darling execs INSTALL_PREFIX/bin/darlingserver next to itself."""
     try:
         expected = (
-            Path(shutil.which(locations.DARLING_EXECUTABLE) or locations.DARLING_EXECUTABLE)
+            Path(
+                shutil.which(locations.DARLING_EXECUTABLE)
+                or locations.DARLING_EXECUTABLE
+            )
             .resolve()
             .parent
             / "darlingserver"
@@ -195,14 +198,18 @@ def _process_in_prefix(pid, namespaces=()):
             return False
         namespace = _mount_namespace(pid)
         if namespace is None:
-            return rootless_process_in_prefix(pid, locations.DARLING_PREFIX, locations.NOROOT_LIB)
+            return rootless_process_in_prefix(
+                pid, locations.DARLING_PREFIX, locations.NOROOT_LIB
+            )
         if namespace in namespaces:
             return True
         argv = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
         argv = [argument.decode(errors="replace") for argument in argv if argument]
         return (
             _server_for_prefix(pid, argv)
-            or rootless_process_in_prefix(pid, locations.DARLING_PREFIX, locations.NOROOT_LIB)
+            or rootless_process_in_prefix(
+                pid, locations.DARLING_PREFIX, locations.NOROOT_LIB
+            )
             or _process_prefix(pid) == locations.DARLING_PREFIX.resolve()
         )
     except (OSError, RuntimeError):
@@ -279,7 +286,9 @@ def _container_processes(servers):
         if namespace in namespaces
         or (
             rootless_selected
-            and rootless_process_in_prefix(pid, locations.DARLING_PREFIX, locations.NOROOT_LIB)
+            and rootless_process_in_prefix(
+                pid, locations.DARLING_PREFIX, locations.NOROOT_LIB
+            )
         )
     ]
 
@@ -435,7 +444,9 @@ def clear_orphaned_darling():
                 # Never fall through to broad server/prefix membership if the
                 # collected guest has vanished or its PID has been reused.
                 return (
-                    rootless_process_in_prefix(pid, locations.DARLING_PREFIX, locations.NOROOT_LIB)
+                    rootless_process_in_prefix(
+                        pid, locations.DARLING_PREFIX, locations.NOROOT_LIB
+                    )
                     and not darlingserver_running()
                 )
             try:

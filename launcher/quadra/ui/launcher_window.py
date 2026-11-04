@@ -185,7 +185,10 @@ class LauncherWindow(Adw.ApplicationWindow):
     def _follow_settings(self):
         watch = self.settings.watch
         watch("runtime_backend", lambda _key, _value: self.apply_runtime_state())
-        watch("launcher_appearance", lambda _key, appearance: self._show_launcher_appearance(appearance))
+        watch(
+            "launcher_appearance",
+            lambda _key, appearance: self._show_launcher_appearance(appearance),
+        )
         watch("language", lambda _key, code: self._show_language(code))
         watch("discord_rpc", lambda _key, enabled: self._follow_discord_rpc(enabled))
         watch(
@@ -197,7 +200,9 @@ class LauncherWindow(Adw.ApplicationWindow):
     def _cider_pin_for(release):
         if runtime.is_bundled():
             return None
-        return runtime_updates.pin(release) if release else runtime.pinned_ciderdarling()
+        return (
+            runtime_updates.pin(release) if release else runtime.pinned_ciderdarling()
+        )
 
     def _sync_ciderdarling_shortcut(self):
         """Keep the CiderDarling Settings menu entry in step with the runtimes."""
@@ -295,7 +300,13 @@ class LauncherWindow(Adw.ApplicationWindow):
         """Register a settings row, group or page that only some runtimes read.
         It is greyed out, and tagged "<runtime> only", while another is chosen;
         with `hide`, it is hidden instead."""
-        entry = {"widget": widget, "feature": feature, "hide": hide, "tag": None, "text": None}
+        entry = {
+            "widget": widget,
+            "feature": feature,
+            "hide": hide,
+            "tag": None,
+            "text": None,
+        }
         label = " / ".join(backends.other_runtimes(feature))
         if not hide and isinstance(widget, Adw.PreferencesGroup):
             entry["text"] = widget.get_description() or ""
@@ -638,8 +649,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.set_content(self.appearance_layer)
         self.apply_launcher_appearance()
         if page in ("setup", "continue-setup") or (
-            page
-            not in ("settings", "ciderdarling", "env", "roblox", "flags")
+            page not in ("settings", "ciderdarling", "env", "roblox", "flags")
             and not self.client_installed()
             and not self.settings.get("setup_complete", False)
         ):
@@ -995,7 +1005,9 @@ class LauncherWindow(Adw.ApplicationWindow):
         def done(path, error):
             self.end(resume_pending=False)
             if error:
-                dialogs._error_dialog(self, _("Could not collect hardware report"), error)
+                dialogs._error_dialog(
+                    self, _("Could not collect hardware report"), error
+                )
             else:
                 dialog = Adw.AlertDialog(
                     heading=_("Hardware report saved"), body=str(path)
@@ -1195,7 +1207,9 @@ class LauncherWindow(Adw.ApplicationWindow):
                 self.settings.snapshot(), launch_uri=launch_uri
             )
         else:
-            session = core.RobloxSession(self.settings.snapshot(), launch_uri=launch_uri)
+            session = core.RobloxSession(
+                self.settings.snapshot(), launch_uri=launch_uri
+            )
         self._shader_preload_session = session
         session.shader_preload_progress = lambda done, total: GLib.idle_add(
             self._show_shader_preload, session, done, total
@@ -1418,7 +1432,9 @@ class LauncherWindow(Adw.ApplicationWindow):
             if session and session.launch_uri:
                 self.pending_uri = session.launch_uri
             self.present_settings()
-            dialogs._error_dialog(self, _("Could not start Roblox"), str(error) or repr(error))
+            dialogs._error_dialog(
+                self, _("Could not start Roblox"), str(error) or repr(error)
+            )
             return
         self._stop_rpc()
         self.session = session
@@ -2016,4 +2032,6 @@ class LauncherWindow(Adw.ApplicationWindow):
         try:
             Gio.AppInfo.launch_default_for_uri(path.as_uri(), None)
         except (GLib.Error, OSError) as error:
-            dialogs._toast(self.toasts, _("Could not open the log: {error}", error=error))
+            dialogs._toast(
+                self.toasts, _("Could not open the log: {error}", error=error)
+            )

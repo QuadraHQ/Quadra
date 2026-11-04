@@ -3,6 +3,7 @@
 Reads the prefix's user.reg / system.reg, writes small .reg files for
 `wine regedit /S`, and decrypts the sign-in Wine's credential manager keeps
 for Studio (the same way Vinegar does)."""
+
 import re
 
 CREDENTIALS_KEY = r"Software\Wine\Credential Manager"
@@ -24,10 +25,12 @@ def _parse_value(raw):
         return "string", _unescape(raw[1:-1])
     if raw.startswith("dword:"):
         return "dword", int(raw[6:], 16)
-    match = re.fullmatch(r"hex(?:\((\w+)\))?:(.*)", raw, re.S)
+    match = re.fullmatch(r"hex(?:\((\w+)\))?:(.*)", raw, re.DOTALL)
     if match:
         digits = re.findall(r"[0-9a-fA-F]{2}", match[2])
-        return ("hex" if match[1] is None else f"hex({match[1]})"), bytes(int(pair, 16) for pair in digits)
+        return ("hex" if match[1] is None else f"hex({match[1]})"), bytes(
+            int(pair, 16) for pair in digits
+        )
     return None
 
 
@@ -139,28 +142,69 @@ def reg_file(keys):
 
 # Colours from Vinegar (GPL-3.0), which takes them from libadwaita's palette.
 DARK_COLORS = {
-    "ActiveBorder": "34 34 38", "ActiveTitle": "46 46 50", "AppWorkSpace": "45 45 49",
-    "Background": "29 29 32", "ButtonAlternateFace": "98 160 234", "ButtonDkShadow": "22 22 25",
-    "ButtonFace": "46 46 50", "ButtonHilight": "57 57 61", "ButtonLight": "53 53 57",
-    "ButtonShadow": "25 25 28", "ButtonText": "255 255 255", "GradientActiveTitle": "46 46 50",
-    "GradientInactiveTitle": "40 40 44", "GrayText": "136 136 136", "Hilight": "98 160 234",
-    "HilightText": "255 255 255", "InactiveBorder": "40 40 44", "InactiveTitle": "40 40 44",
-    "InactiveTitleText": "211 211 211", "InfoText": "255 255 255", "InfoWindow": "54 54 58",
-    "Menu": "54 54 58", "MenuBar": "46 46 50", "MenuHilight": "98 160 234", "MenuText": "255 255 255",
-    "Scrollbar": "46 46 50", "TitleText": "255 255 255", "Window": "29 29 32",
-    "WindowFrame": "46 46 50", "WindowText": "255 255 255",
+    "ActiveBorder": "34 34 38",
+    "ActiveTitle": "46 46 50",
+    "AppWorkSpace": "45 45 49",
+    "Background": "29 29 32",
+    "ButtonAlternateFace": "98 160 234",
+    "ButtonDkShadow": "22 22 25",
+    "ButtonFace": "46 46 50",
+    "ButtonHilight": "57 57 61",
+    "ButtonLight": "53 53 57",
+    "ButtonShadow": "25 25 28",
+    "ButtonText": "255 255 255",
+    "GradientActiveTitle": "46 46 50",
+    "GradientInactiveTitle": "40 40 44",
+    "GrayText": "136 136 136",
+    "Hilight": "98 160 234",
+    "HilightText": "255 255 255",
+    "InactiveBorder": "40 40 44",
+    "InactiveTitle": "40 40 44",
+    "InactiveTitleText": "211 211 211",
+    "InfoText": "255 255 255",
+    "InfoWindow": "54 54 58",
+    "Menu": "54 54 58",
+    "MenuBar": "46 46 50",
+    "MenuHilight": "98 160 234",
+    "MenuText": "255 255 255",
+    "Scrollbar": "46 46 50",
+    "TitleText": "255 255 255",
+    "Window": "29 29 32",
+    "WindowFrame": "46 46 50",
+    "WindowText": "255 255 255",
 }
 LIGHT_COLORS = {
-    "ActiveBorder": "255 255 255", "ActiveTitle": "50 150 250", "AppWorkSpace": "128 128 128",
-    "Background": "37 111 149", "ButtonAlternateFace": "255 255 255", "ButtonDkShadow": "106 106 106",
-    "ButtonFace": "245 245 245", "ButtonHilight": "255 255 255", "ButtonLight": "227 227 227",
-    "ButtonShadow": "166 166 166", "ButtonText": "0 0 0", "GradientActiveTitle": "50 150 250",
-    "GradientInactiveTitle": "128 128 128", "GrayText": "106 106 106", "Hilight": "48 150 250",
-    "HilightText": "255 255 255", "HotTrackingColor": "48 150 250", "InactiveBorder": "255 255 255",
-    "InactiveTitle": "128 128 128", "InactiveTitleText": "200 200 200", "InfoText": "0 0 0",
-    "InfoWindow": "255 255 255", "Menu": "255 255 255", "MenuBar": "255 255 255",
-    "MenuHilight": "48 150 250", "MenuText": "0 0 0", "Scrollbar": "255 255 255",
-    "TitleText": "0 0 0", "Window": "255 255 255", "WindowFrame": "158 158 158", "WindowText": "0 0 0",
+    "ActiveBorder": "255 255 255",
+    "ActiveTitle": "50 150 250",
+    "AppWorkSpace": "128 128 128",
+    "Background": "37 111 149",
+    "ButtonAlternateFace": "255 255 255",
+    "ButtonDkShadow": "106 106 106",
+    "ButtonFace": "245 245 245",
+    "ButtonHilight": "255 255 255",
+    "ButtonLight": "227 227 227",
+    "ButtonShadow": "166 166 166",
+    "ButtonText": "0 0 0",
+    "GradientActiveTitle": "50 150 250",
+    "GradientInactiveTitle": "128 128 128",
+    "GrayText": "106 106 106",
+    "Hilight": "48 150 250",
+    "HilightText": "255 255 255",
+    "HotTrackingColor": "48 150 250",
+    "InactiveBorder": "255 255 255",
+    "InactiveTitle": "128 128 128",
+    "InactiveTitleText": "200 200 200",
+    "InfoText": "0 0 0",
+    "InfoWindow": "255 255 255",
+    "Menu": "255 255 255",
+    "MenuBar": "255 255 255",
+    "MenuHilight": "48 150 250",
+    "MenuText": "0 0 0",
+    "Scrollbar": "255 255 255",
+    "TitleText": "0 0 0",
+    "Window": "255 255 255",
+    "WindowFrame": "158 158 158",
+    "WindowText": "0 0 0",
 }
 
 
@@ -169,19 +213,35 @@ def theme_reg(dark):
     "Default" theme follows the system light/dark preference."""
     current = r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion"
     light = 0 if dark else 1
-    return reg_file({
-        rf"{current}\ThemeManager": {"ColorName": None, "DllName": None, "SizeName": None,
-                                     "LoadedBefore": "0", "ThemeActive": "0"},
-        rf"{current}\Themes\Personalize": {"AppsUseLightTheme": light, "SystemUsesLightTheme": light},
-        r"HKEY_CURRENT_USER\Control Panel\Colors": DARK_COLORS if dark else LIGHT_COLORS,
-    })
+    return reg_file(
+        {
+            rf"{current}\ThemeManager": {
+                "ColorName": None,
+                "DllName": None,
+                "SizeName": None,
+                "LoadedBefore": "0",
+                "ThemeActive": "0",
+            },
+            rf"{current}\Themes\Personalize": {
+                "AppsUseLightTheme": light,
+                "SystemUsesLightTheme": light,
+            },
+            r"HKEY_CURRENT_USER\Control Panel\Colors": DARK_COLORS
+            if dark
+            else LIGHT_COLORS,
+        }
+    )
 
 
 def folders_reg(local_appdata, documents, pictures):
     """Windows paths (Z:\\...) for the user's shell folders."""
     windows = lambda path: "Z:" + str(path).replace("/", "\\")
-    return reg_file({
-        r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders": {
-            "Local AppData": windows(local_appdata), "Documents": windows(documents),
-            "My Pictures": windows(pictures)},
-    })
+    return reg_file(
+        {
+            r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders": {
+                "Local AppData": windows(local_appdata),
+                "Documents": windows(documents),
+                "My Pictures": windows(pictures),
+            },
+        }
+    )

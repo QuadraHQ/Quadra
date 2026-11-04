@@ -6,11 +6,11 @@ from .. import __version__, core
 from ..i18n import _
 
 __all__ = [
-    "_toast",
-    "_error_dialog",
-    "_vr_warning_dialog",
-    "_choose_file",
     "CLOSED_WITHOUT_A_FILE",
+    "_choose_file",
+    "_error_dialog",
+    "_toast",
+    "_vr_warning_dialog",
 ]
 
 CLOSED_WITHOUT_A_FILE = (Gtk.DialogError.CANCELLED, Gtk.DialogError.DISMISSED)
@@ -24,7 +24,9 @@ def _toast(overlay, text):
     overlay.add_toast(toast)
 
 
-def _choose_file(window, title, accept_label, on_chosen, filter_name="", patterns=(), save_as=None):
+def _choose_file(
+    window, title, accept_label, on_chosen, filter_name="", patterns=(), save_as=None
+):
     dialog = Gtk.FileDialog(title=title, accept_label=accept_label, modal=True)
     if patterns:
         file_filter = Gtk.FileFilter(name=filter_name)
@@ -39,9 +41,16 @@ def _choose_file(window, title, accept_label, on_chosen, filter_name="", pattern
 
     def finished(dialog, result):
         try:
-            file = dialog.save_finish(result) if save_as is not None else dialog.open_finish(result)
+            file = (
+                dialog.save_finish(result)
+                if save_as is not None
+                else dialog.open_finish(result)
+            )
         except GLib.Error as error:
-            if not any(error.matches(Gtk.DialogError.quark(), code) for code in CLOSED_WITHOUT_A_FILE):
+            if not any(
+                error.matches(Gtk.DialogError.quark(), code)
+                for code in CLOSED_WITHOUT_A_FILE
+            ):
                 _error_dialog(window, title, error.message)
             return
         path = file.get_path() if file is not None else None

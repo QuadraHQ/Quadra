@@ -9,8 +9,8 @@ from pathlib import Path
 from ..i18n import _
 
 __all__ = [
-    "_is_x11_reachable",
     "_find_working_x11_display",
+    "_is_x11_reachable",
     "ensure_x11",
 ]
 

@@ -25,53 +25,74 @@ uses the ones above it):
 `core.NAME` reaches every name of these modules, and setting or patching it
 changes it in the module that owns it (see quadra/namespace.py).
 """
+
 from typing import TYPE_CHECKING
 
 from .. import namespace
 from . import (
-    locations,
-    files,
-    config,
-    state,
-    fast_flags,
-    logs,
-    roblox,
-    builds,
-    launcher_update,
-    desktop,
-    process_control,
-    darling_server,
     account,
-    x11,
-    prefix_files,
-    host,
     audio,
-    session,
+    builds,
+    config,
+    darling_server,
+    desktop,
+    fast_flags,
+    files,
+    host,
+    launcher_update,
+    locations,
+    logs,
+    prefix_files,
+    process_control,
+    roblox,
     server_location,
+    session,
+    state,
+    x11,
 )
 
-namespace.share_names(__name__, [
-    locations, files, config, state, fast_flags, logs, roblox, builds, launcher_update, desktop,
-    process_control, darling_server, account, x11, prefix_files, host, audio, session, server_location,
-])
+namespace.share_names(
+    __name__,
+    [
+        locations,
+        files,
+        config,
+        state,
+        fast_flags,
+        logs,
+        roblox,
+        builds,
+        launcher_update,
+        desktop,
+        process_control,
+        darling_server,
+        account,
+        x11,
+        prefix_files,
+        host,
+        audio,
+        session,
+        server_location,
+    ],
+)
 
 if TYPE_CHECKING:  # tells editors and type checkers what core.NAME is
-    from .locations import *  # noqa: F403
-    from .files import *  # noqa: F403
-    from .config import *  # noqa: F403
-    from .state import *  # noqa: F403
-    from .fast_flags import *  # noqa: F403
-    from .logs import *  # noqa: F403
-    from .roblox import *  # noqa: F403
-    from .builds import *  # noqa: F403
-    from .launcher_update import *  # noqa: F403
-    from .desktop import *  # noqa: F403
-    from .process_control import *  # noqa: F403
-    from .darling_server import *  # noqa: F403
-    from .account import *  # noqa: F403
-    from .x11 import *  # noqa: F403
-    from .prefix_files import *  # noqa: F403
-    from .host import *  # noqa: F403
-    from .audio import *  # noqa: F403
-    from .session import *  # noqa: F403
-    from .server_location import *  # noqa: F403
+    from .account import *
+    from .audio import *
+    from .builds import *
+    from .config import *
+    from .darling_server import *
+    from .desktop import *
+    from .fast_flags import *
+    from .files import *
+    from .host import *
+    from .launcher_update import *
+    from .locations import *
+    from .logs import *
+    from .prefix_files import *
+    from .process_control import *
+    from .roblox import *
+    from .server_location import *
+    from .session import *
+    from .state import *
+    from .x11 import *

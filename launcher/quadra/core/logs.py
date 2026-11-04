@@ -6,10 +6,10 @@ import re
 from . import locations
 
 __all__ = [
-    "_log_tail",
-    "exit_reason",
     "LOGS_MAX_BYTES",
+    "_log_tail",
     "cleanup_logs",
+    "exit_reason",
 ]
 
 

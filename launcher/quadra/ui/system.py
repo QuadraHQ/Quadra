@@ -10,10 +10,10 @@ from .. import author, core, terminal
 from ..i18n import _
 
 __all__ = [
-    "_restart_launcher",
     "_launch_runtime_terminal",
     "_links",
     "_open_uri",
+    "_restart_launcher",
 ]
 
 

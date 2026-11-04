@@ -1,21 +1,21 @@
 """Monitor an interactive runtime installer independently of its terminal client."""
+
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import tempfile
 import time
+from pathlib import Path
 
-from .runtime import VARIANTS
 from . import runtime_updates
-
+from .runtime import VARIANTS
 
 # All paths and the variant are positional arguments, never inserted into code.
 # Some terminal applications exit their launch client before the shell finishes;
 # the started/result files report the installer itself rather than that client.
 # The installer records its build log's path in build-log (see install-runtime.sh).
-TERMINAL_SCRIPT = r'''set -u
+TERMINAL_SCRIPT = r"""set -u
 [[ -d "$3" ]] || exit 125
 printf '%s\n' "$$" > "$3/started.tmp" && mv -- "$3/started.tmp" "$3/started" || exit 125
 if CIDER_RUNTIME_LOG_RECORD="$3/build-log" bash "$1" --darling "$2" "${@:4}"; then
@@ -28,7 +28,7 @@ printf '\nCider runtime installer exited with status %s.\n' "$cider_install_stat
 printf 'Press Enter to close this terminal. '
 IFS= read -r || true
 exit "$cider_install_status"
-'''
+"""
 
 
 class Installation:
@@ -36,9 +36,19 @@ class Installation:
         self.directory = Path(directory)
         self.created = time.monotonic()
         self.target_revision = None
-        runtime_only = [] if with_system_tools else ["--install-runtime", "--pinned-runtime"]
-        self.command = ["bash", "-c", TERMINAL_SCRIPT, "quadra-runtime-install",
-                        str(installer), variant, str(self.directory), *runtime_only]
+        runtime_only = (
+            [] if with_system_tools else ["--install-runtime", "--pinned-runtime"]
+        )
+        self.command = [
+            "bash",
+            "-c",
+            TERMINAL_SCRIPT,
+            "quadra-runtime-install",
+            str(installer),
+            variant,
+            str(self.directory),
+            *runtime_only,
+        ]
 
     @classmethod
     def create(cls, project, variant, cache, release=None, with_system_tools=False):
@@ -47,24 +57,26 @@ class Installation:
         if variant not in VARIANTS:
             raise ValueError("Unknown Darling runtime")
         if release is not None:
-            if variant != 'ciderdarling':
-                raise ValueError('Release metadata only applies to CiderDarling')
+            if variant != "ciderdarling":
+                raise ValueError("Release metadata only applies to CiderDarling")
             runtime_updates.validate(release)
             if not runtime_updates.supported(release):
-                raise ValueError('This runtime update requires a newer Quadra')
+                raise ValueError("This runtime update requires a newer Quadra")
         installer = Path(project).resolve() / "install-runtime.sh"
         if not installer.is_file():
-            raise FileNotFoundError("Quadra's installer is missing. Update or reinstall Quadra first.")
+            raise FileNotFoundError(
+                "Quadra's installer is missing. Update or reinstall Quadra first."
+            )
         folder = Path(cache) / "installer"
         folder.mkdir(parents=True, exist_ok=True)
         directory = tempfile.mkdtemp(prefix="runtime-", dir=folder)
         job = cls(installer, variant, directory, with_system_tools)
         if release is not None:
             try:
-                path = job.directory / 'release.json'
+                path = job.directory / "release.json"
                 path.write_text(json.dumps(release))
-                job.command.extend(['--runtime-release', str(path)])
-                job.target_revision = release['source_revision']
+                job.command.extend(["--runtime-release", str(path)])
+                job.target_revision = release["source_revision"]
             except OSError:
                 job.close()
                 raise
@@ -84,16 +96,22 @@ class Installation:
             value = (self.directory / "started").read_text().strip()
         except FileNotFoundError:
             if time.monotonic() - self.created > 30:
-                raise RuntimeError("The installation terminal did not start. Check that a terminal application is installed.")
+                raise RuntimeError(
+                    "The installation terminal did not start. Check that a terminal application is installed."
+                )
             return None
         if not value.isdigit() or not 0 < int(value) < 2**31:
-            raise RuntimeError("The installation terminal returned an invalid process ID.")
+            raise RuntimeError(
+                "The installation terminal returned an invalid process ID."
+            )
         try:
             arguments = Path(f"/proc/{int(value)}/cmdline").read_bytes().split(b"\0")
         except FileNotFoundError:
             arguments = []
         if os.fsencode(self.directory) not in arguments:
-            raise RuntimeError("The installation terminal closed before the installer finished.")
+            raise RuntimeError(
+                "The installation terminal closed before the installer finished."
+            )
         return None
 
     def log_tail(self, lines=40):
@@ -104,8 +122,12 @@ class Installation:
         """
         try:
             path = Path((self.directory / "build-log").read_text().strip())
-            if (not path.is_absolute() or path.is_symlink() or not path.is_file()
-                    or path.resolve().parent != self.directory.parent.resolve()):
+            if (
+                not path.is_absolute()
+                or path.is_symlink()
+                or not path.is_file()
+                or path.resolve().parent != self.directory.parent.resolve()
+            ):
                 return ""
             with path.open("rb") as log:
                 log.seek(0, os.SEEK_END)

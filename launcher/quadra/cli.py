@@ -1,4 +1,5 @@
 """Quadra launcher command line."""
+
 import sys
 
 
@@ -7,12 +8,14 @@ def main(argv=None):
         argv = sys.argv[1:]
 
     from quadra import paths
+
     paths.migrate_environment()
 
     # `quadrahq --studio [link or file]` opens Roblox Studio directly; the system
     # calls it for roblox-studio: and roblox-studio-auth: links (sign in).
     if argv[:1] == ["--studio"]:
         from quadra import studio
+
         if not studio.needs_install():
             # This process stays until Studio closes: it looks after GameMode, Discord
             # presence and the sign-in backup. The launcher window starts it with
@@ -32,6 +35,7 @@ def main(argv=None):
     # retain --uri as a compatibility spelling for older local entries.
     if len(argv) == 1 and not argv[0].startswith("-"):
         from quadra import uri
+
         uri.receive(argv[0])
 
     if argv[:1] == ["--uri"]:
@@ -39,6 +43,7 @@ def main(argv=None):
             print("quadrahq --uri requires one URI", file=sys.stderr)
             return 2
         from quadra import uri
+
         uri.receive(argv[1])
 
     # `quadrahq --collect-diagnostics [options]` writes a report archive without
@@ -47,7 +52,10 @@ def main(argv=None):
         try:
             from quadra import diagnostics
         except ImportError as error:
-            print(f"Diagnostics are unavailable in this Quadra build: {error}", file=sys.stderr)
+            print(
+                f"Diagnostics are unavailable in this Quadra build: {error}",
+                file=sys.stderr,
+            )
             return 1
         return diagnostics.collect_cli(argv[1:])
 
@@ -55,10 +63,12 @@ def main(argv=None):
     # (see `quadrahq --watch-stalls --help`); start it before or during the game.
     if argv[:1] == ["--watch-stalls"]:
         from quadra.darling import stallwatch
+
         return stallwatch.cli(argv[1:])
 
     if argv[:1] == ["--hardware-report"]:
         from quadra import hardware_report
+
         return hardware_report.cli(argv[1:])
 
     # `quadrahq --ciderdarling-settings` opens Settings -> CiderDarling, also in an

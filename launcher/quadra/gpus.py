@@ -1,25 +1,34 @@
 """Host GPU inventory and per-game PRIME selection (no GTK dependency)."""
+
 import json
 import os
-from pathlib import Path
 import re
 import shlex
 import shutil
 import subprocess
+from pathlib import Path
 
 GPU_ENVIRONMENT = (
-    "DRI_PRIME", "__NV_PRIME_RENDER_OFFLOAD", "__NV_PRIME_RENDER_OFFLOAD_PROVIDER",
-    "__GLX_VENDOR_LIBRARY_NAME", "__VK_LAYER_NV_optimus", "MESA_VK_DEVICE_SELECT",
-    "MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE", "__EGL_VENDOR_LIBRARY_FILENAMES",
-    "VK_DRIVER_FILES", "VK_ICD_FILENAMES", "VK_ADD_DRIVER_FILES",
-    "VK_LOADER_DRIVERS_SELECT", "VK_LOADER_DRIVERS_DISABLE",
+    "DRI_PRIME",
+    "__NV_PRIME_RENDER_OFFLOAD",
+    "__NV_PRIME_RENDER_OFFLOAD_PROVIDER",
+    "__GLX_VENDOR_LIBRARY_NAME",
+    "__VK_LAYER_NV_optimus",
+    "MESA_VK_DEVICE_SELECT",
+    "MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE",
+    "__EGL_VENDOR_LIBRARY_FILENAMES",
+    "VK_DRIVER_FILES",
+    "VK_ICD_FILENAMES",
+    "VK_ADD_DRIVER_FILES",
+    "VK_LOADER_DRIVERS_SELECT",
+    "VK_LOADER_DRIVERS_DISABLE",
 )
 _PCI = re.compile(r"([0-9a-fA-F]{4,8}):([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])")
 
 
 def pci_address(value):
     match = _PCI.fullmatch(value.strip()) if isinstance(value, str) else None
-    if not match or int(match[1], 16) > 0xffff:
+    if not match or int(match[1], 16) > 0xFFFF:
         return None
     return f"{int(match[1], 16):04x}:{match[2].lower()}:{match[3].lower()}.{match[4]}"
 
@@ -38,12 +47,13 @@ def _names():
     if not program:
         return {}
     try:
-        result = subprocess.run([program, "-D", "-mm"], capture_output=True,
-                                text=True, timeout=1)
+        result = subprocess.run(
+            [program, "-D", "-mm"], capture_output=True, text=True, timeout=1
+        )
         if result.returncode:
             return {}
         names = {}
-        for line in result.stdout[:256 * 1024].splitlines():
+        for line in result.stdout[: 256 * 1024].splitlines():
             fields = shlex.split(line)
             address = pci_address(fields[0]) if len(fields) >= 4 else None
             if address:
@@ -64,8 +74,11 @@ def enumerate_gpus():
         if not re.fullmatch(r"card\d+|renderD\d+", node.name):
             continue
         device = node / "device"
-        properties = dict(line.split("=", 1) for line in _read(device / "uevent").splitlines()
-                          if "=" in line)
+        properties = dict(
+            line.split("=", 1)
+            for line in _read(device / "uevent").splitlines()
+            if "=" in line
+        )
         address = pci_address(properties.get("PCI_SLOT_NAME", ""))
         if not address:
             continue
@@ -77,22 +90,38 @@ def enumerate_gpus():
             driver = (device / "driver").resolve(strict=True).name
         except (OSError, ValueError):
             continue
-        adapter = adapters.setdefault(address, {
-            "id": "pci:" + address, "pci": address, "vendor": vendor,
-            "product": product, "driver": driver, "device": str(device.resolve()),
-            "render_node": None,
-        })
+        adapter = adapters.setdefault(
+            address,
+            {
+                "id": "pci:" + address,
+                "pci": address,
+                "vendor": vendor,
+                "product": product,
+                "driver": driver,
+                "device": str(device.resolve()),
+                "render_node": None,
+            },
+        )
         if node.name.startswith("renderD"):
             adapter["render_node"] = "/dev/dri/" + node.name
     names = _names() if adapters else {}
-    nvidia_count = sum(adapter["vendor"] == 0x10de and adapter["driver"] == "nvidia"
-                       for adapter in adapters.values())
+    nvidia_count = sum(
+        adapter["vendor"] == 0x10DE and adapter["driver"] == "nvidia"
+        for adapter in adapters.values()
+    )
     for address, adapter in adapters.items():
         model = _read(Path("/proc/driver/nvidia/gpus") / address / "information")
-        nvidia_name = next((line.partition(":")[2].strip() for line in model.splitlines()
-                            if line.startswith("Model:")), "")
-        vendor = {0x10de: "NVIDIA", 0x1002: "AMD", 0x8086: "Intel"}.get(
-            adapter["vendor"], "GPU")
+        nvidia_name = next(
+            (
+                line.partition(":")[2].strip()
+                for line in model.splitlines()
+                if line.startswith("Model:")
+            ),
+            "",
+        )
+        vendor = {0x10DE: "NVIDIA", 0x1002: "AMD", 0x8086: "Intel"}.get(
+            adapter["vendor"], "GPU"
+        )
         name = nvidia_name or names.get(address) or f"{vendor} {adapter['product']:04x}"
         adapter["name"] = name
         adapter["label"] = f"{name} ({address})"
@@ -101,10 +130,12 @@ def enumerate_gpus():
 
 
 _AMDGPU_MEMORY = (
-    ("vram_total_bytes", "mem_info_vram_total"), ("vram_used_bytes", "mem_info_vram_used"),
+    ("vram_total_bytes", "mem_info_vram_total"),
+    ("vram_used_bytes", "mem_info_vram_used"),
     ("visible_vram_total_bytes", "mem_info_vis_vram_total"),
     ("visible_vram_used_bytes", "mem_info_vis_vram_used"),
-    ("gtt_total_bytes", "mem_info_gtt_total"), ("gtt_used_bytes", "mem_info_gtt_used"),
+    ("gtt_total_bytes", "mem_info_gtt_total"),
+    ("gtt_used_bytes", "mem_info_gtt_used"),
 )
 _AMDGPU_PARAMETERS = (
     ("amdgpu_gttsize_mib", "amdgpu/parameters/gttsize"),
@@ -128,41 +159,72 @@ def memory_info(device, module_root="/sys/module"):
     if not device:
         return {}
     device = Path(device)
-    info = {key: value for key, name in _AMDGPU_MEMORY
-            if (value := _integer(device / name)) is not None}
+    info = {
+        key: value
+        for key, name in _AMDGPU_MEMORY
+        if (value := _integer(device / name)) is not None
+    }
     if not info:
         return {}
-    info.update({key: value for key, name in _AMDGPU_PARAMETERS
-                 if (value := _integer(Path(module_root) / name)) is not None})
+    info.update(
+        {
+            key: value
+            for key, name in _AMDGPU_PARAMETERS
+            if (value := _integer(Path(module_root) / name)) is not None
+        }
+    )
     return info
 
 
 def with_memory(adapters):
     """The adapters, each with its `memory` counters where the driver exposes them."""
-    return [dict(adapter, memory=memory) if (memory := memory_info(adapter.get("device"))) else adapter
-            for adapter in adapters]
+    return [
+        dict(adapter, memory=memory)
+        if (memory := memory_info(adapter.get("device")))
+        else adapter
+        for adapter in adapters
+    ]
 
 
 def selected_gpu(selection, adapters=None):
     if selection == "auto":
         return None
     if not isinstance(selection, str) or not selection.startswith("pci:"):
-        raise RuntimeError("The saved graphics-card choice is invalid. Select Automatic in Settings.")
+        raise RuntimeError(
+            "The saved graphics-card choice is invalid. Select Automatic in Settings."
+        )
     address = pci_address(selection[4:])
     if address is None:
-        raise RuntimeError("The saved graphics-card choice is invalid. Select Automatic in Settings.")
+        raise RuntimeError(
+            "The saved graphics-card choice is invalid. Select Automatic in Settings."
+        )
     adapters = enumerate_gpus() if adapters is None else adapters
     for adapter in adapters:
         if adapter["pci"] == address:
             return adapter
-    raise RuntimeError("The selected graphics card is unavailable. Reconnect it or select Automatic in Settings.")
+    raise RuntimeError(
+        "The selected graphics card is unavailable. Reconnect it or select Automatic in Settings."
+    )
 
 
 def _nvidia_egl_manifest():
-    roots = [Path(root) for root in ("/usr/share", "/usr/local/share", "/etc", "/app/share",
-                                   "/run/opengl-driver/share")]
-    roots.extend(Path(root) for root in os.environ.get("XDG_DATA_DIRS", "").split(":") if root)
-    roots.extend(path / "share" for path in sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*")))
+    roots = [
+        Path(root)
+        for root in (
+            "/usr/share",
+            "/usr/local/share",
+            "/etc",
+            "/app/share",
+            "/run/opengl-driver/share",
+        )
+    ]
+    roots.extend(
+        Path(root) for root in os.environ.get("XDG_DATA_DIRS", "").split(":") if root
+    )
+    roots.extend(
+        path / "share"
+        for path in sorted(Path("/usr/lib/x86_64-linux-gnu/GL").glob("*"))
+    )
     for root in roots:
         for manifest in sorted((root / "glvnd/egl_vendor.d").glob("*.json")):
             try:
@@ -182,7 +244,9 @@ def gpu_environment(adapter, renderer):
     Mesa's PCI selector applies to OpenGL and Vulkan; ! restricts Vulkan's
     physical-device list. NVIDIA EGL uses PRIME rather than Mesa's selector.
     """
-    inherited = {name: os.environ[name] for name in GPU_ENVIRONMENT if name in os.environ}
+    inherited = {
+        name: os.environ[name] for name in GPU_ENVIRONMENT if name in os.environ
+    }
     # Metal on Vulkan draws through the Vulkan device; Darling's own
     # compositor still uses EGL, as with OpenGL.
     vulkan_device = renderer in ("vulkan", "metal")
@@ -193,34 +257,43 @@ def gpu_environment(adapter, renderer):
         return inherited
     address = adapter["pci"]
     prime = "pci-" + address.replace(":", "_").replace(".", "_")
-    nvidia = adapter["vendor"] == 0x10de and adapter["driver"] == "nvidia"
+    nvidia = adapter["vendor"] == 0x10DE and adapter["driver"] == "nvidia"
     # Vendor/product IDs are shared by identical cards. Use the PCI selector
     # alone, without a competing Mesa selector or inherited NVIDIA provider.
     inherited.pop("MESA_VK_DEVICE_SELECT", None)
     inherited.pop("__NV_PRIME_RENDER_OFFLOAD_PROVIDER", None)
-    inherited.update({
-        "DRI_PRIME": prime + ("!" if vulkan_device else ""),
-        "__NV_PRIME_RENDER_OFFLOAD": "1" if nvidia else "0",
-        "__GLX_VENDOR_LIBRARY_NAME": "nvidia" if nvidia else "mesa",
-        "__VK_LAYER_NV_optimus": "NVIDIA_only" if nvidia else "non_NVIDIA_only",
-        "MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE": "1",
-    })
+    inherited.update(
+        {
+            "DRI_PRIME": prime + ("!" if vulkan_device else ""),
+            "__NV_PRIME_RENDER_OFFLOAD": "1" if nvidia else "0",
+            "__GLX_VENDOR_LIBRARY_NAME": "nvidia" if nvidia else "mesa",
+            "__VK_LAYER_NV_optimus": "NVIDIA_only" if nvidia else "non_NVIDIA_only",
+            "MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE": "1",
+        }
+    )
     if nvidia:
         # NVIDIA EGL selects RandR providers, not PCI IDs. Never claim a PCI
         # choice selected one particular GPU when several NVIDIA screens exist.
         # Automatic remains available for an explicit desktop/terminal provider.
         if egl_driver and adapter.get("nvidia_count", 1) > 1:
-            raise RuntimeError("Selecting between multiple NVIDIA GPUs with OpenGL needs an X11 provider. Select Automatic and use __NV_PRIME_RENDER_OFFLOAD_PROVIDER for that driver setup, or select Vulkan.")
+            raise RuntimeError(
+                "Selecting between multiple NVIDIA GPUs with OpenGL needs an X11 provider. Select Automatic and use __NV_PRIME_RENDER_OFFLOAD_PROVIDER for that driver setup, or select Vulkan."
+            )
     if egl_driver:
         if nvidia:
             manifest = _nvidia_egl_manifest()
             if not manifest:
-                raise RuntimeError("The selected NVIDIA card needs its EGL driver. Install the NVIDIA graphics driver or select Automatic.")
+                raise RuntimeError(
+                    "The selected NVIDIA card needs its EGL driver. Install the NVIDIA graphics driver or select Automatic."
+                )
         else:
             from .graphics import mesa_egl_manifest
+
             manifest = mesa_egl_manifest()
             if not manifest:
-                raise RuntimeError("The selected graphics card needs Mesa EGL. Install Mesa or select Automatic.")
+                raise RuntimeError(
+                    "The selected graphics card needs Mesa EGL. Install Mesa or select Automatic."
+                )
         inherited["__EGL_VENDOR_LIBRARY_FILENAMES"] = str(manifest)
     else:
         # Zink must keep the Mesa EGL vendor set by renderer_environment.

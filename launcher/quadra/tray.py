@@ -14,7 +14,7 @@ import os
 import gi
 
 gi.require_version("Gio", "2.0")
-from gi.repository import Gio, GLib  # noqa: E402
+from gi.repository import Gio, GLib
 
 log = logging.getLogger("quadra.tray")
 
@@ -76,16 +76,23 @@ def icon_pixmap(png_path):
     try:
         gi.require_version("GdkPixbuf", "2.0")
         from gi.repository import GdkPixbuf
+
         pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(png_path))
         if not pixbuf.get_has_alpha():
             pixbuf = pixbuf.add_alpha(False, 0, 0, 0)
         data = bytearray(pixbuf.get_pixels())
-        width, height, stride = pixbuf.get_width(), pixbuf.get_height(), pixbuf.get_rowstride()
+        width, height, stride = (
+            pixbuf.get_width(),
+            pixbuf.get_height(),
+            pixbuf.get_rowstride(),
+        )
         out = bytearray()
         for row in range(height):
-            line = data[row * stride:row * stride + width * 4]
+            line = data[row * stride : row * stride + width * 4]
             for i in range(0, len(line), 4):
-                out += bytes((line[i + 3], line[i], line[i + 1], line[i + 2]))  # RGBA -> ARGB
+                out += bytes(
+                    (line[i + 3], line[i], line[i + 1], line[i + 2])
+                )  # RGBA -> ARGB
         return [(width, height, bytes(out))]
     except Exception as error:
         log.debug("Tray icon pixmap unavailable: %s", error)
@@ -112,18 +119,27 @@ class Tray:
         try:
             self.connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
             self.bus_name = f"org.kde.StatusNotifierItem-{os.getpid()}-1"
-            Gio.bus_own_name_on_connection(self.connection, self.bus_name, Gio.BusNameOwnerFlags.NONE, None, None)
+            Gio.bus_own_name_on_connection(
+                self.connection, self.bus_name, Gio.BusNameOwnerFlags.NONE, None, None
+            )
             item = Gio.DBusNodeInfo.new_for_xml(ITEM_XML).interfaces[0]
             menu = Gio.DBusNodeInfo.new_for_xml(MENU_XML).interfaces[0]
             self._item_reg = self.connection.register_object(
-                ITEM_PATH, item, self._item_call, self._item_property, None)
+                ITEM_PATH, item, self._item_call, self._item_property, None
+            )
             self._menu_reg = self.connection.register_object(
-                MENU_PATH, menu, self._menu_call, self._menu_property, None)
+                MENU_PATH, menu, self._menu_call, self._menu_property, None
+            )
         except GLib.Error as error:
             log.info("No tray icon: %s", error)
             return False
         self.watch_id = Gio.bus_watch_name_on_connection(
-            self.connection, WATCHER, Gio.BusNameWatcherFlags.NONE, self._watcher_appeared, self._watcher_vanished)
+            self.connection,
+            WATCHER,
+            Gio.BusNameWatcherFlags.NONE,
+            self._watcher_appeared,
+            self._watcher_vanished,
+        )
         return True
 
     def stop(self):
@@ -132,7 +148,10 @@ class Tray:
         if self.watch_id:
             Gio.bus_unwatch_name(self.watch_id)
             self.watch_id = 0
-        for registration in (getattr(self, "_item_reg", 0), getattr(self, "_menu_reg", 0)):
+        for registration in (
+            getattr(self, "_item_reg", 0),
+            getattr(self, "_menu_reg", 0),
+        ):
             if registration:
                 self.connection.unregister_object(registration)
         self._item_reg = self._menu_reg = 0
@@ -156,9 +175,18 @@ class Tray:
 
     def _watcher_appeared(self, connection, name, owner):
         try:
-            connection.call(WATCHER, "/StatusNotifierWatcher", WATCHER, "RegisterStatusNotifierItem",
-                            GLib.Variant("(s)", (self.bus_name,)), None, Gio.DBusCallFlags.NONE, 3000, None,
-                            self._registered)
+            connection.call(
+                WATCHER,
+                "/StatusNotifierWatcher",
+                WATCHER,
+                "RegisterStatusNotifierItem",
+                GLib.Variant("(s)", (self.bus_name,)),
+                None,
+                Gio.DBusCallFlags.NONE,
+                3000,
+                None,
+                self._registered,
+            )
         except GLib.Error as error:
             log.info("Could not register the tray icon: %s", error)
 
@@ -182,13 +210,17 @@ class Tray:
             "WindowId": GLib.Variant("u", 0),
             "IconName": GLib.Variant("s", self.icon_name),
             "IconThemePath": GLib.Variant("s", ""),
-            "IconPixmap": GLib.Variant("a(iiay)", [(w, h, d) for w, h, d in self.pixmap]),
+            "IconPixmap": GLib.Variant(
+                "a(iiay)", [(w, h, d) for w, h, d in self.pixmap]
+            ),
             "ItemIsMenu": GLib.Variant("b", False),
             "Menu": GLib.Variant("o", MENU_PATH),
         }
         return values.get(name)
 
-    def _item_call(self, connection, sender, path, interface, method, params, invocation):
+    def _item_call(
+        self, connection, sender, path, interface, method, params, invocation
+    ):
         if method in ("Activate", "SecondaryActivate"):
             GLib.idle_add(self._run, self.activate)
         invocation.return_value(None)
@@ -210,22 +242,40 @@ class Tray:
         if entry is None:
             return {"type": GLib.Variant("s", "separator")}
         label, _callback, enabled = entry
-        return {"label": GLib.Variant("s", label), "enabled": GLib.Variant("b", bool(enabled)),
-                "visible": GLib.Variant("b", True)}
+        return {
+            "label": GLib.Variant("s", label),
+            "enabled": GLib.Variant("b", bool(enabled)),
+            "visible": GLib.Variant("b", True),
+        }
 
     def _menu_property(self, connection, sender, path, interface, name):
-        return {"Version": GLib.Variant("u", 3), "TextDirection": GLib.Variant("s", "ltr"),
-                "Status": GLib.Variant("s", "normal"), "IconThemePath": GLib.Variant("as", [])}.get(name)
+        return {
+            "Version": GLib.Variant("u", 3),
+            "TextDirection": GLib.Variant("s", "ltr"),
+            "Status": GLib.Variant("s", "normal"),
+            "IconThemePath": GLib.Variant("as", []),
+        }.get(name)
 
-    def _menu_call(self, connection, sender, path, interface, method, params, invocation):
+    def _menu_call(
+        self, connection, sender, path, interface, method, params, invocation
+    ):
         if method == "GetLayout":
             self._rebuild()
-            children = [GLib.Variant("(ia{sv}av)", (i, self._props(e), [])) for i, e in zip(self._ids, self._items)]
+            children = [
+                GLib.Variant("(ia{sv}av)", (i, self._props(e), []))
+                for i, e in zip(self._ids, self._items)
+            ]
             root = (0, {"children-display": GLib.Variant("s", "submenu")}, children)
-            invocation.return_value(GLib.Variant("(u(ia{sv}av))", (self._revision, root)))
+            invocation.return_value(
+                GLib.Variant("(u(ia{sv}av))", (self._revision, root))
+            )
         elif method == "GetGroupProperties":
             wanted = params.unpack()[0]
-            rows = [(i, self._props(e)) for i, e in zip(self._ids, self._items) if not wanted or i in wanted]
+            rows = [
+                (i, self._props(e))
+                for i, e in zip(self._ids, self._items)
+                if not wanted or i in wanted
+            ]
             invocation.return_value(GLib.Variant("(a(ia{sv}))", (rows,)))
         elif method == "GetProperty":
             item_id, name = params.unpack()

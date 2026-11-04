@@ -5,7 +5,7 @@ import logging
 import os
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 log = logging.getLogger("quadra.gamemeta")
@@ -16,7 +16,11 @@ RECENT_UPDATE_HOURS = 24
 
 def _safe_icon_url(url):
     parts = urllib.parse.urlsplit(url or "")
-    return parts.scheme == "https" and bool(parts.hostname) and parts.hostname.endswith(".rbxcdn.com")
+    return (
+        parts.scheme == "https"
+        and bool(parts.hostname)
+        and parts.hostname.endswith(".rbxcdn.com")
+    )
 
 
 def icon_path(cache_dir, place_id):
@@ -31,7 +35,10 @@ def fetch_icon(cache_dir, place_id, url, *, opener=urllib.request.urlopen):
     if not _safe_icon_url(url):
         return None
     try:
-        with opener(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=8) as response:
+        with opener(
+            urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}),
+            timeout=8,
+        ) as response:
             body = response.read(ICON_LIMIT + 1)
         if not body or len(body) > ICON_LIMIT:
             return None
@@ -54,7 +61,7 @@ def parse_time(text):
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed.timestamp()
 
 
@@ -62,7 +69,10 @@ def last_updated(universe_id, *, opener=urllib.request.urlopen):
     """When the game was last updated (epoch seconds), or None."""
     url = f"https://games.roblox.com/v1/games?universeIds={int(universe_id)}"
     try:
-        with opener(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=6) as response:
+        with opener(
+            urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}),
+            timeout=6,
+        ) as response:
             data = json.loads(response.read(1024 * 1024))
         return parse_time(data["data"][0]["updated"])
     except Exception as error:

@@ -79,7 +79,8 @@ class InfoPage(Adw.PreferencesPage):
         ui_contributor.add_prefix(self.ui_contributor_avatar)
         ui_contributor.add_suffix(Gtk.Image(icon_name="adw-external-link-symbolic"))
         ui_contributor.connect(
-            "activated", lambda *_args: system._open_uri(window, author.UI_CONTRIBUTOR_URL)
+            "activated",
+            lambda *_args: system._open_uri(window, author.UI_CONTRIBUTOR_URL),
         )
         made_by.add(ui_contributor)
 

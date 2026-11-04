@@ -368,7 +368,9 @@ class FlagsPage(Adw.PreferencesPage):
                 if not isinstance(data, dict):
                     raise ValueError
             except ValueError:
-                dialogs._toast(self.window.toasts, _("This is not a JSON object with flags"))
+                dialogs._toast(
+                    self.window.toasts, _("This is not a JSON object with flags")
+                )
                 return
             existing = {entry["name"].get_text(): entry for entry in self.custom_rows}
             imported = 0
@@ -383,7 +385,9 @@ class FlagsPage(Adw.PreferencesPage):
                     self._add_custom_row(name, core.format_flag_value(value))
                 imported += 1
             self._sync_custom()
-            dialogs._toast(self.window.toasts, _("Imported flags: {count}", count=imported))
+            dialogs._toast(
+                self.window.toasts, _("Imported flags: {count}", count=imported)
+            )
 
         dialog.connect("response", response)
         dialog.present(self.window)
@@ -424,12 +428,23 @@ class FlagsPage(Adw.PreferencesPage):
             try:
                 Path(path).write_text(text, encoding="utf-8")
             except OSError as error:
-                dialogs._error_dialog(self.window, _("Could not save flags"), str(error))
+                dialogs._error_dialog(
+                    self.window, _("Could not save flags"), str(error)
+                )
                 return
-            dialogs._toast(self.window.toasts, _("Flags saved to {path}", path=Path(path).name))
+            dialogs._toast(
+                self.window.toasts, _("Flags saved to {path}", path=Path(path).name)
+            )
 
-        dialogs._choose_file(self.window, _("Save fast flags"), _("Save"), chosen,
-                             "JSON files (*.json)", ("*.json",), save_as="ClientAppSettings.json")
+        dialogs._choose_file(
+            self.window,
+            _("Save fast flags"),
+            _("Save"),
+            chosen,
+            "JSON files (*.json)",
+            ("*.json",),
+            save_as="ClientAppSettings.json",
+        )
 
     def _reset_dialog(self):
         dialog = Adw.AlertDialog(
@@ -475,7 +490,9 @@ class FlagsPage(Adw.PreferencesPage):
         try:
             core.save_fast_flags(self.flags)
         except OSError as error:
-            dialogs._toast(self.window.toasts, _("Could not save flags: {error}", error=error))
+            dialogs._toast(
+                self.window.toasts, _("Could not save flags: {error}", error=error)
+            )
         return False
 
     def flush(self):
@@ -627,7 +644,9 @@ class StudioFlagsPage(Adw.PreferencesPage):
                 if not isinstance(data, dict):
                     raise ValueError
             except ValueError:
-                dialogs._toast(self.window.toasts, _("This is not a JSON object with flags"))
+                dialogs._toast(
+                    self.window.toasts, _("This is not a JSON object with flags")
+                )
                 return
             existing = {entry["name"].get_text(): entry for entry in self.rows}
             for name, value in data.items():
@@ -636,7 +655,9 @@ class StudioFlagsPage(Adw.PreferencesPage):
                 else:
                     self._add_row(name, core.format_flag_value(value))
             self._sync()
-            dialogs._toast(self.window.toasts, _("Imported flags: {count}", count=len(data)))
+            dialogs._toast(
+                self.window.toasts, _("Imported flags: {count}", count=len(data))
+            )
 
         dialog.connect("response", response)
         dialog.present(self.window)

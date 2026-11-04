@@ -6,15 +6,13 @@ encoded values, but that format belongs to the macOS client; the Linux
 launcher must not inspect or rebuild it.
 """
 
+import fcntl
 import os
 import tempfile
 import time
 from contextlib import contextmanager
-from pathlib import Path
 
-import fcntl
 from .paths import user_directory
-
 
 CACHE_DIR = user_directory("CACHE")
 PENDING_URI = CACHE_DIR / "pending-uri"

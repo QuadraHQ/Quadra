@@ -7,157 +7,88 @@ _language = "en"
 
 RU = {
     # Roblox Studio section
-    "The Studio channel {channel} does not exist or is not open to this account":
-        "Канала Studio {channel} не существует, или он недоступен этой учётной записи",
-    "Idling":
-        "Бездействует",
-    "Developing {name}":
-        "Разрабатывает {name}",
-    "Developing a place":
-        "Разрабатывает плейс",
-    "Editing a script":
-        "Редактирует скрипт",
-    "Microsoft has no WebView2 runtime {version}":
-        "У Microsoft нет среды WebView2 версии {version}",
-    "Installing WebView2 {version}":
-        "Установка WebView2 {version}",
-    "Removing WebView2 {version}":
-        "Удаление WebView2 {version}",
-    "WebView2 {version} did not install":
-        "WebView2 {version} не удалось установить",
-    "The WebView2 download failed its checksum":
-        "Загрузка WebView2 не прошла проверку контрольной суммы",
-    "Remove all Studio flags":
-        "Удалить все флаги Studio",
-    "All Studio flags have been removed":
-        "Все флаги Studio удалены",
-    "Wine and updates":
-        "Wine и обновления",
-    "Launch Roblox Studio":
-        "Запустить Roblox Studio",
-    "Studio's sign-in, Toolbox and Creator Hub pages need it. Installed on the next start.":
-        "Нужен для входа в Studio, Toolbox и страниц Creator Hub. Устанавливается при следующем запуске.",
-    "Discord presence":
-        "Статус в Discord",
-    "Shows the place you are building and whether you are editing a script.":
-        "Показывает, над каким плейсом вы работаете и редактируете ли вы скрипт.",
-    "Follow the system theme":
-        "Следовать системной теме",
-    "Light or dark, like the rest of your desktop. Applies on the next start.":
-        "Светлая или тёмная, как и остальной рабочий стол. Применяется при следующем запуске.",
-    "Back up sign-in and settings":
-        "Сохранять вход и настройки",
-    "Keeps them outside Wine's prefix, so recreating the prefix does not sign you out.":
-        "Хранит их вне префикса Wine: пересоздание префикса не выйдет из вашей учётной записи.",
-    "DXVK (recommended)":
-        "DXVK (рекомендуется)",
-    "DXVK-Sarek (older graphics cards)":
-        "DXVK-Sarek (для старых видеокарт)",
-    "Wine's Direct3D (OpenGL)":
-        "Direct3D из Wine (OpenGL)",
-    "Wine's Direct3D, feature level 10 (OpenGL)":
-        "Direct3D из Wine, уровень функций 10 (OpenGL)",
-    "Asks Feral GameMode to tune your system while Studio runs, if it is installed.":
-        "Просит Feral GameMode оптимизировать систему, пока работает Studio, если он установлен.",
-    "Wine folder of your own":
-        "Собственная папка Wine",
-    "That folder has no bin/wine":
-        "В этой папке нет bin/wine",
-    "Stay on version":
-        "Оставаться на версии",
-    "A Studio version looks like version-0123456789abcdef":
-        "Версия Studio выглядит так: version-0123456789abcdef",
-    "Channel":
-        "Канал",
-    "A channel name has letters, digits, . _ - only":
-        "Имя канала может содержать только буквы, цифры и символы . _ -",
-    "Newest stable":
-        "Новейшая стабильная",
-    "Studio flags":
-        "Флаги Studio",
-    "Studio only applies flags from Roblox's allowlist. The renderer chosen under Graphics sets the graphics flags and wins over these.":
-        "Studio применяет только флаги из списка разрешённых Roblox. Графические флаги задаёт режим отрисовки с вкладки «Графика»; он главнее этих.",
-    "Import Studio flags":
-        "Импорт флагов Studio",
-    "Export Studio flags":
-        "Экспорт флагов Studio",
-    "Copy the flags to the clipboard.":
-        "Скопировать флаги в буфер обмена.",
-    "The Windows version of Studio, run through Wine. Quadra keeps Wine and Studio up to date when you start it.":
-        "Windows-версия Studio, запущенная через Wine. Quadra обновляет Wine и Studio при запуске.",
-    "Behavior":
-        "Поведение",
-    "Files":
-        "Файлы",
-    "Overlay folder":
-        "Папка наложения",
-    "Files here are copied over Studio's own at every start, such as cursors or sounds.":
-        "Файлы отсюда копируются поверх файлов Studio при каждом запуске, например курсоры или звуки.",
-    "Studio's output, newest ten starts.":
-        "Вывод Studio, последние десять запусков.",
-    "Studio folder":
-        "Папка Studio",
-    "Wine, its prefix and Studio itself.":
-        "Wine, его префикс и сама Studio.",
-    "Rendering":
-        "Отрисовка",
-    "Applies the next time Studio starts. DXVK draws Direct3D 11 through Vulkan.":
-        "Применяется при следующем запуске Studio. DXVK рисует Direct3D 11 через Vulkan.",
-    "The Vulkan fix is not built":
-        "Исправление для Vulkan не собрано",
-    "Studio's Vulkan renderer needs a small Vulkan layer that is built with the shim, which needs the Vulkan development headers. Rebuild the shim after installing them.":
-        "Для режима Vulkan в Studio нужен небольшой слой Vulkan, который собирается вместе с шимом и требует заголовков разработки Vulkan. Пересоберите шим после их установки.",
-    "Performance":
-        "Производительность",
-    "Studio runs on Kombucha, the Wine build Vinegar patches for Studio. It is updated when you start Studio, unless you choose a release.":
-        "Studio работает на Kombucha, сборке Wine, которую Vinegar дорабатывает для Studio. Она обновляется при запуске Studio, если вы не выбрали конкретный выпуск.",
-    "Kombucha release":
-        "Выпуск Kombucha",
-    "Recommended: the newest stable one, as Vinegar publishes it.":
-        "Рекомендуется: новейший стабильный выпуск от Vinegar.",
-    "Studio version":
-        "Версия Studio",
-    "Leave both empty to follow the newest Studio on your account's channel. A version looks like version-0123456789abcdef; channels are Roblox's, such as zintegration.":
-        "Оставьте оба поля пустыми, чтобы следовать новейшей Studio на канале вашей учётной записи. Версия выглядит как version-0123456789abcdef; каналы задаёт Roblox, например zintegration.",
-    "Applies on next launch. Automatic keeps your desktop's GPU selection.":
-        "Применяется при следующем запуске. «Автоматически» сохраняет выбор GPU вашего рабочего стола.",
-    "Could not list the releases: {error}":
-        "Не удалось получить список выпусков: {error}",
-    "Not installed yet":
-        "Ещё не установлено",
-    "Your own: {path}":
-        "Своя: {path}",
-    "Could not open the folder":
-        "Не удалось открыть папку",
-    "may break Studio":
-        "может сломать Studio",
+    "The Studio channel {channel} does not exist or is not open to this account": "Канала Studio {channel} не существует, или он недоступен этой учётной записи",
+    "Idling": "Бездействует",
+    "Developing {name}": "Разрабатывает {name}",
+    "Developing a place": "Разрабатывает плейс",
+    "Editing a script": "Редактирует скрипт",
+    "Microsoft has no WebView2 runtime {version}": "У Microsoft нет среды WebView2 версии {version}",
+    "Installing WebView2 {version}": "Установка WebView2 {version}",
+    "Removing WebView2 {version}": "Удаление WebView2 {version}",
+    "WebView2 {version} did not install": "WebView2 {version} не удалось установить",
+    "The WebView2 download failed its checksum": "Загрузка WebView2 не прошла проверку контрольной суммы",
+    "Remove all Studio flags": "Удалить все флаги Studio",
+    "All Studio flags have been removed": "Все флаги Studio удалены",
+    "Wine and updates": "Wine и обновления",
+    "Launch Roblox Studio": "Запустить Roblox Studio",
+    "Studio's sign-in, Toolbox and Creator Hub pages need it. Installed on the next start.": "Нужен для входа в Studio, Toolbox и страниц Creator Hub. Устанавливается при следующем запуске.",
+    "Discord presence": "Статус в Discord",
+    "Shows the place you are building and whether you are editing a script.": "Показывает, над каким плейсом вы работаете и редактируете ли вы скрипт.",
+    "Follow the system theme": "Следовать системной теме",
+    "Light or dark, like the rest of your desktop. Applies on the next start.": "Светлая или тёмная, как и остальной рабочий стол. Применяется при следующем запуске.",
+    "Back up sign-in and settings": "Сохранять вход и настройки",
+    "Keeps them outside Wine's prefix, so recreating the prefix does not sign you out.": "Хранит их вне префикса Wine: пересоздание префикса не выйдет из вашей учётной записи.",
+    "DXVK (recommended)": "DXVK (рекомендуется)",
+    "DXVK-Sarek (older graphics cards)": "DXVK-Sarek (для старых видеокарт)",
+    "Wine's Direct3D (OpenGL)": "Direct3D из Wine (OpenGL)",
+    "Wine's Direct3D, feature level 10 (OpenGL)": "Direct3D из Wine, уровень функций 10 (OpenGL)",
+    "Asks Feral GameMode to tune your system while Studio runs, if it is installed.": "Просит Feral GameMode оптимизировать систему, пока работает Studio, если он установлен.",
+    "Wine folder of your own": "Собственная папка Wine",
+    "That folder has no bin/wine": "В этой папке нет bin/wine",
+    "Stay on version": "Оставаться на версии",
+    "A Studio version looks like version-0123456789abcdef": "Версия Studio выглядит так: version-0123456789abcdef",
+    "Channel": "Канал",
+    "A channel name has letters, digits, . _ - only": "Имя канала может содержать только буквы, цифры и символы . _ -",
+    "Newest stable": "Новейшая стабильная",
+    "Studio flags": "Флаги Studio",
+    "Studio only applies flags from Roblox's allowlist. The renderer chosen under Graphics sets the graphics flags and wins over these.": "Studio применяет только флаги из списка разрешённых Roblox. Графические флаги задаёт режим отрисовки с вкладки «Графика»; он главнее этих.",
+    "Import Studio flags": "Импорт флагов Studio",
+    "Export Studio flags": "Экспорт флагов Studio",
+    "Copy the flags to the clipboard.": "Скопировать флаги в буфер обмена.",
+    "The Windows version of Studio, run through Wine. Quadra keeps Wine and Studio up to date when you start it.": "Windows-версия Studio, запущенная через Wine. Quadra обновляет Wine и Studio при запуске.",
+    "Behavior": "Поведение",
+    "Files": "Файлы",
+    "Overlay folder": "Папка наложения",
+    "Files here are copied over Studio's own at every start, such as cursors or sounds.": "Файлы отсюда копируются поверх файлов Studio при каждом запуске, например курсоры или звуки.",
+    "Studio's output, newest ten starts.": "Вывод Studio, последние десять запусков.",
+    "Studio folder": "Папка Studio",
+    "Wine, its prefix and Studio itself.": "Wine, его префикс и сама Studio.",
+    "Rendering": "Отрисовка",
+    "Applies the next time Studio starts. DXVK draws Direct3D 11 through Vulkan.": "Применяется при следующем запуске Studio. DXVK рисует Direct3D 11 через Vulkan.",
+    "The Vulkan fix is not built": "Исправление для Vulkan не собрано",
+    "Studio's Vulkan renderer needs a small Vulkan layer that is built with the shim, which needs the Vulkan development headers. Rebuild the shim after installing them.": "Для режима Vulkan в Studio нужен небольшой слой Vulkan, который собирается вместе с шимом и требует заголовков разработки Vulkan. Пересоберите шим после их установки.",
+    "Performance": "Производительность",
+    "Studio runs on Kombucha, the Wine build Vinegar patches for Studio. It is updated when you start Studio, unless you choose a release.": "Studio работает на Kombucha, сборке Wine, которую Vinegar дорабатывает для Studio. Она обновляется при запуске Studio, если вы не выбрали конкретный выпуск.",
+    "Kombucha release": "Выпуск Kombucha",
+    "Recommended: the newest stable one, as Vinegar publishes it.": "Рекомендуется: новейший стабильный выпуск от Vinegar.",
+    "Studio version": "Версия Studio",
+    "Leave both empty to follow the newest Studio on your account's channel. A version looks like version-0123456789abcdef; channels are Roblox's, such as zintegration.": "Оставьте оба поля пустыми, чтобы следовать новейшей Studio на канале вашей учётной записи. Версия выглядит как version-0123456789abcdef; каналы задаёт Roblox, например zintegration.",
+    "Applies on next launch. Automatic keeps your desktop's GPU selection.": "Применяется при следующем запуске. «Автоматически» сохраняет выбор GPU вашего рабочего стола.",
+    "Could not list the releases: {error}": "Не удалось получить список выпусков: {error}",
+    "Not installed yet": "Ещё не установлено",
+    "Your own: {path}": "Своя: {path}",
+    "Could not open the folder": "Не удалось открыть папку",
+    "may break Studio": "может сломать Studio",
     "Prepare client shader libraries": "Подготовка библиотек шейдеров клиента",
-    "Quadra M2VK: prepare installed shader libraries before playing, including the first launch.":
-        "Quadra M2VK: подготовка установленных библиотек шейдеров перед игрой, включая первый запуск.",
+    "Quadra M2VK: prepare installed shader libraries before playing, including the first launch.": "Quadra M2VK: подготовка установленных библиотек шейдеров перед игрой, включая первый запуск.",
     "Preload local textures and fonts": "Предзагрузка локальных текстур и шрифтов",
-    "Quadra M2VK: warm bundled resources before playing. Downloaded world assets still load in game.":
-        "Quadra M2VK: предзагрузка ресурсов клиента. Ресурсы игрового мира по-прежнему загружаются в игре.",
+    "Quadra M2VK: warm bundled resources before playing. Downloaded world assets still load in game.": "Quadra M2VK: предзагрузка ресурсов клиента. Ресурсы игрового мира по-прежнему загружаются в игре.",
     "Preparing Roblox": "Подготовка Roblox",
-    "Preparing shaders and local resources. You can skip and start playing.":
-        "Подготовка шейдеров и локальных ресурсов. Можно пропустить и начать игру.",
+    "Preparing shaders and local resources. You can skip and start playing.": "Подготовка шейдеров и локальных ресурсов. Можно пропустить и начать игру.",
     "Preparing shader libraries": "Подготовка библиотек шейдеров",
     "Warming learned shaders": "Подготовка известных шейдеров",
     "Warming local textures and fonts": "Предзагрузка текстур и шрифтов",
     "{done} of {total} items": "{done} из {total} элементов",
     "Shader preloading": "Предзагрузка шейдеров",
-    "Quadra M2VK: prepare learned shaders before playing. New shaders may still compile during play.":
-        "Quadra M2VK: подготовка известных шейдеров перед игрой. Новые шейдеры могут компилироваться во время игры.",
+    "Quadra M2VK: prepare learned shaders before playing. New shaders may still compile during play.": "Quadra M2VK: подготовка известных шейдеров перед игрой. Новые шейдеры могут компилироваться во время игры.",
     "Quadra M2VK performance diagnostics": "Диагностика производительности Quadra M2VK",
-    "Record compilation, encoding, GPU timing and memory use for performance reports.":
-        "Запись времени компиляции, кодирования, работы GPU и использования памяти для отчётов.",
+    "Record compilation, encoding, GPU timing and memory use for performance reports.": "Запись времени компиляции, кодирования, работы GPU и использования памяти для отчётов.",
     "Preloading shaders": "Предзагрузка шейдеров",
-    "Preparing shaders learned from earlier sessions. You can skip and start playing.":
-        "Подготовка шейдеров из предыдущих сеансов. Можно пропустить и начать игру.",
+    "Preparing shaders learned from earlier sessions. You can skip and start playing.": "Подготовка шейдеров из предыдущих сеансов. Можно пропустить и начать игру.",
     "Skip and play": "Пропустить и играть",
     "{done} of {total} shaders": "{done} из {total} шейдеров",
     "Launcher appearance": "Оформление лаунчера",
-    "Applies immediately. GNOME follows your system appearance.":
-        "Применяется сразу. GNOME использует оформление системы.",
+    "Applies immediately. GNOME follows your system appearance.": "Применяется сразу. GNOME использует оформление системы.",
     "Grid": "Сетка",
     "GNOME (classic)": "GNOME (классический)",
     "Monochrome · aubree.lat": "Монохром · aubree.lat",
@@ -166,63 +97,45 @@ RU = {
     "Not installed": "Не установлено",
     "Running": "Запущено",
     "Working…": "Выполняется…",
-    "Roblox returned 403; trying another download server":
-        "Roblox вернул 403; пробуем другой сервер загрузки",
+    "Roblox returned 403; trying another download server": "Roblox вернул 403; пробуем другой сервер загрузки",
     "VR headset": "VR-шлем",
-    "Experimental. Plays in Roblox's own VR mode on a headset connected through an OpenXR runtime such as WiVRn (Meta Quest) or Monado. Applies on next launch.":
-        "Экспериментально. Запускает собственный VR-режим Roblox на шлеме, подключённом через среду OpenXR, например WiVRn (Meta Quest) или Monado. Применяется при следующем запуске.",
+    "Experimental. Plays in Roblox's own VR mode on a headset connected through an OpenXR runtime such as WiVRn (Meta Quest) or Monado. Applies on next launch.": "Экспериментально. Запускает собственный VR-режим Roblox на шлеме, подключённом через среду OpenXR, например WiVRn (Meta Quest) или Monado. Применяется при следующем запуске.",
     "VR headset (OpenXR)": "VR-шлем (OpenXR)",
     "Turn on VR?": "Включить VR?",
-    "VR mode patches the Roblox client's memory while the game runs. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.":
-        "Режим VR изменяет память клиента Roblox, пока идёт игра. Античит Roblox может пометить вас за это. Вероятность невелика, но насколько именно, неизвестно.\n\nВключайте его, только если принимаете этот риск.",
+    "VR mode patches the Roblox client's memory while the game runs. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.": "Режим VR изменяет память клиента Roblox, пока идёт игра. Античит Roblox может пометить вас за это. Вероятность невелика, но насколько именно, неизвестно.\n\nВключайте его, только если принимаете этот риск.",
     "Don't show this again": "Больше не показывать",
     "Turn on VR": "Включить VR",
     "VR render resolution": "Разрешение рендеринга VR",
-    "Percent of the headset's recommended size per eye. Lower is smoother.":
-        "Процент от рекомендуемого шлемом размера на каждый глаз. Меньше — плавнее.",
+    "Percent of the headset's recommended size per eye. Lower is smoother.": "Процент от рекомендуемого шлемом размера на каждый глаз. Меньше — плавнее.",
     "Show the headset view in the game window": "Показывать изображение шлема в окне игры",
-    "Both eyes side by side on the desktop. Off saves a little time per frame.":
-        "Оба глаза рядом на рабочем столе. Если выключить, каждый кадр будет чуть быстрее.",
-    "The OpenXR loader is not installed (package openxr or libopenxr-loader1).":
-        "Загрузчик OpenXR не установлен (пакет openxr или libopenxr-loader1).",
-    "No OpenXR runtime found. Install and start WiVRn or Monado.":
-        "Среда OpenXR не найдена. Установите и запустите WiVRn или Monado.",
-    "Uses {runtime}. Start it and connect the headset before playing.":
-        "Используется {runtime}. Запустите её и подключите шлем перед игрой.",
+    "Both eyes side by side on the desktop. Off saves a little time per frame.": "Оба глаза рядом на рабочем столе. Если выключить, каждый кадр будет чуть быстрее.",
+    "The OpenXR loader is not installed (package openxr or libopenxr-loader1).": "Загрузчик OpenXR не установлен (пакет openxr или libopenxr-loader1).",
+    "No OpenXR runtime found. Install and start WiVRn or Monado.": "Среда OpenXR не найдена. Установите и запустите WiVRn или Monado.",
+    "Uses {runtime}. Start it and connect the headset before playing.": "Используется {runtime}. Запустите её и подключите шлем перед игрой.",
     "Roblox update broke game compatibility": "Обновление Roblox нарушило совместимость с играми",
-    "Roblox is no longer using RakNet. The latest Roblox update has broken game connection compatibility with Quadra. Games might not work or may show Error 256.\n\nCheck for a Quadra update. If a fix is not available yet, wait for a Quadra compatibility patch.":
-        "Roblox больше не использует RakNet. Последнее обновление Roblox нарушило совместимость игровых подключений с Quadra. Игры могут не работать или выдавать ошибку 256.\n\nПроверьте обновления Quadra. Если исправление ещё не доступно, дождитесь патча совместимости для Quadra.",
+    "Roblox is no longer using RakNet. The latest Roblox update has broken game connection compatibility with Quadra. Games might not work or may show Error 256.\n\nCheck for a Quadra update. If a fix is not available yet, wait for a Quadra compatibility patch.": "Roblox больше не использует RakNet. Последнее обновление Roblox нарушило совместимость игровых подключений с Quadra. Игры могут не работать или выдавать ошибку 256.\n\nПроверьте обновления Quadra. Если исправление ещё не доступно, дождитесь патча совместимости для Quadra.",
     "View log": "Посмотреть журнал",
     "Check for CiderDarling updates": "Проверить обновления CiderDarling",
     "Check for CiderDarling updates automatically": "Автоматически проверять обновления CiderDarling",
-    "Checks in the background. Install an available update in a separate terminal.":
-        "Проверка в фоне. Установка доступного обновления в отдельном терминале.",
-    "A CiderDarling update is available in Settings → CiderDarling.":
-        "Обновление CiderDarling доступно в разделе «Настройки → CiderDarling».",
+    "Checks in the background. Install an available update in a separate terminal.": "Проверка в фоне. Установка доступного обновления в отдельном терминале.",
+    "A CiderDarling update is available in Settings → CiderDarling.": "Обновление CiderDarling доступно в разделе «Настройки → CiderDarling».",
     "Could not check CiderDarling updates: {error}": "Не удалось проверить обновления CiderDarling: {error}",
     "No CiderDarling update is available.": "Обновлений CiderDarling нет.",
-    "Installed {installed}, update {pinned} is available. Opens a separate terminal for installation.":
-        "Установлена {installed}, доступно обновление {pinned}. Установка в отдельном терминале.",
+    "Installed {installed}, update {pinned} is available. Opens a separate terminal for installation.": "Установлена {installed}, доступно обновление {pinned}. Установка в отдельном терминале.",
     "{installed}; update {pinned} available": "{installed}; доступно обновление {pinned}",
     "Install CiderDarling": "Установить CiderDarling",
     "Install in terminal": "Установить в терминале",
     "Opens a separate terminal for the build and sudo prompts.": "Откроет отдельный терминал для сборки и запросов sudo.",
     "Installing CiderDarling in another terminal…": "CiderDarling устанавливается в другом терминале…",
-    "Installing in a separate terminal. Your current runtime remains selected.":
-        "Установка выполняется в отдельном терминале. Текущая среда остаётся выбранной.",
-    "Install CiderDarling in a separate terminal, then apply the switch.":
-        "Установите CiderDarling в отдельном терминале, затем примените переключение.",
+    "Installing in a separate terminal. Your current runtime remains selected.": "Установка выполняется в отдельном терминале. Текущая среда остаётся выбранной.",
+    "Install CiderDarling in a separate terminal, then apply the switch.": "Установите CiderDarling в отдельном терминале, затем примените переключение.",
     "Could not open an installation terminal.": "Не удалось открыть терминал для установки.",
-    "No terminal application was found. Install one (for example xterm), or set the TERMINAL environment variable to your terminal's command, then try again.":
-        "Не найден эмулятор терминала. Установите его (например, xterm) или укажите команду своего терминала в переменной окружения TERMINAL, затем повторите попытку.",
+    "No terminal application was found. Install one (for example xterm), or set the TERMINAL environment variable to your terminal's command, then try again.": "Не найден эмулятор терминала. Установите его (например, xterm) или укажите команду своего терминала в переменной окружения TERMINAL, затем повторите попытку.",
     "Could not install CiderDarling": "Не удалось установить CiderDarling",
-    "Installation failed or was cancelled. See the separate terminal for details.":
-        "Установка завершилась ошибкой или была отменена. Подробности — в отдельном терминале.",
+    "Installation failed or was cancelled. See the separate terminal for details.": "Установка завершилась ошибкой или была отменена. Подробности — в отдельном терминале.",
     "Could not detect CiderDarling": "Не удалось обнаружить CiderDarling",
-    "The installer finished, but the runtime could not be detected. Check the terminal output.":
-        "Установщик завершил работу, но среда не обнаружена. Проверьте вывод терминала.",
-    "CiderDarling installed. Apply the runtime choice to switch.":
-        "CiderDarling установлена. Примените выбор среды, чтобы переключиться.",
+    "The installer finished, but the runtime could not be detected. Check the terminal output.": "Установщик завершил работу, но среда не обнаружена. Проверьте вывод терминала.",
+    "CiderDarling installed. Apply the runtime choice to switch.": "CiderDarling установлена. Примените выбор среды, чтобы переключиться.",
     "Darling runtime": "Среда Darling",
     "DarlingHQ's Darling": "Darling от DarlingHQ",
     "QuadraHQ's CiderDarling": "CiderDarling от QuadraHQ",
@@ -232,39 +145,29 @@ RU = {
     "Apply and restart Quadra": "Применить и перезапустить Quadra",
     "Refresh installed runtimes": "Обновить список установленных сред",
     "Flatpak uses its bundled Darling runtime.": "Flatpak использует встроенную среду Darling.",
-    "Nix manages Rosemary. Update or switch it through your Nix configuration.":
-        "Rosemary управляет Nix. Обновить или сменить его можно в конфигурации Nix.",
-    "Install this runtime with Quadra's installer before switching.":
-        "Перед переключением установите эту среду через установщик Quadra.",
+    "Nix manages Rosemary. Update or switch it through your Nix configuration.": "Rosemary управляет Nix. Обновить или сменить его можно в конфигурации Nix.",
+    "Install this runtime with Quadra's installer before switching.": "Перед переключением установите эту среду через установщик Quadra.",
     "Could not inspect installed runtimes": "Не удалось проверить установленные среды",
     "Runtime saved. Close and reopen Quadra to apply it.": "Среда сохранена. Закройте и снова откройте Quadra, чтобы применить её.",
     "Could not switch Darling runtime": "Не удалось переключить среду Darling",
-    "Quadra's launcher files are missing. Reinstall Quadra before restarting.":
-        "Файлы лаунчера Quadra отсутствуют. Перед перезапуском установите Quadra заново.",
+    "Quadra's launcher files are missing. Reinstall Quadra before restarting.": "Файлы лаунчера Quadra отсутствуют. Перед перезапуском установите Quadra заново.",
     "MangoHud overlay": "Оверлей MangoHud",
-    "Show FPS, frametimes and CPU/GPU usage. Requires MangoHud; applies on next launch.":
-        "FPS, время кадра и загрузка CPU/GPU. Требуется MangoHud; применяется при следующем запуске.",
+    "Show FPS, frametimes and CPU/GPU usage. Requires MangoHud; applies on next launch.": "FPS, время кадра и загрузка CPU/GPU. Требуется MangoHud; применяется при следующем запуске.",
     "Renderer": "Рендерер",
     "OpenGL": "OpenGL",
     "Vulkan (Zink, experimental)": "Vulkan (Zink, экспериментальный)",
     "Quadra M2VK (experimental)": "Quadra M2VK (экспериментальный)",
-    "Applies on next launch. Zink uses Roblox's OpenGL renderer; Quadra M2VK uses its Metal renderer on Vulkan. VR uses OpenGL or Zink.":
-        "Применяется при следующем запуске. Zink использует OpenGL-рендерер Roblox; Quadra M2VK запускает его Metal-рендерер через Vulkan. VR использует OpenGL или Zink.",
+    "Applies on next launch. Zink uses Roblox's OpenGL renderer; Quadra M2VK uses its Metal renderer on Vulkan. VR uses OpenGL or Zink.": "Применяется при следующем запуске. Zink использует OpenGL-рендерер Roblox; Quadra M2VK запускает его Metal-рендерер через Vulkan. VR использует OpenGL или Zink.",
     "Quadra M2VK is unavailable": "Quadra M2VK недоступен",
-    "Quadra M2VK needs: {items}. Install them or select another renderer.":
-        "Для Quadra M2VK нужны: {items}. Установите их или выберите другой рендерер.",
+    "Quadra M2VK needs: {items}. Install them or select another renderer.": "Для Quadra M2VK нужны: {items}. Установите их или выберите другой рендерер.",
     "Could not build Quadra M2VK:\n{output}": "Не удалось собрать Quadra M2VK:\n{output}",
-    "Quadra M2VK needs Rust (cargo) 1.98 or newer to build. Install Rust or select another renderer.":
-        "Для сборки Quadra M2VK нужен Rust (cargo) 1.98 или новее. Установите Rust или выберите другой рендерер.",
+    "Quadra M2VK needs Rust (cargo) 1.98 or newer to build. Install Rust or select another renderer.": "Для сборки Quadra M2VK нужен Rust (cargo) 1.98 или новее. Установите Rust или выберите другой рендерер.",
     "Quadra M2VK is not part of this package": "Quadra M2VK не входит в этот пакет",
-    "Installing Vulkan dependencies… Authorize the administrator prompt to continue.":
-        "Устанавливаются зависимости Vulkan… Подтвердите запрос администратора для продолжения.",
+    "Installing Vulkan dependencies… Authorize the administrator prompt to continue.": "Устанавливаются зависимости Vulkan… Подтвердите запрос администратора для продолжения.",
     "Could not install Vulkan dependencies": "Не удалось установить зависимости Vulkan",
     "Vulkan dependencies installed": "Зависимости Vulkan установлены",
-    "Applies on next launch. Missing Mesa EGL/Zink packages need administrator authentication.":
-        "Применяется при следующем запуске. Для установки недостающих Mesa EGL/Zink нужна авторизация администратора.",
-    "Applies on next launch. Vulkan uses Mesa Zink and a hardware Vulkan driver.":
-        "Применяется при следующем запуске. Для Vulkan нужны Mesa Zink и аппаратный драйвер Vulkan.",
+    "Applies on next launch. Missing Mesa EGL/Zink packages need administrator authentication.": "Применяется при следующем запуске. Для установки недостающих Mesa EGL/Zink нужна авторизация администратора.",
+    "Applies on next launch. Vulkan uses Mesa Zink and a hardware Vulkan driver.": "Применяется при следующем запуске. Для Vulkan нужны Mesa Zink и аппаратный драйвер Vulkan.",
     # Pages
     "Play": "Играть",
     "Fast flags": "Фастфлаги",
@@ -299,8 +202,7 @@ RU = {
     "sound goes through {server}": "звук идёт через {server}",
     "no pw-cat or pacat: the game will be silent": "нет pw-cat и pacat: игра будет без звука",
     "the sign-in window is ready": "окно входа готово",
-    "WebKitGTK 6.0 is not installed: sign in with Quick Login":
-        "WebKitGTK 6.0 не установлен: входите через Quick Login",
+    "WebKitGTK 6.0 is not installed: sign in with Quick Login": "WebKitGTK 6.0 не установлен: входите через Quick Login",
     "signed in to roblox": "вход в roblox выполнен",
     "not signed in: sign in inside roblox": "вход не выполнен: войдите внутри roblox",
     "roblox is running": "roblox запущен",
@@ -310,8 +212,7 @@ RU = {
     "press play": "нажмите «Играть»",
     # Launcher update
     "Update available": "Доступно обновление",
-    "A new version of Quadra ({version}) is available. Update now?":
-        "Доступна новая версия Quadra ({version}). Обновить сейчас?",
+    "A new version of Quadra ({version}) is available. Update now?": "Доступна новая версия Quadra ({version}). Обновить сейчас?",
     "Later": "Позже",
     "Update": "Обновить",
     "Launcher version": "Версия лаунчера",
@@ -322,8 +223,7 @@ RU = {
     "Building shim…": "Сборка шима…",
     "Updating launcher shortcuts…": "Обновление ярлыков лаунчера…",
     "Quadra updated successfully": "Quadra успешно обновлён",
-    "Quadra updated. Restart it to use the new version.":
-        "Quadra обновлён. Перезапусти его, чтобы открыть новую версию.",
+    "Quadra updated. Restart it to use the new version.": "Quadra обновлён. Перезапусти его, чтобы открыть новую версию.",
     "Could not update the files in {path}:\n{output}": "Не удалось обновить файлы в {path}:\n{output}",
     # Play page
     "Roblox {version}": "Roblox {version}",
@@ -349,12 +249,11 @@ RU = {
     "The launcher shows it in a window of its own when WebKitGTK 6.0 is installed "
     "(webkitgtk-6.0, gir1.2-webkit-6.0 or webkitgtk6.0). Without it, create the "
     "account on roblox.com, then sign in with Quick Login: Roblox shows a code, "
-    "enter it on a phone or in a browser where you are already signed in.":
-        "Регистрация и вход по паролю показывают капчу во встроенном браузере. Лаунчер "
-        "открывает её в своём окне, если установлен WebKitGTK 6.0 (webkitgtk-6.0, "
-        "gir1.2-webkit-6.0 или webkitgtk6.0). Без него создай аккаунт на roblox.com, потом "
-        "войди через Quick Login: Roblox покажет код, введи его на телефоне или в браузере, "
-        "где ты уже вошёл.",
+    "enter it on a phone or in a browser where you are already signed in.": "Регистрация и вход по паролю показывают капчу во встроенном браузере. Лаунчер "
+    "открывает её в своём окне, если установлен WebKitGTK 6.0 (webkitgtk-6.0, "
+    "gir1.2-webkit-6.0 или webkitgtk6.0). Без него создай аккаунт на roblox.com, потом "
+    "войди через Quick Login: Roblox покажет код, введи его на телефоне или в браузере, "
+    "где ты уже вошёл.",
     "Back": "Назад",
     "Forward": "Вперёд",
     "Reload": "Обновить",
@@ -365,9 +264,8 @@ RU = {
     "Roblox Studio is already running": "Roblox Studio уже запущен",
     "Install Roblox Studio?": "Установить Roblox Studio?",
     "Studio runs in its Windows version through Wine. Quadra downloads Wine, "
-    "DXVK, Microsoft's WebView2 and Studio, about 800 MB.":
-        "Studio запускается в Windows-версии через Wine. Quadra скачает Wine, "
-        "DXVK, Microsoft WebView2 и Studio, это около 800 МБ.",
+    "DXVK, Microsoft's WebView2 and Studio, about 800 MB.": "Studio запускается в Windows-версии через Wine. Quadra скачает Wine, "
+    "DXVK, Microsoft WebView2 и Studio, это около 800 МБ.",
     "Install": "Установить",
     "Could not start Roblox Studio": "Не удалось запустить Roblox Studio",
     "Starting Roblox Studio…": "Запускаю Roblox Studio…",
@@ -387,8 +285,7 @@ RU = {
     "Low quality terrain": "Упрощённый рельеф",
     "Texture quality override": "Качество текстур",
     "Popular": "Популярные",
-    "Roblox only applies flags from its allowlist, some flags may have no effect.":
-        "Roblox применяет только флаги из своего списка разрешённых, часть флагов может не действовать.",
+    "Roblox only applies flags from its allowlist, some flags may have no effect.": "Roblox применяет только флаги из своего списка разрешённых, часть флагов может не действовать.",
     "Custom flags": "Свои флаги",
     "Add flag": "Добавить флаг",
     "Import JSON": "Импорт JSON",
@@ -408,12 +305,10 @@ RU = {
     "Flags saved to {path}": "Флаги сохранены в {path}",
     "Reset all fast flags": "Сбросить все фастфлаги",
     "Reset all fast flags?": "Сбросить все фастфлаги?",
-    "All custom flags and presets will be cleared and reset to default.":
-        "Все кастомные флаги и пресеты будут очищены и сброшены по умолчанию.",
+    "All custom flags and presets will be cleared and reset to default.": "Все кастомные флаги и пресеты будут очищены и сброшены по умолчанию.",
     "Reset": "Сбросить",
     "All fast flags have been reset": "Все фастфлаги сброшены",
-    'Paste JSON like {"Flag": value}. Flags are added to the current ones.':
-        'Вставь JSON вида {"Флаг": значение}. Флаги добавятся к текущим.',
+    'Paste JSON like {"Flag": value}. Flags are added to the current ones.': 'Вставь JSON вида {"Флаг": значение}. Флаги добавятся к текущим.',
     "Cancel": "Отмена",
     "Select": "Выбрать",
     "Import": "Импортировать",
@@ -425,29 +320,23 @@ RU = {
     "Roblox UI scale": "Масштаб интерфейса Roblox",
     "100–400%. Applies on next launch.": "100–400%. Применяется при следующем запуске.",
     "Camera sensitivity": "Чувствительность камеры",
-    "Mouse movement multiplier while rotating the camera":
-        "Множитель движения мыши при вращении камеры",
+    "Mouse movement multiplier while rotating the camera": "Множитель движения мыши при вращении камеры",
     "Scroll sensitivity": "Чувствительность колёсика",
-    "Mouse wheel scroll speed in menus and interface":
-        "Скорость прокрутки колёсика мыши в меню и интерфейсе",
+    "Mouse wheel scroll speed in menus and interface": "Скорость прокрутки колёсика мыши в меню и интерфейсе",
     "Show the launcher after Roblox exits": "Показывать лаунчер после выхода из Roblox",
     "Hide launcher while playing": "Скрывать лаунчер во время игры",
     "Raw mouse input": "Сырой ввод мыши",
-    "Camera moves by the mouse's own motion, without pointer acceleration (XInput 2)":
-        "Камера следует за движением самой мыши, без ускорения указателя (XInput 2)",
+    "Camera moves by the mouse's own motion, without pointer acceleration (XInput 2)": "Камера следует за движением самой мыши, без ускорения указателя (XInput 2)",
     "Hide the launcher window while the game is running": "Скрывать окно лаунчера, пока запущена игра",
     "Discord Rich Presence": "Discord Rich Presence",
     "Enable Discord Rich Presence": "Включить Discord Rich Presence",
     "Show current game and playtime in your Discord status": "Показывать статус игры и время в Discord",
     "Show experience name in Discord": "Показывать название игры в Discord",
-    "Display the title and creator of the place you are playing":
-        "Отображать название и создателя плейса, в который вы играете",
+    "Display the title and creator of the place you are playing": "Отображать название и создателя плейса, в который вы играете",
     "Show experience thumbnail in Discord": "Показывать иконку плейса в Discord",
-    "Replace the Quadra icon with the game's icon":
-        "Заменять иконку Quadra на обложку игры",
+    "Replace the Quadra icon with the game's icon": "Заменять иконку Quadra на обложку игры",
     "Show elapsed time in Discord": "Показывать прошедшее время в Discord",
-    "Display how long you have been playing in your status":
-        "Отображать время, прошедшее с момента запуска игры",
+    "Display how long you have been playing in your status": "Отображать время, прошедшее с момента запуска игры",
     "Show playtime": "Показывать время в игре",
     "Show accumulated playtime on the Play page": "Отображать наигранное время на вкладке «Играть»",
     "Total playtime": "Всего наиграно",
@@ -458,14 +347,12 @@ RU = {
     "Get Quadra": "Скачать Quadra",
     "Game page": "Страница игры",
     "Hide the macOS menu bar": "Скрывать полоску меню macOS",
-    "The Roblox, Edit, Window… strip at the top of the game window":
-        "Полоска Roblox, Edit, Window… сверху окна игры",
+    "The Roblox, Edit, Window… strip at the top of the game window": "Полоска Roblox, Edit, Window… сверху окна игры",
     # Settings: DNS
     "DNS for Roblox": "DNS для Roblox",
     "Only Roblox uses this server, the rest of the system keeps its own DNS. "
-    "Helps when some Roblox images or servers do not load.":
-        "Этот сервер использует только Roblox, остальная система остаётся на своём DNS. "
-        "Помогает, если не грузятся картинки или сервера Roblox.",
+    "Helps when some Roblox images or servers do not load.": "Этот сервер использует только Roblox, остальная система остаётся на своём DNS. "
+    "Помогает, если не грузятся картинки или сервера Roblox.",
     "DNS server": "DNS-сервер",
     "System (Darling default)": "Системный (как в Darling)",
     "Quad9 (9.9.9.9, encrypted)": "Quad9 (9.9.9.9, шифрованный)",
@@ -473,10 +360,8 @@ RU = {
     "Google (8.8.8.8, encrypted)": "Google (8.8.8.8, шифрованный)",
     "Custom": "Свой",
     "Custom server": "Свой сервер",
-    "IP address, optionally with :port. Plain DNS, not encrypted.":
-        "IP-адрес, можно с :портом. Обычный DNS, без шифрования.",
-    "Custom DNS server must look like 9.9.9.9, 9.9.9.9:53 or [2620:fe::fe]:53":
-        "Свой DNS-сервер пишется так: 9.9.9.9, 9.9.9.9:53 или [2620:fe::fe]:53",
+    "IP address, optionally with :port. Plain DNS, not encrypted.": "IP-адрес, можно с :портом. Обычный DNS, без шифрования.",
+    "Custom DNS server must look like 9.9.9.9, 9.9.9.9:53 or [2620:fe::fe]:53": "Свой DNS-сервер пишется так: 9.9.9.9, 9.9.9.9:53 или [2620:fe::fe]:53",
     # Settings: language
     "Interface": "Интерфейс",
     "Language": "Язык",
@@ -496,8 +381,7 @@ RU = {
     "Roblox installed": "Roblox установлен",
     "Downloading {done} of {total} MB": "Загрузка {done} из {total} МБ",
     "Unpacking": "Распаковка",
-    "Roblox returned 403; trying Quadra's download server":
-        "Roblox вернул 403; пробуем сервер загрузок Quadra",
+    "Roblox returned 403; trying Quadra's download server": "Roblox вернул 403; пробуем сервер загрузок Quadra",
     "Done": "Готово",
     "The download is not a zip archive": "Скачанный файл не является zip-архивом",
     "The archive has no RobloxPlayer.app": "В архиве нет RobloxPlayer.app",
@@ -505,19 +389,16 @@ RU = {
     "Prompt to update if a newer version of Roblox is available": "Предлагать обновить, если доступна новая версия Roblox",
     "Delete Roblox": "Удалить Roblox",
     "Delete Roblox?": "Удалить Roblox?",
-    "RobloxPlayer.app and all mod modifications will be removed from your computer.":
-        "RobloxPlayer.app и все файлы модов будут удалены с компьютера.",
+    "RobloxPlayer.app and all mod modifications will be removed from your computer.": "RobloxPlayer.app и все файлы модов будут удалены с компьютера.",
     "Roblox is not installed": "Roblox не установлен",
     "Roblox deleted successfully": "Roblox успешно удалён",
     "Delete": "Удалить",
     "Roblox update available": "Доступно обновление Roblox",
-    "A newer version of Roblox ({version}) is available. Update now?":
-        "Доступна новая версия Roblox ({version}). Обновить сейчас?",
+    "A newer version of Roblox ({version}) is available. Update now?": "Доступна новая версия Roblox ({version}). Обновить сейчас?",
     # Mods
     "Sound presets": "Звуковые пресеты",
     "Death sound": "Звук смерти",
-    "Choose the sound played when your character resets or dies":
-        "Звук при гибели персонажа или сбросе",
+    "Choose the sound played when your character resets or dies": "Звук при гибели персонажа или сбросе",
     "Default (Roblox)": "По умолчанию (Roblox)",
     "Classic OOF": "Классический OOF",
     "Custom sound": "Свой звук",
@@ -526,8 +407,7 @@ RU = {
     "Choose…": "Выбрать…",
     "Select custom death sound (.ogg)": "Выбрать файл звука смерти (.ogg)",
     "Classic movement sounds": "Классические звуки движения",
-    "Restores 2006-2014 walking, jumping, getting up, and silent landing sounds":
-        "Возвращает звуки ходьбы, прыжка, подъёма и тихого приземления (2006–2014)",
+    "Restores 2006-2014 walking, jumping, getting up, and silent landing sounds": "Возвращает звуки ходьбы, прыжка, подъёма и тихого приземления (2006–2014)",
     "Mouse cursors": "Курсоры мыши",
     "Cursor style": "Стиль курсора",
     "Replaces in-game mouse cursors": "Заменяет игровые курсоры мыши",
@@ -547,11 +427,9 @@ RU = {
     "No custom font selected": "Используются стандартные шрифты Roblox",
     "User modifications": "Пользовательские модификации",
     "Enable modifications folder": "Включить папку модификаций",
-    "Overlay files from modifications/ onto the Roblox client":
-        "Накладывать файлы из папки modifications/ поверх ресурсов Roblox",
+    "Overlay files from modifications/ onto the Roblox client": "Накладывать файлы из папки modifications/ поверх ресурсов Roblox",
     "Open modifications folder": "Открыть папку модификаций",
-    "Drop your custom textures, sounds, and models here":
-        "Поместите сюда свои текстуры, звуки или модели",
+    "Drop your custom textures, sounds, and models here": "Поместите сюда свои текстуры, звуки или модели",
     "Open": "Открыть",
     "Management": "Управление",
     "Apply mods now": "Применить моды сейчас",
@@ -564,18 +442,15 @@ RU = {
     "Account": "Аккаунт",
     "Sign out": "Выйти из аккаунта",
     "Sign out?": "Выйти из аккаунта?",
-    "The saved Roblox session will be deleted, you will need to sign in again next time.":
-        "Сохранённая сессия Roblox будет удалена, при следующем запуске нужно будет войти заново.",
+    "The saved Roblox session will be deleted, you will need to sign in again next time.": "Сохранённая сессия Roblox будет удалена, при следующем запуске нужно будет войти заново.",
     "Sign out of Roblox": "Выйти",
     "Session deleted": "Сессия удалена",
     "Could not sign out": "Не удалось выйти",
-    "The saved session is still there. Press Restart Darling in Diagnostics and try again.":
-        "Сохранённая сессия осталась на месте. Нажми «Перезапустить Darling» в разделе «Диагностика» "
-        "и попробуй ещё раз.",
+    "The saved session is still there. Press Restart Darling in Diagnostics and try again.": "Сохранённая сессия осталась на месте. Нажми «Перезапустить Darling» в разделе «Диагностика» "
+    "и попробуй ещё раз.",
     # Settings: diagnostics
     "Diagnostics": "Диагностика",
-    "Detailed logs for debugging. They slow the game down, enable only when needed.":
-        "Подробные логи для отладки. Замедляют игру, включай только когда нужно.",
+    "Detailed logs for debugging. They slow the game down, enable only when needed.": "Подробные логи для отладки. Замедляют игру, включай только когда нужно.",
     "Backtrace on crashes": "Бэктрейс при крашах",
     "Network tracing (UDP)": "Трассировка сети (UDP)",
     "Mouse lock tracing": "Трассировка захвата мыши",
@@ -591,8 +466,7 @@ RU = {
     "The shim comes built with this package": "Шим в этом пакете уже собран",
     "Could not build the shim": "Не удалось собрать шим",
     "Could not build the shim:\n{output}": "Не удалось собрать шим:\n{output}",
-    "Cannot connect to X11 display {display}. Make sure an X server or Xwayland is running.":
-        "Не удалось подключиться к X11-дисплею {display}. Убедитесь, что запущен X-сервер или Xwayland.",
+    "Cannot connect to X11 display {display}. Make sure an X server or Xwayland is running.": "Не удалось подключиться к X11-дисплею {display}. Убедитесь, что запущен X-сервер или Xwayland.",
     "Restart Darling": "Перезапустить Darling",
     "Darling stopped, it starts with the next game": "Darling остановлен, запустится при следующей игре",
     "Could not restart Darling: {error}": "Не удалось перезапустить Darling: {error}",
@@ -600,14 +474,11 @@ RU = {
     "Restarting Darling…": "Перезапускаю Darling…",
     "Install the throttle patch": "Установить патч троттлинга",
     "Remove the throttle patch": "Удалить патч троттлинга",
-    "Applied: the menu renders at full speed from the first second":
-        "Применён: меню рендерится на полной скорости с первой секунды",
-    "Not applied: the menu may run at ~3 FPS for the first 10 seconds":
-        "Не применён: меню может работать на ~3 FPS первые 10 секунд",
+    "Applied: the menu renders at full speed from the first second": "Применён: меню рендерится на полной скорости с первой секунды",
+    "Not applied: the menu may run at ~3 FPS for the first 10 seconds": "Не применён: меню может работать на ~3 FPS первые 10 секунд",
     "Not available for this Roblox build": "Недоступно для этой сборки Roblox",
     "Apply the throttle patch automatically": "Применять патч троттлинга автоматически",
-    "Patch the client on every launch and after Roblox updates":
-        "Патчить клиента при каждом запуске и после обновлений Roblox",
+    "Patch the client on every launch and after Roblox updates": "Патчить клиента при каждом запуске и после обновлений Roblox",
     "Throttle patch": "Патч троттлинга",
     "Checking…": "Проверяю…",
     "Throttle patch failed": "Не удалось применить патч троттлинга",
@@ -633,27 +504,23 @@ RU = {
     "View game logs": "Просмотр логов игры",
     # Crash / X11 handling
     "X11 Connection Lost": "Потеряно соединение с X11",
-    "The game crashed because the X11 connection was broken. This usually happens when raw mouse input overloads the display server with events. Would you like to disable raw mouse input?":
-        "Игра аварийно закрылась из-за разрыва соединения с X11. Обычно это происходит, когда сырой ввод мыши (XInput 2) перегружает сервер Xwayland событиями движения. Отключить сырой ввод мыши?",
+    "The game crashed because the X11 connection was broken. This usually happens when raw mouse input overloads the display server with events. Would you like to disable raw mouse input?": "Игра аварийно закрылась из-за разрыва соединения с X11. Обычно это происходит, когда сырой ввод мыши (XInput 2) перегружает сервер Xwayland событиями движения. Отключить сырой ввод мыши?",
     "Keep Enabled": "Оставить включённым",
     "Disable Raw Mouse": "Отключить сырой ввод",
     "Raw mouse input disabled": "Сырой ввод мыши отключён",
-    "The game crashed because the X11 connection was broken (explicit kill or server shutdown).":
-        "Игра аварийно закрылась из-за разрыва соединения с X11 (сервер X11 был принудительно остановлен).",
+    "The game crashed because the X11 connection was broken (explicit kill or server shutdown).": "Игра аварийно закрылась из-за разрыва соединения с X11 (сервер X11 был принудительно остановлен).",
     # Fast flags
     "Anisotropic filtering (16x)": "Анизотропная фильтрация (16x)",
     "Force maximum texture resolution": "Принудительное максимальное разрешение текстур",
     # Info
     "Quadra runs the real Roblox client for macOS on Linux through Darling. "
-    "It is not made by Roblox and is not affiliated with it.":
-        "Quadra запускает настоящий клиент Roblox для macOS на Linux через Darling. "
-        "Его делает не Roblox, и с Roblox он никак не связан.",
+    "It is not made by Roblox and is not affiliated with it.": "Quadra запускает настоящий клиент Roblox для macOS на Linux через Darling. "
+    "Его делает не Roblox, и с Roblox он никак не связан.",
     "Community": "Сообщество",
     "Authors": "Авторы",
     "{user} on Roblox": "{user} в Roblox",
     "Better UI, Mods": "Улучшенный интерфейс, моды",
-    "Maintains this version: stability and performance fixes":
-        "Поддерживает эту версию: стабильность и скорость",
+    "Maintains this version: stability and performance fixes": "Поддерживает эту версию: стабильность и скорость",
     "Made with Claude Opus 5.5": "Сделано с Claude Opus 5.5",
     "Anthropic's AI wrote the code together with the authors": "ИИ от Anthropic писал код вместе с авторами",
     # CiderDarling settings and updates
@@ -661,62 +528,51 @@ RU = {
     "Graphics card, watchdog, tracing and diagnostics": "Видеокарта, сторожевой таймер, трассировка и диагностика",
     "Update CiderDarling": "Обновить CiderDarling",
     "Update in terminal": "Обновить в терминале",
-    "Installed {installed}, Quadra uses {pinned}. Opens a separate terminal for the build and sudo prompts.":
-        "Установлена {installed}, Quadra использует {pinned}. Откроет отдельный терминал для сборки и запросов sudo.",
+    "Installed {installed}, Quadra uses {pinned}. Opens a separate terminal for the build and sudo prompts.": "Установлена {installed}, Quadra использует {pinned}. Откроет отдельный терминал для сборки и запросов sudo.",
     "These settings apply while CiderDarling is the active runtime. The renderer "
-    "and graphics card are shared with Environment → Game.":
-        "Эти настройки действуют, пока CiderDarling — активная среда. Рендерер и видеокарта "
-        "общие с разделом «Окружение → Игра».",
+    "and graphics card are shared with Environment → Game.": "Эти настройки действуют, пока CiderDarling — активная среда. Рендерер и видеокарта "
+    "общие с разделом «Окружение → Игра».",
     "Installed revision": "Установленная ревизия",
     "{installed}; Quadra uses {pinned}": "{installed}; Quadra использует {pinned}",
     "unknown": "неизвестно",
-    "{runtime}. Switch in Environment → Darling to use these settings.":
-        "{runtime}. Переключите среду в разделе «Окружение → Darling», чтобы применить эти настройки.",
+    "{runtime}. Switch in Environment → Darling to use these settings.": "{runtime}. Переключите среду в разделе «Окружение → Darling», чтобы применить эти настройки.",
     "Graphics": "Графика",
     "Threads": "Потоки",
     "Watchdog thread kicks": "Пробуждение зависших потоков",
     "QUADRA_KICK. Interrupts threads stuck in long waits. Off by default: "
-    "each kick costs time. Applies on next launch.":
-        "QUADRA_KICK. Прерывает потоки, надолго застрявшие в ожидании. По умолчанию выключено: "
-        "каждое прерывание стоит времени. Применяется при следующем запуске.",
+    "each kick costs time. Applies on next launch.": "QUADRA_KICK. Прерывает потоки, надолго застрявшие в ожидании. По умолчанию выключено: "
+    "каждое прерывание стоит времени. Применяется при следующем запуске.",
     "Record runtime trace": "Записывать трассировку среды",
     "CIDER_TRACE_FILE. Numeric timings, no game text, in a private file in the logs "
-    "folder (up to 32 MB per launch). Applies on next launch.":
-        "CIDER_TRACE_FILE. Только числовые замеры, без текста игры, в личном файле в папке логов "
-        "(до 32 МБ за запуск). Применяется при следующем запуске.",
+    "folder (up to 32 MB per launch). Applies on next launch.": "CIDER_TRACE_FILE. Только числовые замеры, без текста игры, в личном файле в папке логов "
+    "(до 32 МБ за запуск). Применяется при следующем запуске.",
     "Verbose darlingserver log": "Подробный лог darlingserver",
     "DSERVER_LOG_LEVEL=debug. dserver.log grows quickly; applies the next time "
-    "Darling starts.":
-        "DSERVER_LOG_LEVEL=debug. dserver.log быстро растёт; применяется при следующем запуске Darling.",
+    "Darling starts.": "DSERVER_LOG_LEVEL=debug. dserver.log быстро растёт; применяется при следующем запуске Darling.",
     "Open prefix folder": "Открыть папку префикса",
     "Could not open the prefix folder: {error}": "Не удалось открыть папку префикса: {error}",
     "CiderDarling is not installed": "CiderDarling не установлена",
     "End of the build log:": "Конец лога сборки:",
-    "CiderDarling updated. Apply and restart Quadra to use it.":
-        "CiderDarling обновлена. Примените выбор и перезапустите Quadra, чтобы использовать её.",
+    "CiderDarling updated. Apply and restart Quadra to use it.": "CiderDarling обновлена. Примените выбор и перезапустите Quadra, чтобы использовать её.",
     # Diagnostics archive
     "Collect diagnostics": "Собрать диагностику",
     "Allow freeze diagnostics": "Разрешить диагностику зависаний",
     "QUADRA_ALLOW_DEBUGGER. Lets Collect diagnostics read the game's thread stacks; "
-    "turn on before starting the game.":
-        "QUADRA_ALLOW_DEBUGGER. Позволяет сбору диагностики читать стеки потоков игры; "
-        "включите до запуска игры.",
+    "turn on before starting the game.": "QUADRA_ALLOW_DEBUGGER. Позволяет сбору диагностики читать стеки потоков игры; "
+    "включите до запуска игры.",
     "Diagnostics are being collected…": "Диагностика уже собирается…",
     "Collecting diagnostics… This can take up to a minute.": "Сбор диагностики… Это может занять до минуты.",
     "Could not collect diagnostics": "Не удалось собрать диагностику",
     "Diagnostics collected": "Диагностика собрана",
-    "Saved {name}. Attach it to your report; it leaves out sign-in data and join tickets.":
-        "Сохранено: {name}. Приложите файл к отчёту; данных входа и билетов подключения в нём нет.",
+    "Saved {name}. Attach it to your report; it leaves out sign-in data and join tickets.": "Сохранено: {name}. Приложите файл к отчёту; данных входа и билетов подключения в нём нет.",
     "Thread stacks need Allow freeze diagnostics (Settings → Environment → "
-    "Diagnostics) to be on before the game starts.":
-        "Для стеков потоков включите «Разрешить диагностику зависаний» (Настройки → Окружение → "
-        "Диагностика) до запуска игры.",
+    "Diagnostics) to be on before the game starts.": "Для стеков потоков включите «Разрешить диагностику зависаний» (Настройки → Окружение → "
+    "Диагностика) до запуска игры.",
     "Open folder": "Открыть папку",
     "Could not open the folder: {error}": "Не удалось открыть папку: {error}",
     # Server location
     "Show server location": "Показывать расположение сервера",
-    "Sends the game server's IP address to RoValra (apis.rovalra.com) while you play":
-        "Во время игры отправляет IP-адрес игрового сервера сервису RoValra (apis.rovalra.com)",
+    "Sends the game server's IP address to RoValra (apis.rovalra.com) while you play": "Во время игры отправляет IP-адрес игрового сервера сервису RoValra (apis.rovalra.com)",
 }
 
 ZH_CN = {
@@ -816,8 +672,7 @@ ZH_CN = {
     "Experimental. Plays in Roblox's own VR mode on a headset connected through an OpenXR runtime such as WiVRn (Meta Quest) or Monado. Applies on next launch.": "实验性。通过 OpenXR 运行时（如 WiVRn (Meta Quest) 或 Monado）连接的头显，以 Roblox 自带的 VR 模式运行。下次启动时生效。",
     "VR headset (OpenXR)": "VR 头显 (OpenXR)",
     "Turn on VR?": "开启 VR 模式？",
-    "VR mode patches the Roblox client's memory while the game runs. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.":
-        "VR 模式会在游戏运行时修改 Roblox 客户端的内存。你可能因此被 Roblox 的反作弊系统标记。这种可能性很低，但具体有多低尚不清楚。\n\n仅在你接受此风险时才开启。",
+    "VR mode patches the Roblox client's memory while the game runs. You could get flagged by Roblox's anti-cheat for it. The chance is low, but it is not known how low.\n\nTurn it on only if you accept that risk.": "VR 模式会在游戏运行时修改 Roblox 客户端的内存。你可能因此被 Roblox 的反作弊系统标记。这种可能性很低，但具体有多低尚不清楚。\n\n仅在你接受此风险时才开启。",
     "Don't show this again": "不再显示",
     "Turn on VR": "开启 VR",
     "VR render resolution": "VR 渲染分辨率",
@@ -860,8 +715,7 @@ ZH_CN = {
     "Apply and restart Quadra": "应用并重启 Quadra",
     "Refresh installed runtimes": "刷新已安装的运行时",
     "Flatpak uses its bundled Darling runtime.": "Flatpak 使用其自带的 Darling 运行时。",
-    "Nix manages Rosemary. Update or switch it through your Nix configuration.":
-        "Rosemary 由 Nix 管理。请通过 Nix 配置更新或切换它。",
+    "Nix manages Rosemary. Update or switch it through your Nix configuration.": "Rosemary 由 Nix 管理。请通过 Nix 配置更新或切换它。",
     "Install this runtime with Quadra's installer before switching.": "切换前请使用 Quadra 的安装程序安装此运行时。",
     "Could not inspect installed runtimes": "无法检查已安装的运行时",
     "Runtime saved. Close and reopen Quadra to apply it.": "运行时已保存。关闭并重新打开 Quadra 以应用。",
@@ -1238,30 +1092,24 @@ ZH_CN = {
     "Crash diagnostics": "崩溃诊断",
     "QUADRA_ALLOW_DEBUGGER. Lets Collect diagnostics read the game's thread stacks; keeps the crash handler available. Turn on before starting the game.": "QUADRA_ALLOW_DEBUGGER。允许收集诊断信息读取游戏的线程堆栈；保持崩溃处理程序可用。在启动游戏前开启。",
     "Accuracy": "精确度",
-    "Fast uses the device's own maths and texture decoders. Textures decodes BC textures as Metal does: try it if textures look wrong. Exact is slowest, for diagnosing wrong colors or shapes.":
-        "快速：使用设备自身的数学计算和纹理解码，按 Metal 的方式解码 BC 纹理：如果纹理看起来不对劲，请试试这个。精确：最慢，用于诊断颜色或形状错误。",
+    "Fast uses the device's own maths and texture decoders. Textures decodes BC textures as Metal does: try it if textures look wrong. Exact is slowest, for diagnosing wrong colors or shapes.": "快速：使用设备自身的数学计算和纹理解码，按 Metal 的方式解码 BC 纹理：如果纹理看起来不对劲，请试试这个。精确：最慢，用于诊断颜色或形状错误。",
     "Fast": "快速",
     "Exact": "精确",
     "Frame presentation": "帧呈现",
-    "How finished frames reach the screen. Try FIFO if the picture stutters or tears.":
-        "完成的帧如何到达屏幕。如果画面卡顿或撕裂，请尝试 FIFO。",
+    "How finished frames reach the screen. Try FIFO if the picture stutters or tears.": "完成的帧如何到达屏幕。如果画面卡顿或撕裂，请尝试 FIFO。",
     "Automatic": "自动",
     "FIFO": "FIFO (垂直同步)",
     "Mailbox": "Mailbox (低延迟)",
     "Keep important graphics memory resident": "保持重要图形内存常驻",
-    "When video memory runs out, let the driver move textures aside before render targets instead of failing. Turn off if a driver misbehaves.":
-        "当显存耗尽时，让驱动将纹理移出，而不是直接失败。如果驱动出现异常，请关闭此选项。",
+    "When video memory runs out, let the driver move textures aside before render targets instead of failing. Turn off if a driver misbehaves.": "当显存耗尽时，让驱动将纹理移出，而不是直接失败。如果驱动出现异常，请关闭此选项。",
     "Graphics memory limit (GiB)": "图形内存限制 (GiB)",
-        "0 uses what the card has free at launch. A limit only lowers it; try 4 on a busy 6 GiB card.":
-        "0 表示使用显卡启动时的空闲显存。设置限制只会降低上限：在繁忙的 6 GiB 显卡上可以尝试设为 4。",
+    "0 uses what the card has free at launch. A limit only lowers it; try 4 on a busy 6 GiB card.": "0 表示使用显卡启动时的空闲显存。设置限制只会降低上限：在繁忙的 6 GiB 显卡上可以尝试设为 4。",
     "Shader compile threads": "着色器编译线程数",
     "0 chooses from your processor and free memory. Fewer lowers memory use during compiles.": "0 表示根据处理器和空闲内存自动选择。较少的线程数会降低编译时的内存占用。",
     "Learned shaders kept ready": "保持就绪的已编译着色器",
-    "Up to this many, within a quarter of free memory. More smooths areas you have visited before.":
-        "在四分之一空闲内存范围内，最多保留此数量。保留更多可使您之前访问过的区域更流畅。",
+    "Up to this many, within a quarter of free memory. More smooths areas you have visited before.": "在四分之一空闲内存范围内，最多保留此数量。保留更多可使您之前访问过的区域更流畅。",
     "Fall back to OpenGL if Quadra M2VK cannot start": "如果 Quadra M2VK 无法启动，回退到 OpenGL",
-    "Play with OpenGL this time instead of stopping, when no working GPU driver is found.":
-        "当找不到可用的 GPU 驱动程序时，这次使用 OpenGL 游玩，而不是直接停止。",
+    "Play with OpenGL this time instead of stopping, when no working GPU driver is found.": "当找不到可用的 GPU 驱动程序时，这次使用 OpenGL 游玩，而不是直接停止。",
     "Prepare learned shaders before playing. New shaders may still compile during play.": "在游戏前准备已知的着色器。新的着色器仍可能在游戏过程中编译。",
     "Prepare installed shader libraries before playing, including the first launch.": "在游戏前准备已安装的着色器库，包括首次启动。",
     "Warm bundled resources before playing. Downloaded world assets still load in game.": "在游戏前预热内置资源。下载的世界资产仍会在游戏中加载。",
@@ -1273,8 +1121,7 @@ ZH_CN = {
     "Applies on next launch.": "下次启动时生效。",
     "Collect hardware report": "收集硬件报告",
     "Reset Quadra M2VK settings": "重置 Quadra M2VK 设置",
-    "These settings apply while CiderDarling is the active runtime. The renderer and graphics card are shared with Environment → Game.":
-    "这些设置仅在 CiderDarling 为当前运行时生效。渲染器和显卡与 环境 → 游戏 中的设置共享。",
+    "These settings apply while CiderDarling is the active runtime. The renderer and graphics card are shared with Environment → Game.": "这些设置仅在 CiderDarling 为当前运行时生效。渲染器和显卡与 环境 → 游戏 中的设置共享。",
     "Trace text input": "追踪文本输入",
     "Records insertion counts and selection ranges to diagnose duplicate typing. No typed text is logged. Applies on next launch.": "记录插入次数和选择范围以诊断重复输入。不会记录实际输入的文本。下次启动时生效。",
 }

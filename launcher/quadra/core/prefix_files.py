@@ -17,23 +17,23 @@ from ..i18n import _
 from . import darling_server, files, locations, process_control
 
 __all__ = [
-    "_missing_frameworks",
-    "_install_framework",
-    "prepare_prefix",
-    "_install_prefix_files",
     "PREFIX_STAMPS",
-    "_sha256",
-    "_prefix_stamps",
-    "_prefix_stamp",
-    "_record_prefix_stamps",
+    "_host_libraries",
+    "_initializer_offset",
+    "_install_framework",
+    "_install_prefix_files",
+    "_missing_frameworks",
     "_owned_prefix_copy",
+    "_patched_ffmpeg_bridges",
+    "_patched_kqueue_runtime",
+    "_prefix_stamp",
+    "_prefix_stamps",
+    "_record_prefix_stamps",
     "_replace_prefix_file",
     "_restore_runtime_library",
+    "_sha256",
     "_unknown_prefix_overrides",
-    "_patched_kqueue_runtime",
-    "_initializer_offset",
-    "_host_libraries",
-    "_patched_ffmpeg_bridges",
+    "prepare_prefix",
 ]
 
 
@@ -68,7 +68,9 @@ def _install_framework(name):
     for leftover in (staged, old):  # from an interrupted earlier run
         if leftover.is_dir() and not leftover.is_symlink():
             shutil.rmtree(leftover)
-    shutil.copytree(locations.FRAMEWORKS_BUILD / f"{name}.framework", staged, symlinks=True)
+    shutil.copytree(
+        locations.FRAMEWORKS_BUILD / f"{name}.framework", staged, symlinks=True
+    )
     if target.exists() or target.is_symlink():
         target.rename(old)
     staged.rename(target)
@@ -113,7 +115,10 @@ def _install_prefix_files(env, frameworks, bridges, kqueue_libraries):
             pass
         if not locations.DARLING_PREFIX.is_dir():
             raise RuntimeError(
-                _("Darling could not create its prefix in {path}", path=locations.DARLING_PREFIX)
+                _(
+                    "Darling could not create its prefix in {path}",
+                    path=locations.DARLING_PREFIX,
+                )
             )
     if process_control.darlingserver_running():
         darling_server.restart_darling()

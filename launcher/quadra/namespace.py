@@ -7,6 +7,7 @@ exactly one of those modules (the one whose __all__ lists it). After
 `core.roblox_pids` changes it for every module that calls it, because they all
 look it up in the same place (`process_control.roblox_pids`).
 """
+
 import sys
 import types
 
@@ -46,10 +47,14 @@ def share_names(package_name, modules):
     for module in modules:
         for name in module.__all__:
             if name in homes:
-                raise ImportError(f"{name} is in both {homes[name].__name__} and {module.__name__}")
+                raise ImportError(
+                    f"{name} is in both {homes[name].__name__} and {module.__name__}"
+                )
             homes[name] = module
     package = sys.modules[package_name]
     clashes = [name for name in homes if name in vars(package)]
     if clashes:
-        raise ImportError(f"{package_name} already has {clashes}, which its modules also define")
+        raise ImportError(
+            f"{package_name} already has {clashes}, which its modules also define"
+        )
     package.__class__ = type("SharedPackage", (_SharedPackage,), {"_homes": homes})

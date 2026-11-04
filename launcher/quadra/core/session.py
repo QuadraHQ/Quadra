@@ -174,7 +174,9 @@ class RobloxSession:
         }
 
     def environment(self):
-        env = darling_server.darling_environment(self.settings, getattr(self, "notes", None))
+        env = darling_server.darling_environment(
+            self.settings, getattr(self, "notes", None)
+        )
         # Rebuild the allowlisted selectors, including intentional removals
         # (a PCI choice must not compete with an inherited vendor-ID choice).
         for name in GPU_ENVIRONMENT:
@@ -221,7 +223,9 @@ class RobloxSession:
         variables.extend(
             f"{name}={value}" for name, value in self._graphics_environment().items()
         )
-        vram = host.host_vram_bytes(getattr(self, "renderer_name", None), self.gpu_adapter)
+        vram = host.host_vram_bytes(
+            getattr(self, "renderer_name", None), self.gpu_adapter
+        )
         if self.settings.get("renderer") == "metal":
             from .. import graphics
 
@@ -284,9 +288,13 @@ class RobloxSession:
         variables.append(
             f"QUADRA_PENDING_URI_FILE=/Volumes/SystemRoot{locations.CACHE_DIR / 'pending-uri'}"
         )
-        variables.append(f"QUADRA_QUIT_SENTINEL=/Volumes/SystemRoot{locations.QUIT_SENTINEL}")
+        variables.append(
+            f"QUADRA_QUIT_SENTINEL=/Volumes/SystemRoot{locations.QUIT_SENTINEL}"
+        )
         try:
-            variables.append(f"QUADRA_ICON_ARGB=/Volumes/SystemRoot{host.icon_argb_file()}")
+            variables.append(
+                f"QUADRA_ICON_ARGB=/Volumes/SystemRoot{host.icon_argb_file()}"
+            )
         except Exception:
             pass
         return variables
@@ -404,7 +412,9 @@ class RobloxSession:
                         _("Could not build Quadra M2VK:\n{output}", output=output)
                     )
             try:
-                (locations.CACHE_DIR / "metal-shader-cache").mkdir(parents=True, exist_ok=True)
+                (locations.CACHE_DIR / "metal-shader-cache").mkdir(
+                    parents=True, exist_ok=True
+                )
             except OSError as error:
                 self.notes.append(
                     f"Metal shader cache unavailable; using bounded memory caching: {error}"
@@ -424,7 +434,10 @@ class RobloxSession:
         # to it shared its darlingserver, and when that went both died. Give it
         # time, then end it; crash handlers of earlier games are just ended.
         deadline = time.monotonic() + 20
-        while process_control.roblox_pids(("RobloxPlayer",)) and time.monotonic() < deadline:
+        while (
+            process_control.roblox_pids(("RobloxPlayer",))
+            and time.monotonic() < deadline
+        ):
             time.sleep(0.25)
         leftover = process_control.roblox_pids()
         if leftover:
@@ -445,7 +458,8 @@ class RobloxSession:
                     progress=self.shader_preload_progress,
                     cancel=self.shader_preload_cancel,
                     library_pack=(
-                        locations.APP_BUNDLE / "Contents/Resources/shaders/shaders_metal_osx.pack"
+                        locations.APP_BUNDLE
+                        / "Contents/Resources/shaders/shaders_metal_osx.pack"
                         if self.settings.get("metal_library_preload", True)
                         else None
                     ),
@@ -521,7 +535,9 @@ class RobloxSession:
         # The guest TMPDIR (Roblox's flag and thumbnail caches) likewise.
         (locations.CACHE_DIR / "roblox-tmp").mkdir(parents=True, exist_ok=True)
         self.log_path = locations.LOGS / time.strftime("launch-%Y%m%d-%H%M%S.log")
-        logs.cleanup_logs(int(self.settings.get("keep_logs", 30)) - 1, current=self.log_path)
+        logs.cleanup_logs(
+            int(self.settings.get("keep_logs", 30)) - 1, current=self.log_path
+        )
         self.trace_path = self._create_trace_file(self.log_path)
         if self.audio:
             self.audio.log_path = self.log_path
@@ -603,8 +619,7 @@ class RobloxSession:
                 log.write(
                     f"Metal performance trace: {self.metal_diagnostics_path}\n".encode()
                 )
-            for note in self.notes:
-                log.write(f"[Quadra Startup] {note}\n".encode(errors="replace"))
+            log.writelines(f"[Quadra Startup] {note}\n".encode(errors="replace") for note in self.notes)
             darling_server._prepare_darling_server(env, log)
             changed = process_control.raise_darling_priority()
             if changed:
@@ -659,7 +674,11 @@ class RobloxSession:
             # alive. Treating that status as Roblox's exit killed the game
             # during startup (issue #27: status=1 with a live prefix player).
             players = process_control.roblox_pids(("RobloxPlayer",))
-            players = [pid for pid in players if process_control._process_state(pid) not in (None, "Z")]
+            players = [
+                pid
+                for pid in players
+                if process_control._process_state(pid) not in (None, "Z")
+            ]
             if not players and not self._frontend_detached:
                 self.finish("frontend_exit", frontend_status=status)
                 return status
@@ -702,7 +721,9 @@ class RobloxSession:
             pid
             for pid in self.game_pids
             if process_control._process_state(pid) not in (None, "Z")
-            and process_control._roblox_process_in_prefix(pid, namespaces, ("RobloxPlayer",))
+            and process_control._roblox_process_in_prefix(
+                pid, namespaces, ("RobloxPlayer",)
+            )
         ]
         if not self.game_pids or now - self.scanned_at > 1:
             self.game_pids = process_control.roblox_pids(("RobloxPlayer",))
@@ -733,7 +754,9 @@ class RobloxSession:
                     )
                     frontend = "running" if status is None else str(status)
                 try:
-                    game_count = str(len(process_control.roblox_pids(("RobloxPlayer",))))
+                    game_count = str(
+                        len(process_control.roblox_pids(("RobloxPlayer",)))
+                    )
                 except Exception:
                     game_count = "unknown"
                 # Reasons and field values are local observations only; no
@@ -765,7 +788,10 @@ class RobloxSession:
             # Roblox is quitting by itself and saves GlobalBasicSettings while
             # it does; a signal now would lose them. Audio and DNS stay up too.
             deadline = time.monotonic() + QUIT_GRACE_SECONDS
-            while process_control.roblox_pids(("RobloxPlayer",)) and time.monotonic() < deadline:
+            while (
+                process_control.roblox_pids(("RobloxPlayer",))
+                and time.monotonic() < deadline
+            ):
                 time.sleep(0.2)
             leftover = process_control.roblox_pids()
         if leftover:

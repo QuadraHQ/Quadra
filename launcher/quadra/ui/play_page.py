@@ -10,10 +10,10 @@ from ..rosemary import runtime as rosemary_runtime
 from . import dialogs, logs_view, system
 
 __all__ = [
-    "PlayPage",
-    "SETTINGS_SHOWN",
     "PLAYTIME_SETTINGS",
     "RENDERER_NAMES",
+    "SETTINGS_SHOWN",
+    "PlayPage",
 ]
 
 SETTINGS_SHOWN = (
@@ -142,7 +142,9 @@ class PlayPage(Adw.Bin):
         window.watch_activity(self.refresh)
         window.watch_client(self.refresh)
         window.watch_setting(SETTINGS_SHOWN, lambda _key, _value: self.refresh())
-        window.watch_setting(PLAYTIME_SETTINGS, lambda _key, _value: self.refresh_playtime())
+        window.watch_setting(
+            PLAYTIME_SETTINGS, lambda _key, _value: self.refresh_playtime()
+        )
         window.watch_studio(self.show_studio_status)
         self.show_studio_status(window.studio_status.value)
         self.refresh()
@@ -331,7 +333,9 @@ class PlayPage(Adw.Bin):
     def _renderer_in_use(self):
         session = self.window.session
         session_settings = getattr(session, "settings", None)
-        settings = session_settings if session_settings is not None else self.window.settings
+        settings = (
+            session_settings if session_settings is not None else self.window.settings
+        )
         rosemary = (
             isinstance(session, rosemary_runtime.RosemarySession)
             if session is not None
@@ -342,7 +346,11 @@ class PlayPage(Adw.Bin):
         if settings.get("rosemary_force_opengl", False):
             return "OpenGL"
         if settings.get("vr", False):
-            return RENDERER_NAMES["vulkan"] if settings.get("rosemary_vr_zink", False) else "OpenGL"
+            return (
+                RENDERER_NAMES["vulkan"]
+                if settings.get("rosemary_vr_zink", False)
+                else "OpenGL"
+            )
         return "Metal"
 
     def refresh_playtime(self):

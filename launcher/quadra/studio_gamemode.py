@@ -1,4 +1,5 @@
 """Feral GameMode for Studio's Wine process. No GTK window code; Gio is only the D-Bus client."""
+
 import logging
 import os
 
@@ -15,15 +16,27 @@ def register(pid, gio=None):
     try:
         if gio is None:
             import gi
+
             gi.require_version("Gio", "2.0")
             from gi.repository import Gio, GLib
         else:
             Gio, GLib = gio
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        reply = bus.call_sync(NAME, PATH, NAME, "RegisterGameByPID", GLib.Variant("(ii)", (os.getpid(), pid)),
-                              GLib.VariantType("(i)"), Gio.DBusCallFlags.NONE, 2000, None)
+        reply = bus.call_sync(
+            NAME,
+            PATH,
+            NAME,
+            "RegisterGameByPID",
+            GLib.Variant("(ii)", (os.getpid(), pid)),
+            GLib.VariantType("(i)"),
+            Gio.DBusCallFlags.NONE,
+            2000,
+            None,
+        )
         result = reply.unpack()[0]
-    except Exception as error:  # no gi, no session bus, no GameMode: Studio runs without it
+    except (
+        Exception
+    ) as error:  # no gi, no session bus, no GameMode: Studio runs without it
         log.info("GameMode is not available: %s", error)
         return False
     if result != 0:

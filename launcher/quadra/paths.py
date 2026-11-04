@@ -1,4 +1,5 @@
 """Quadra user directories and migration from Cider and MacOBlox installations."""
+
 import logging
 import os
 from functools import lru_cache
@@ -22,7 +23,9 @@ def migrate_directory(source, target):
         target.parent.mkdir(parents=True, exist_ok=True)
         source.rename(target)
     except OSError as error:
-        logging.getLogger(__name__).warning("Could not migrate %s: %s; using legacy data", source, error)
+        logging.getLogger(__name__).warning(
+            "Could not migrate %s: %s; using legacy data", source, error
+        )
         return source
     return target
 
@@ -43,12 +46,15 @@ def migrate_environment(environ=os.environ):
     variable that is already set wins."""
     for name, value in list(environ.items()):
         if name.startswith("MACOBLOX_") and not name.startswith("MACOBLOX_METAL"):
-            environ.setdefault("QUADRA_" + name[len("MACOBLOX_"):], value)
+            environ.setdefault("QUADRA_" + name[len("MACOBLOX_") :], value)
 
 
 @lru_cache(maxsize=3)
 def user_directory(kind):
-    defaults = {"CONFIG": Path.home() / ".config", "CACHE": Path.home() / ".cache",
-                "DATA": Path.home() / ".local" / "share"}
+    defaults = {
+        "CONFIG": Path.home() / ".config",
+        "CACHE": Path.home() / ".cache",
+        "DATA": Path.home() / ".local" / "share",
+    }
     base = Path(os.environ.get(f"XDG_{kind}_HOME", defaults[kind]))
     return migrate_directories(base / "quadrahq", base / "ciderhq", base / "macoblox")

@@ -8,8 +8,8 @@ from . import darling_server, locations, process_control
 
 __all__ = [
     "_darling_path",
-    "signed_in",
     "logout",
+    "signed_in",
 ]
 
 

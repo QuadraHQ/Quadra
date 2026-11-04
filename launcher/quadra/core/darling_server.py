@@ -9,17 +9,17 @@ from ..i18n import _
 from . import locations, logs, process_control
 
 __all__ = [
-    "darling_version",
-    "darling_environment",
     "DSERVER_LOG_MAX_BYTES",
-    "rotate_dserver_log",
-    "clear_stale_darling",
-    "restart_darling",
     "WARMUP_OUTPUT_LIMIT",
-    "_warmup_output_path",
     "_darling_warmup",
-    "_warmup_output",
     "_prepare_darling_server",
+    "_warmup_output",
+    "_warmup_output_path",
+    "clear_stale_darling",
+    "darling_environment",
+    "darling_version",
+    "restart_darling",
+    "rotate_dserver_log",
 ]
 
 
@@ -127,7 +127,9 @@ def restart_darling():
     it off the GTK thread."""
     servers = process_control._darlingservers()
     namespaces = process_control._prefix_namespaces(servers)
-    processes = set(process_control._with_descendants(servers)) | set(process_control._container_processes(servers))
+    processes = set(process_control._with_descendants(servers)) | set(
+        process_control._container_processes(servers)
+    )
     processes |= set(process_control._orphaned_darling_processes())
     # The container's programs first, so none of them runs on without its server.
     belongs = lambda pid: process_control._process_in_prefix(pid, namespaces)

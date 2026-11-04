@@ -4,6 +4,7 @@ Studio writes what it is doing to Wine's debug output (see studio._wine_env).
 Two lines matter: the place that was opened and the kind of document in front.
 The same lines arrive more than once (Wine reports each debug string through
 several channels), so only a change in what is shown is sent."""
+
 import logging
 import re
 import threading
@@ -51,7 +52,12 @@ class StudioPresence:
             if place_id == self.place_id:
                 return
             self.place_id, self.info, self.started = place_id, None, self.clock()
-        threading.Thread(target=self._resolve, args=(place_id,), name="quadra-studio-place", daemon=True).start()
+        threading.Thread(
+            target=self._resolve,
+            args=(place_id,),
+            name="quadra-studio-place",
+            daemon=True,
+        ).start()
 
     def _resolve(self, place_id):
         try:
@@ -74,7 +80,9 @@ class StudioPresence:
             return {"details": _("Idling"), "state": None, "large_image": discord.LOGO}
         name = info["name"] if info and info.get("name") else None
         activity = {
-            "details": _("Developing {name}", name=name) if name else _("Developing a place"),
+            "details": _("Developing {name}", name=name)
+            if name
+            else _("Developing a place"),
             "state": _("Editing a script") if document == SCRIPT else None,
             "large_image": (info or {}).get("icon_url") or discord.LOGO,
         }

@@ -8,9 +8,9 @@ from pathlib import Path
 from . import files, locations
 
 __all__ = [
+    "CIDERDARLING_DESKTOP",
     "CIDERDARLING_SHORTCUT",
     "SHORTCUT_MARKER",
-    "CIDERDARLING_DESKTOP",
     "_desktop_command",
     "sync_ciderdarling_shortcut",
 ]
@@ -41,7 +41,9 @@ def _desktop_command():
     the prebuilt shim path), or this checkout's script as a quoted argument."""
     if locations.PREBUILT_SHIM:
         return "quadrahq"
-    text = str(locations.PROJECT / "launcher" / "quadrahq-launcher").replace("\\", "\\\\\\\\")
+    text = str(locations.PROJECT / "launcher" / "quadrahq-launcher").replace(
+        "\\", "\\\\\\\\"
+    )
     for character in '"`$':
         text = text.replace(character, "\\\\" + character)
     return '"' + text.replace("%", "%%") + '"'

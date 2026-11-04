@@ -5,10 +5,10 @@ never ownership evidence. A native mldr executable and prefix-owned mapped
 runtime files identify guests even after their darlingserver has disappeared.
 All evidence is read afresh; callers retain their existing pidfd signal checks.
 """
-import os
-from pathlib import Path
-import re
 
+import os
+import re
+from pathlib import Path
 
 _RUNTIME_SUFFIXES = (
     "/usr/lib/libSystem.B.dylib",
@@ -52,12 +52,13 @@ def _runtime_prefixes(maps):
             continue
         if not fields[4].isdigit() or int(fields[4]) == 0:
             continue
-        filename = _OCTAL_ESCAPE.sub(lambda match: chr(int(match.group(1), 8)), fields[5])
-        if filename.endswith(" (deleted)"):
-            filename = filename[:-10]
+        filename = _OCTAL_ESCAPE.sub(
+            lambda match: chr(int(match.group(1), 8)), fields[5]
+        )
+        filename = filename.removesuffix(" (deleted)")
         for suffix in _RUNTIME_SUFFIXES:
             if filename.endswith(suffix):
-                prefix = Path(filename[:-len(suffix)] or "/").resolve()
+                prefix = Path(filename[: -len(suffix)] or "/").resolve()
                 # A symlink into another runtime must not establish ownership.
                 if Path(filename).resolve() != prefix / suffix.lstrip("/"):
                     return None, None
@@ -94,8 +95,11 @@ def _selected_server_ancestor(process, prefix):
             # Revalidate every link, including its process generation, before
             # accepting the live server as bootstrap ownership evidence.
             for ancestor, generation, native_executable in chain:
-                if (_identity(ancestor) != generation or
-                        Path(os.readlink(ancestor / "exe")).resolve() != native_executable):
+                if (
+                    _identity(ancestor) != generation
+                    or Path(os.readlink(ancestor / "exe")).resolve()
+                    != native_executable
+                ):
                     return False
             if _read_bounded(process / "cmdline", 16384).split(b"\0") != arguments:
                 return False
@@ -164,13 +168,18 @@ def rootless_process_in_prefix(pid, prefix, noroot_lib):
         executable = Path(os.readlink(process / "exe")).resolve()
         if executable.name != "mldr":
             return False
-        prefixes, executable_prefixes = _runtime_prefixes(_read_bounded(process / "maps", _MAPS_LIMIT))
+        prefixes, executable_prefixes = _runtime_prefixes(
+            _read_bounded(process / "maps", _MAPS_LIMIT)
+        )
         if prefixes is None or prefixes - {selected}:
             return False
         proven = selected in executable_prefixes
         if not proven and not prefixes:
             proven = _bootstrap_provenance(process, selected)
-        return bool(proven and _identity(process) == before
-                    and Path(os.readlink(process / "exe")).resolve() == executable)
+        return bool(
+            proven
+            and _identity(process) == before
+            and Path(os.readlink(process / "exe")).resolve() == executable
+        )
     except (OSError, ValueError, IndexError, RuntimeError):
         return False

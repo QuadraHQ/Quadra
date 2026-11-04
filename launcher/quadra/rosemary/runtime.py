@@ -13,8 +13,8 @@ Copyright frolleks), nutmeg/rosemary.py and nutmeg/butter.py. Not covered
 here: Butter bottles (their prefix settings), nutmeg's wrapper command."""
 
 import logging
-import re
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -24,18 +24,29 @@ import tomllib
 from pathlib import Path
 from typing import NamedTuple
 
-from . import client as rosemary_client
 from .. import backends
 from ..paths import user_directory
+from . import client as rosemary_client
 
 log = logging.getLogger("quadra.rosemary")
 
 # Variables the settings below control: removed from the inherited
 # environment so an exported value cannot silently override the settings.
-MANAGED_ENV = ("ROSEMARY_PREFIX", "ROSEMARY_SWAP_INTERVAL", "ROSEMARY_SERVER", "SDL_VIDEO_DRIVER",
-               "SDL_VIDEODRIVER", "ROSEMARY_METAL_PRESENTATION_MODE", "ROSEMARY_SCREEN_REFRESH_RATE",
-               "ROSEMARY_DECORATIONS", "ROSEMARY_MENU", "ROSEMARY_CONFINE_POINTER",
-               "ROSEMARY_CONTROL_EDIT_KEYS", "ROSEMARY_COMMAND_KEY", "ROSEMARY_PLAIN_CTRL_CLICK")
+MANAGED_ENV = (
+    "ROSEMARY_PREFIX",
+    "ROSEMARY_SWAP_INTERVAL",
+    "ROSEMARY_SERVER",
+    "SDL_VIDEO_DRIVER",
+    "SDL_VIDEODRIVER",
+    "ROSEMARY_METAL_PRESENTATION_MODE",
+    "ROSEMARY_SCREEN_REFRESH_RATE",
+    "ROSEMARY_DECORATIONS",
+    "ROSEMARY_MENU",
+    "ROSEMARY_CONFINE_POINTER",
+    "ROSEMARY_CONTROL_EDIT_KEYS",
+    "ROSEMARY_COMMAND_KEY",
+    "ROSEMARY_PLAIN_CTRL_CLICK",
+)
 ENGINES = ("auto", "native", "emulated")
 SWAP_INTERVALS = ("", "0", "1", "-1")
 VIDEO_DRIVERS = ("", "wayland", "x11")
@@ -56,13 +67,18 @@ class RosemaryError(Exception):
 
 # -- Butter's runners
 
+
 def butter_data_dirs():
     base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
-    return [base / "butter", Path.home() / ".var" / "app" / "io.github.microlift.butter" / "data" / "butter"]
+    return [
+        base / "butter",
+        Path.home() / ".var" / "app" / "io.github.microlift.butter" / "data" / "butter",
+    ]
 
 
 def _version(tag):
     import re
+
     if not tag:
         return ()
     return tuple(int(part) for part in re.findall(r"\d+", str(tag).split("-", 1)[0]))
@@ -73,7 +89,11 @@ def runners():
     found = []
     for data in butter_data_dirs():
         try:
-            directories = sorted(d for d in (data / "runners").iterdir() if d.is_dir() and not d.name.startswith("."))
+            directories = sorted(
+                d
+                for d in (data / "runners").iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            )
         except OSError:
             continue
         for directory in directories:
@@ -87,8 +107,14 @@ def runners():
             program = directory / name
             if program.is_file():
                 tag = info.get("tag")
-                found.append((str(info.get("name") or directory.name), program,
-                              info.get("kind") == "custom", _version(tag)))
+                found.append(
+                    (
+                        str(info.get("name") or directory.name),
+                        program,
+                        info.get("kind") == "custom",
+                        _version(tag),
+                    )
+                )
     found.sort(key=lambda r: (r[2], tuple(-n for n in r[3]), r[0]))
     return [(name, program) for name, program, _custom, _tag in found]
 
@@ -99,10 +125,14 @@ def quadra_runners(source=None):
     with --appimage-extract, or <version>/bin/rosemary), newest first. With `source`
     ("quadra" or "upstream") only that kind: Quadra's build has "quadra" in its folder name."""
     from . import install as rosemary_install
+
     root = user_directory("DATA") / "rosemary-runner"
     try:
-        versions = sorted((d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")),
-                          key=lambda d: tuple(int(n) for n in re.findall(r"\d+", d.name)), reverse=True)
+        versions = sorted(
+            (d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")),
+            key=lambda d: tuple(int(n) for n in re.findall(r"\d+", d.name)),
+            reverse=True,
+        )
     except OSError:
         return []
     found = []
@@ -120,6 +150,7 @@ def quadra_runners(source=None):
 def describe(program):
     """A short name for a Rosemary program: which build and version, for the settings page."""
     from . import install as rosemary_install
+
     parts = Path(program).parts
     if "rosemary-runner" in parts:
         folder = parts[parts.index("rosemary-runner") + 1]
@@ -145,7 +176,10 @@ def runner_list(settings):
 
     def offer(program, label, added_by_hand=False):
         program = Path(program).expanduser()
-        listed.setdefault(str(program), Runner(str(program), label or _home_relative(program), added_by_hand))
+        listed.setdefault(
+            str(program),
+            Runner(str(program), label or _home_relative(program), added_by_hand),
+        )
 
     for _name, program in quadra_runners():
         offer(program, describe(program))
@@ -163,7 +197,11 @@ def runner_list(settings):
 
 def user_runner_list(settings):
     quadra_programs = {str(program) for _name, program in quadra_runners()}
-    return [runner for runner in runner_list(settings) if runner.program not in quadra_programs]
+    return [
+        runner
+        for runner in runner_list(settings)
+        if runner.program not in quadra_programs
+    ]
 
 
 def is_runnable(program):
@@ -178,23 +216,31 @@ def find_rosemary(settings):
     if bundled:
         path = Path(bundled)
         if not is_runnable(path):
-            raise RosemaryError(f"{backends.BUNDLED_ROSEMARY} points to {path}, which is not an executable file.")
+            raise RosemaryError(
+                f"{backends.BUNDLED_ROSEMARY} points to {path}, which is not an executable file."
+            )
         return path
     chosen = (settings.get("rosemary_program") or "").strip()
     if chosen:
         path = Path(chosen).expanduser()
         if not path.is_file() or not os.access(path, os.X_OK):
-            raise RosemaryError(f"{path} is not an executable file. Choose another Rosemary program in "
-                                "Settings → Environment.", settings=True)
+            raise RosemaryError(
+                f"{path} is not an executable file. Choose another Rosemary program in "
+                "Settings → Environment.",
+                settings=True,
+            )
         return path
     override = os.environ.get("QUADRA_ROSEMARY", "").strip()
     if override:
         # For one run, e.g. a build from the fork: nothing in the settings changes.
         path = Path(override).expanduser()
         if not path.is_file() or not os.access(path, os.X_OK):
-            raise RosemaryError(f"QUADRA_ROSEMARY points to {path}, which is not an executable file.")
+            raise RosemaryError(
+                f"QUADRA_ROSEMARY points to {path}, which is not an executable file."
+            )
         return path
     from . import install as rosemary_install
+
     # The build chosen in settings first; any other installed one still runs the game.
     chosen_kind = rosemary_install.normalize_source(settings.get("rosemary_source"))
     available = quadra_runners(chosen_kind) or quadra_runners() or runners()
@@ -203,11 +249,15 @@ def find_rosemary(settings):
     found = shutil.which("rosemary")
     if found:
         return Path(found)
-    raise RosemaryError("Rosemary is not installed. Quadra installs it for you: press Install in "
-                        "Settings → Environment.", settings=True)
+    raise RosemaryError(
+        "Rosemary is not installed. Quadra installs it for you: press Install in "
+        "Settings → Environment.",
+        settings=True,
+    )
 
 
 # -- prefix
+
 
 def default_prefix():
     return rosemary_client.data_dir() / "prefix"
@@ -228,20 +278,29 @@ def create_prefix(rosemary, prefix, output=lambda line: None, timeout=300):
     without the Darwin base, because Rosemary links them against its own
     system libraries (nutmeg's README)."""
     prefix.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run([str(rosemary), "prefix", "create", str(prefix), "--no-base"],
-                            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(
+        [str(rosemary), "prefix", "create", str(prefix), "--no-base"],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
     for line in (result.stdout + result.stderr).splitlines():
         output(line)
     if result.returncode != 0:
         tail = "\n".join((result.stdout + result.stderr).splitlines()[-12:])
-        raise RosemaryError(f"Rosemary could not create the prefix (exit status {result.returncode}):\n{tail}")
+        raise RosemaryError(
+            f"Rosemary could not create the prefix (exit status {result.returncode}):\n{tail}"
+        )
 
 
 # -- environment and command line
 
+
 def refresh_rate(text):
     """`text` as Rosemary reads ROSEMARY_SCREEN_REFRESH_RATE (hertz above zero), else ""."""
     import math
+
     text = str(text or "").strip()
     if not text or "_" in text:
         return ""
@@ -265,10 +324,16 @@ def run_env(settings, base=None):
     driver = settings.get("rosemary_video_driver", "")
     if driver in VIDEO_DRIVERS and driver:
         env["SDL_VIDEO_DRIVER"] = driver
-    for key, variable, allowed in (("rosemary_presentation_mode", "ROSEMARY_METAL_PRESENTATION_MODE", PRESENTATION_MODES),
-                                   ("rosemary_decorations", "ROSEMARY_DECORATIONS", DECORATIONS),
-                                   ("rosemary_menu", "ROSEMARY_MENU", MENUS),
-                                   ("rosemary_command_key", "ROSEMARY_COMMAND_KEY", COMMAND_KEYS)):
+    for key, variable, allowed in (
+        (
+            "rosemary_presentation_mode",
+            "ROSEMARY_METAL_PRESENTATION_MODE",
+            PRESENTATION_MODES,
+        ),
+        ("rosemary_decorations", "ROSEMARY_DECORATIONS", DECORATIONS),
+        ("rosemary_menu", "ROSEMARY_MENU", MENUS),
+        ("rosemary_command_key", "ROSEMARY_COMMAND_KEY", COMMAND_KEYS),
+    ):
         value = settings.get(key, "")
         if value and value in allowed:
             env[variable] = value
@@ -278,9 +343,11 @@ def run_env(settings, base=None):
     rate = refresh_rate(settings.get("rosemary_refresh_rate", ""))
     if rate:
         env["ROSEMARY_SCREEN_REFRESH_RATE"] = rate
-    for key, variable in (("rosemary_confine_pointer", "ROSEMARY_CONFINE_POINTER"),
-                          ("rosemary_control_edit_keys", "ROSEMARY_CONTROL_EDIT_KEYS"),
-                          ("rosemary_plain_ctrl_click", "ROSEMARY_PLAIN_CTRL_CLICK")):
+    for key, variable in (
+        ("rosemary_confine_pointer", "ROSEMARY_CONFINE_POINTER"),
+        ("rosemary_control_edit_keys", "ROSEMARY_CONTROL_EDIT_KEYS"),
+        ("rosemary_plain_ctrl_click", "ROSEMARY_PLAIN_CTRL_CLICK"),
+    ):
         if settings.get(key, False):
             env[variable] = "1"
     if settings.get("mangohud", False):
@@ -389,13 +456,23 @@ def ensure_ready(settings, progress, cancel=None, ignore_pin=False):
         if (settings.get("rosemary_program") or "").strip():
             raise
         from . import install as rosemary_install
+
         try:
-            rosemary_install.install_latest(lambda fraction, text: progress(fraction * 0.4, text),
-                                            source=rosemary_install.normalize_source(settings.get("rosemary_source")))
+            rosemary_install.install_latest(
+                lambda fraction, text: progress(fraction * 0.4, text),
+                source=rosemary_install.normalize_source(
+                    settings.get("rosemary_source")
+                ),
+            )
         except rosemary_install.InstallError as error:
             raise RosemaryError(str(error)) from error
         progress(0.4, "")
-    return ensure_latest(settings, lambda fraction, text: progress(0.4 + 0.6 * fraction, text), cancel, ignore_pin)
+    return ensure_latest(
+        settings,
+        lambda fraction, text: progress(0.4 + 0.6 * fraction, text),
+        cancel,
+        ignore_pin,
+    )
 
 
 def ensure_latest(settings, progress, cancel=None, ignore_pin=False):
@@ -419,15 +496,27 @@ def ensure_latest(settings, progress, cancel=None, ignore_pin=False):
         return have[1]
     progress(0.0, f"Downloading Roblox {latest.label}")
     zip_path = rosemary_client.download(
-        latest, lambda done, total: progress((done / total * 0.8) if total else 0.0,
-                                             f"Downloading Roblox {latest.label}"), cancel)
+        latest,
+        lambda done, total: progress(
+            (done / total * 0.8) if total else 0.0, f"Downloading Roblox {latest.label}"
+        ),
+        cancel,
+    )
     progress(0.8, "Installing Roblox")
     try:
-        rosemary_client.install(zip_path, latest, lambda done, total: progress(0.8 + 0.2 * done / total,
-                                                                               "Installing Roblox"), cancel)
+        rosemary_client.install(
+            zip_path,
+            latest,
+            lambda done, total: progress(0.8 + 0.2 * done / total, "Installing Roblox"),
+            cancel,
+        )
     finally:
         zip_path.unlink(missing_ok=True)
-    rosemary_client.remove_old(latest.key, keep_previous=1, pinned=settings.get("rosemary_pinned_build") or None)
+    rosemary_client.remove_old(
+        latest.key,
+        keep_previous=1,
+        pinned=settings.get("rosemary_pinned_build") or None,
+    )
     progress(1.0, "Done")
     return latest.bundle()
 
@@ -446,13 +535,18 @@ def running():
                 argv = handle.read().split(b"\0")
         except OSError:
             continue
-        if argv and os.path.basename(argv[0].decode("utf-8", "replace")) == "rosemary" and len(argv) > 1 \
-                and argv[1] in (b"run", b"server"):
+        if (
+            argv
+            and os.path.basename(argv[0].decode("utf-8", "replace")) == "rosemary"
+            and len(argv) > 1
+            and argv[1] in (b"run", b"server")
+        ):
             return True
     return False
 
 
 # -- the game
+
 
 class RosemarySession:
     """One run of the client through Rosemary; the same surface as
@@ -461,7 +555,7 @@ class RosemarySession:
 
     def __init__(self, settings, launch_uri=None, logs_dir=None):
         self.settings = settings
-        self.launch_uri = launch_uri       # opaque: given to the client as it is
+        self.launch_uri = launch_uri  # opaque: given to the client as it is
         self.log_path = None
         self.logs_dir = Path(logs_dir) if logs_dir else None
         self.process = None
@@ -479,6 +573,7 @@ class RosemarySession:
         self.metal_fallback_reason = None
         self.notes = []
         from ..transport_monitor import TransportMonitor
+
         self.transport_monitor = TransportMonitor()
 
     def game_log(self):
@@ -498,9 +593,12 @@ class RosemarySession:
             create_prefix(self.rosemary, self.prefix)
         if self.settings.get("rosemary_clear_cache_on_launch", False):
             freed = clear_roblox_cache(self.prefix)
-            self.notes.append(f"Roblox cache cleared before launch ({freed // 1_000_000} MB)")
+            self.notes.append(
+                f"Roblox cache cleared before launch ({freed // 1_000_000} MB)"
+            )
         from .. import core
         from . import xr as rosemary_xr
+
         # VR: the library is injected and Roblox runs on OpenGL (its VR device
         # attaches to that renderer). A reason it cannot start is logged and the
         # game starts without VR, as with Darling.
@@ -531,16 +629,28 @@ class RosemarySession:
         root = self.prefix / "root"
         root.mkdir(parents=True, exist_ok=True)
         with open(self.log_path, "wb") as log_file:
-            log_file.write(f"[Quadra Lifecycle] runtime=rosemary rosemary={self.rosemary} "
-                           f"prefix={self.prefix} app={bundle}\n".encode())
+            log_file.write(
+                f"[Quadra Lifecycle] runtime=rosemary rosemary={self.rosemary} "
+                f"prefix={self.prefix} app={bundle}\n".encode()
+            )
             if vr_session or vr_note:
-                log_file.write(((vr_session.log if vr_session else vr_note) + "\n").encode())
+                log_file.write(
+                    ((vr_session.log if vr_session else vr_note) + "\n").encode()
+                )
             log_file.flush()
             self.started_at = time.time()
-            self.process = subprocess.Popen(argv, cwd=root, env=env, stdin=subprocess.DEVNULL,
-                                            stdout=log_file, stderr=subprocess.STDOUT,
-                                            start_new_session=True)
-        self.cpu_limited = bool(taskset) or bool(cpus and self._limit_cpus_after_start(cpus))
+            self.process = subprocess.Popen(
+                argv,
+                cwd=root,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        self.cpu_limited = bool(taskset) or bool(
+            cpus and self._limit_cpus_after_start(cpus)
+        )
 
     def _apply_mods(self, build, bundle):
         """The mods folder and presets go into this client's own content, with
@@ -549,9 +659,13 @@ class RosemarySession:
         if not self.settings.get("enable_custom_mods", True):
             return
         try:
-            from .. import core, mods, modguard
-            mods.apply_mods(self.settings, bundle / "Contents" / "Resources" / "content",
-                            backup_dir=rosemary_client.data_dir() / "mods_backup" / build.key)
+            from .. import core, modguard, mods
+
+            mods.apply_mods(
+                self.settings,
+                bundle / "Contents" / "Resources" / "content",
+                backup_dir=rosemary_client.data_dir() / "mods_backup" / build.key,
+            )
             modguard.begin_session(core.CONFIG_DIR, mods.MODS_DIR)
         except Exception as error:  # a broken mod must not stop the game
             log.warning("Could not apply mods: %s", error)
@@ -595,10 +709,19 @@ class RosemarySession:
             return
         self._finished = True
         self.stop_game()
-        if self.settings.get("rosemary_process_server", True) and self.rosemary and self.prefix:
+        if (
+            self.settings.get("rosemary_process_server", True)
+            and self.rosemary
+            and self.prefix
+        ):
             try:
-                subprocess.run([str(self.rosemary), "server", "--stop"], env=run_env(self.settings),
-                               stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
+                subprocess.run(
+                    [str(self.rosemary), "server", "--stop"],
+                    env=run_env(self.settings),
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    timeout=15,
+                )
             except (OSError, subprocess.SubprocessError):
                 pass
 
@@ -626,7 +749,7 @@ class RosemarySession:
                 return
             end = time.monotonic() + wait
             while time.monotonic() < end:
-                process.poll()   # reap the leader so the group can empty
+                process.poll()  # reap the leader so the group can empty
                 if not group_alive():
                     return
                 time.sleep(0.1)
@@ -634,7 +757,9 @@ class RosemarySession:
 
 def cookie_files(prefix):
     """The sign-in the client keeps in the prefix (its cookie store), per guest user."""
-    return sorted((prefix / "root" / "Users").glob("*/Library/Cookies/com.roblox.*.cookies.tsv"))
+    return sorted(
+        (prefix / "root" / "Users").glob("*/Library/Cookies/com.roblox.*.cookies.tsv")
+    )
 
 
 def sign_out(prefix):
@@ -653,9 +778,18 @@ def roblox_cache_paths(prefix):
     paths = [prefix / "root" / "private" / "tmp" / "Roblox" / "rbx-storage"]
     for home in sorted((prefix / "root" / "Users").glob("*")):
         library = home / "Library" / "Roblox"
-        paths += [library / name for name in (
-            "OTAPatchBackups", "rbx-storage", "rbx-storage-sc", "rbx-storage.id",
-            "rbx-storage.db", "rbx-storage.db-shm", "rbx-storage.db-wal")]
+        paths += [
+            library / name
+            for name in (
+                "OTAPatchBackups",
+                "rbx-storage",
+                "rbx-storage-sc",
+                "rbx-storage.id",
+                "rbx-storage.db",
+                "rbx-storage.db-shm",
+                "rbx-storage.db-wal",
+            )
+        ]
     return [path for path in paths if path.exists() or path.is_symlink()]
 
 
@@ -667,8 +801,11 @@ def clear_roblox_cache(prefix):
                 size = path.lstat().st_size
                 path.unlink()
             else:
-                size = sum(entry.lstat().st_size for entry in path.rglob("*")
-                           if entry.is_file() and not entry.is_symlink())
+                size = sum(
+                    entry.lstat().st_size
+                    for entry in path.rglob("*")
+                    if entry.is_file() and not entry.is_symlink()
+                )
                 shutil.rmtree(path)
             freed += size
         except OSError:

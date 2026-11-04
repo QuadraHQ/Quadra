@@ -21,7 +21,6 @@ import re
 import shutil
 import stat
 import tempfile
-import threading
 import urllib.error
 import urllib.request
 import zipfile
@@ -36,7 +35,11 @@ CLIENT_VERSION_URLS = (
     "https://clientsettingscdn.roblox.com/v2/client-version/MacPlayer",
     "https://clientsettings.roblox.com/v2/client-version/MacPlayer",
 )
-CDN_HOSTS = ("https://setup.rbxcdn.com", "https://setup-aws.rbxcdn.com", "https://setup-ak.rbxcdn.com")
+CDN_HOSTS = (
+    "https://setup.rbxcdn.com",
+    "https://setup-aws.rbxcdn.com",
+    "https://setup-ak.rbxcdn.com",
+)
 BUNDLE_IN_ZIP = "RobloxPlayer.app"
 BUNDLE_NAME = "Roblox.app"
 CPU_TYPES = {"x86_64": 0x01000007, "arm64": 0x0100000C}
@@ -78,9 +81,9 @@ def host_arch():
 
 @dataclass(frozen=True)
 class Build:
-    guid: str      # `version-<hex>`, names the build on the CDN
-    version: str   # dotted version for display, "" when unknown
-    arch: str      # x86_64 or arm64
+    guid: str  # `version-<hex>`, names the build on the CDN
+    version: str  # dotted version for display, "" when unknown
+    arch: str  # x86_64 or arm64
 
     @property
     def key(self):
@@ -102,7 +105,9 @@ class Build:
 
 
 def _open(url, opener=urllib.request.urlopen):
-    return opener(urllib.request.Request(url, headers={"User-Agent": "Quadra"}), timeout=TIMEOUT)
+    return opener(
+        urllib.request.Request(url, headers={"User-Agent": "Quadra"}), timeout=TIMEOUT
+    )
 
 
 def _describe(error):
@@ -131,14 +136,18 @@ def fetch_latest(arch, opener=urllib.request.urlopen):
         if not isinstance(version, str) or not _VERSION.match(version):
             version = ""
         return Build(guid=guid, version=version, arch=arch)
-    raise ClientError("Could not find out the current Roblox version.\n" + "\n".join(failures))
+    raise ClientError(
+        "Could not find out the current Roblox version.\n" + "\n".join(failures)
+    )
 
 
 def _check_space(directory, needed):
     free = shutil.disk_usage(directory).free
     if free < needed + _SPARE_BYTES:
-        raise ClientError(f"Not enough disk space in {directory}: {needed / 1e6:.0f} MB is needed, "
-                          f"{free / 1e6:.0f} MB is free.")
+        raise ClientError(
+            f"Not enough disk space in {directory}: {needed / 1e6:.0f} MB is needed, "
+            f"{free / 1e6:.0f} MB is free."
+        )
 
 
 def _check_zip(path):
@@ -178,7 +187,12 @@ def download(build, progress, cancel, opener=urllib.request.urlopen):
             if total is not None and done != total:
                 raise OSError(f"the download stopped at {done} of {total} bytes")
             _check_zip(partial)
-        except (OSError, ValueError, http.client.HTTPException, zipfile.BadZipFile) as error:
+        except (
+            OSError,
+            ValueError,
+            http.client.HTTPException,
+            zipfile.BadZipFile,
+        ) as error:
             partial.unlink(missing_ok=True)
             failures.append(f"{url}: {_describe(error)}")
             continue
@@ -187,7 +201,9 @@ def download(build, progress, cancel, opener=urllib.request.urlopen):
             raise
         os.replace(partial, target)
         return target
-    raise ClientError(f"Could not download Roblox {build.label}.\n" + "\n".join(failures))
+    raise ClientError(
+        f"Could not download Roblox {build.label}.\n" + "\n".join(failures)
+    )
 
 
 def _member_parts(name):
@@ -205,8 +221,15 @@ def _check_link_target(name, target):
     # A relative target without `..` can only point at or below the directory
     # holding the link, which is inside the extraction root, so no chain of
     # links escapes.
-    if not target or target.startswith("/") or "\0" in target or ".." in target.split("/"):
-        raise ClientError(f"The Roblox archive holds an unsafe link: {name!r} -> {target!r}")
+    if (
+        not target
+        or target.startswith("/")
+        or "\0" in target
+        or ".." in target.split("/")
+    ):
+        raise ClientError(
+            f"The Roblox archive holds an unsafe link: {name!r} -> {target!r}"
+        )
 
 
 def _extract_member(archive, member, root):
@@ -221,14 +244,22 @@ def _extract_member(archive, member, root):
         try:
             target = archive.read(member).decode("utf-8")
         except UnicodeDecodeError as error:
-            raise ClientError(f"The Roblox archive holds an unreadable link: {member.filename!r}") from error
+            raise ClientError(
+                f"The Roblox archive holds an unreadable link: {member.filename!r}"
+            ) from error
         _check_link_target(member.filename, target)
         os.symlink(target, destination)
         return
     if kind not in (0, stat.S_IFREG):
-        raise ClientError(f"The Roblox archive holds a special file: {member.filename!r}")
+        raise ClientError(
+            f"The Roblox archive holds a special file: {member.filename!r}"
+        )
     permissions = 0o777 if mode & 0o111 else 0o666  # only executability is kept
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, permissions)
+    fd = os.open(
+        destination,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+        permissions,
+    )
     with os.fdopen(fd, "wb") as out, archive.open(member) as source:
         shutil.copyfileobj(source, out, _CHUNK)  # reading to the end checks the CRC
 
@@ -265,8 +296,11 @@ def macho_architectures(path):
             return set()
         size = 20 if magic == 0xCAFEBABE else 32
         table = handle.read(count * size)
-    return {names[cpu] for i in range(min(count, len(table) // size))
-            if (cpu := int.from_bytes(table[i * size:i * size + 4], "big")) in names}
+    return {
+        names[cpu]
+        for i in range(min(count, len(table) // size))
+        if (cpu := int.from_bytes(table[i * size : i * size + 4], "big")) in names
+    }
 
 
 def _verify_bundle(bundle, arch):
@@ -275,8 +309,10 @@ def _verify_bundle(bundle, arch):
         raise ClientError(f"{program} is missing or not executable")
     found = macho_architectures(program)
     if arch not in found:
-        raise ClientError(f"{program} was expected to be {arch}, but has "
-                          f"{', '.join(sorted(found)) or 'no recognised architecture'}")
+        raise ClientError(
+            f"{program} was expected to be {arch}, but has "
+            f"{', '.join(sorted(found)) or 'no recognised architecture'}"
+        )
     return program
 
 
@@ -304,7 +340,9 @@ def install(zip_path, build, progress, cancel):
         os.rename(staging, final)
     except (zipfile.BadZipFile, zlib.error, EOFError) as error:
         shutil.rmtree(staging, ignore_errors=True)
-        raise ClientError(f"The downloaded Roblox archive is damaged: {error}") from error
+        raise ClientError(
+            f"The downloaded Roblox archive is damaged: {error}"
+        ) from error
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise
@@ -315,7 +353,11 @@ def installed_builds():
     """[(Build, bundle_path)] of intact installed builds, newest first by mtime."""
     found = []
     try:
-        entries = [d for d in versions_dir().iterdir() if d.is_dir() and not d.name.startswith(".")]
+        entries = [
+            d
+            for d in versions_dir().iterdir()
+            if d.is_dir() and not d.name.startswith(".")
+        ]
     except OSError:
         return []
     for directory in sorted(entries, key=lambda d: d.stat().st_mtime, reverse=True):
@@ -329,15 +371,20 @@ def installed_builds():
                 version = plistlib.load(handle).get("CFBundleShortVersionString")
         except Exception:
             continue
-        found.append((Build(guid, version if isinstance(version, str) else "", arch), bundle))
+        found.append(
+            (Build(guid, version if isinstance(version, str) else "", arch), bundle)
+        )
     return found
 
 
 def remove_old(keep_key, in_use=(), keep_previous=1, pinned=None):
     """Delete installed builds other than `keep_key`, `pinned` and `in_use`,
     keeping the newest `keep_previous` of them so there is a build to go back to."""
-    others = [d for d in versions_dir().glob("version-*")
-              if d.is_dir() and d.name not in (keep_key, pinned) and d.name not in in_use]
+    others = [
+        d
+        for d in versions_dir().glob("version-*")
+        if d.is_dir() and d.name not in (keep_key, pinned) and d.name not in in_use
+    ]
     others.sort(key=lambda d: d.stat().st_mtime, reverse=True)
     for directory in others[keep_previous:]:
         shutil.rmtree(directory, ignore_errors=True)

@@ -21,7 +21,9 @@ from pathlib import Path
 
 log = logging.getLogger("quadra.fflags")
 
-SETTINGS_URL = "https://clientsettingscdn.roblox.com/v2/settings/application/PCDesktopClient"
+SETTINGS_URL = (
+    "https://clientsettingscdn.roblox.com/v2/settings/application/PCDesktopClient"
+)
 SETTING_NAME = "DFStringAllowedPublicFlags"
 MAX_BYTES = 4 * 1024 * 1024
 REFRESH_SECONDS = 6 * 3600

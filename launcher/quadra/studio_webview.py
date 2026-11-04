@@ -4,6 +4,7 @@ Studio shows its login, the Toolbox and Creator Hub pages in WebView2; without
 the runtime it reports "Launch Failed" at sign-in. Microsoft publishes the
 runtime through a download API; Vinegar's choice of version is kept because
 newer runtimes are not known to work under Wine."""
+
 import base64
 import hashlib
 import json
@@ -18,7 +19,13 @@ API = "https://msedge.api.cdp.microsoft.com/api/v1.1/contents/Browser/namespaces
 VERSION = "144.0.3719.92"
 INSTALL_ARGUMENTS = ("--msedgewebview", "--do-not-launch-msedge", "--system-level")
 APPDEFAULTS = r"HKCU\Software\Wine\AppDefaults\msedgewebview2.exe"
-EDGE_DIRECTORY = ("drive_c", "Program Files (x86)", "Microsoft", "EdgeWebView", "Application")
+EDGE_DIRECTORY = (
+    "drive_c",
+    "Program Files (x86)",
+    "Microsoft",
+    "EdgeWebView",
+    "Application",
+)
 
 # The API's certificate chain ends in this root, which many systems do not trust.
 MICROSOFT_ROOT = """-----BEGIN CERTIFICATE-----
@@ -66,21 +73,30 @@ def _context():
 
 def runtime_download(version=VERSION, opener=urllib.request.urlopen):
     """{url, size, sha256 (hex)} of the full x64 runtime installer for `version`."""
-    request = urllib.request.Request(f"{API}/versions/{version}/files?action=GenerateDownloadInfo", method="POST",
-                                     headers={"User-Agent": "Quadra"})
+    request = urllib.request.Request(
+        f"{API}/versions/{version}/files?action=GenerateDownloadInfo",
+        method="POST",
+        headers={"User-Agent": "Quadra"},
+    )
     with opener(request, timeout=30, context=_context()) as response:
         files = json.load(response)
     for entry in files:
         # The runtime is the file without a second version (that one is an update from it).
-        if re.fullmatch(rf"MicrosoftEdge_X64_{re.escape(version)}\.exe", entry.get("FileId", "")):
+        if re.fullmatch(
+            rf"MicrosoftEdge_X64_{re.escape(version)}\.exe", entry.get("FileId", "")
+        ):
             digest = base64.b64decode(entry["Hashes"]["Sha256"]).hex()
             return {"url": entry["Url"], "size": entry["SizeInBytes"], "sha256": digest}
-    raise RuntimeError(_("Microsoft has no WebView2 runtime {version}", version=version))
+    raise RuntimeError(
+        _("Microsoft has no WebView2 runtime {version}", version=version)
+    )
 
 
 def installed(prefix):
     try:
-        return studio_registry.installed_webview((prefix / "system.reg").read_text(errors="replace"))
+        return studio_registry.installed_webview(
+            (prefix / "system.reg").read_text(errors="replace")
+        )
     except OSError:
         return ""
 
@@ -95,7 +111,10 @@ def ensure(prefix, wine, download, cache, version, progress):
         return False
     info = runtime_download(version)
     installer = cache / f"webview-{version}.exe"
-    if not installer.exists() or hashlib.sha256(installer.read_bytes()).hexdigest() != info["sha256"]:
+    if (
+        not installer.exists()
+        or hashlib.sha256(installer.read_bytes()).hexdigest() != info["sha256"]
+    ):
         digest = hashlib.sha256()
         download(info["url"], installer, progress, "WebView2", digest)
         if digest.hexdigest() != info["sha256"]:
@@ -105,10 +124,18 @@ def ensure(prefix, wine, download, cache, version, progress):
         progress(1, _("Removing WebView2 {version}", version=current))
         setup = prefix.joinpath(*EDGE_DIRECTORY, current, "Installer", "setup.exe")
         # The uninstaller reports a failure status even when it worked: look at the result instead.
-        wine(str(setup), "--msedgewebview", "--uninstall", "--system-level", "--force-uninstall")
+        wine(
+            str(setup),
+            "--msedgewebview",
+            "--uninstall",
+            "--system-level",
+            "--force-uninstall",
+        )
     # WebView2 needs Windows 7 behaviour from Wine's default.
-    if not studio_registry.find(studio_registry.parse((prefix / "user.reg").read_text(errors="replace")),
-                                r"Software\Wine\AppDefaults\msedgewebview2.exe"):
+    if not studio_registry.find(
+        studio_registry.parse((prefix / "user.reg").read_text(errors="replace")),
+        r"Software\Wine\AppDefaults\msedgewebview2.exe",
+    ):
         wine("reg", "add", APPDEFAULTS, "/v", "Version", "/d", "win7", "/f")
     progress(1, _("Installing WebView2 {version}", version=version))
     wine(str(installer), *INSTALL_ARGUMENTS)
