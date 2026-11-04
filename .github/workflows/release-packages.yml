@@ -12,7 +12,9 @@ on:
         type: boolean
         default: true
   push:
+    branches: [main]
     tags: ['v*']
+    paths: ['launcher/quadra/__init__.py']
 
 permissions:
   contents: read
@@ -22,7 +24,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-commit:
+    name: Release commit check
+    runs-on: ubuntu-24.04
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push' && github.ref_type == 'branch'
+      - id: check
+        name: Release only for a version bump in a Release commit
+        env:
+          BRANCH_PUSH: ${{ github.event_name == 'push' && github.ref_type == 'branch' }}
+          BEFORE: ${{ github.event.before }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ $BRANCH_PUSH != true ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version_at() {
+            git show "$1:launcher/quadra/__init__.py" 2>/dev/null | sed -n 's/^__version__ = "\(.*\)"$/\1/p'
+          }
+          release=false
+          if [[ $MESSAGE == Release* ]]; then
+            git fetch --no-tags --depth=1 origin "$BEFORE" || true
+            before=$(version_at "$BEFORE")
+            after=$(version_at HEAD)
+            echo "Version before: ${before:-none}, after: ${after:-none}"
+            if [[ -n $after && $after != "$before" ]]; then release=true; fi
+          else
+            echo "The pushed commit does not start with Release."
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
   source:
+    needs: release-commit
+    if: needs.release-commit.outputs.release == 'true'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.source.outputs.version }}
@@ -30,13 +68,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
       - id: source
         name: Prepare the immutable source archive
         run: |
           version=$(python3 -c 'import json; print(json.load(open("packaging/release.json"))["version"])')
           [[ $version =~ ^[0-9]+\.[0-9]+([A-Za-z0-9.]*)$ ]]
           if [[ $GITHUB_REF == refs/tags/* ]]; then [[ $GITHUB_REF == refs/tags/v$version ]]; fi
+          launcher_version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' launcher/quadra/__init__.py)
+          if [[ $launcher_version != "$version" ]]; then
+            echo "launcher/quadra/__init__.py is $launcher_version but packaging/release.json is $version"
+            exit 1
+          fi
           mkdir dist
           git archive --format=tar --prefix="Quadra-$version/" HEAD | gzip -n > "dist/quadrahq-$version-source.tar.gz"
           echo "version=$version" >> "$GITHUB_OUTPUT"
