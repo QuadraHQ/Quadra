@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import glob
 import json
 import logging
 import os
@@ -19,7 +20,7 @@ from . import core
 log = logging.getLogger("quadra.discord")
 
 # QuadraHQ's Discord application.
-CLIENT_ID = "1559277724160233553"
+CLIENT_ID = "363445589247131668"
 WEBSITE_URL = "https://quadrahq.org"
 # The application's own "ciderhq" image asset is still the old Cider logo and only its owner can replace it in
 # the developer portal, so the presence shows the current logo from the website (the same file as
@@ -512,7 +513,12 @@ class DiscordRPC:
         candidates = []
         uid = os.getuid()
         runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}")
-        for base in (runtime, os.environ.get("TMPDIR", "/tmp"), "/tmp"):
+        bases = [runtime, os.environ.get("TMPDIR", "/tmp"), "/tmp"]
+        if runtime:
+            sandboxed_clients = ("app/*", ".flatpak/*/xdg-run", "snap.*")
+            for pattern in sandboxed_clients:
+                bases += sorted(glob.glob(os.path.join(glob.escape(runtime), pattern)))
+        for base in bases:
             if not base or not os.path.isdir(base):
                 continue
             for i in range(10):

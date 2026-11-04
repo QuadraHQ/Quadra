@@ -121,6 +121,23 @@ class DiscordPresenceTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 5)
         self.assertEqual(self.discord.connections[0]["activities"][1:], [None])
 
+    def test_finds_sockets_shared_by_sandboxed_discord_clients(self):
+        runtime = os.environ["XDG_RUNTIME_DIR"]
+        shared = [
+            Path(runtime, "app", "com.discordapp.Discord", "discord-ipc-0"),
+            Path(runtime, ".flatpak", "dev.vencord.Vesktop", "xdg-run", "discord-ipc-0"),
+            Path(runtime, "snap.discord", "discord-ipc-1"),
+        ]
+        for path in shared:
+            path.parent.mkdir(parents=True)
+            path.touch()
+        rpc = discord.DiscordRPC()
+        self.addCleanup(rpc._worker.join, 15)
+        self.addCleanup(rpc.close)
+        found = rpc._find_socket()
+        self.assertEqual(found[0], str(Path(runtime, "discord-ipc-0")))
+        self.assertCountEqual(found[1:], [str(path) for path in shared])
+
     def test_activity_branding_and_buttons(self):
         activity = discord.DiscordRPC._activity(
             details="Game", buttons=[("Game page", "https://www.roblox.com/games/1"),
