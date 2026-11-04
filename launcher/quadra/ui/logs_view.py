@@ -45,6 +45,7 @@ class GameLogsView(Gtk.Box):
         # thread. Results of an older polling run are dropped.
         self._server_generation = 0
         self._server_lookup = False
+        window.watch_setting("server_location_lookup", self._follow_server_location_lookup)
 
         bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         bar.set_margin_start(16)
@@ -437,6 +438,12 @@ class GameLogsView(Gtk.Box):
             self.server_label.set_text(f"🌍 {location or ip}")
             self.server_label.set_visible(True)
         return False
+
+    def _follow_server_location_lookup(self, _key, enabled):
+        if enabled:
+            self.start_server_location_polling()
+        else:
+            self.stop_server_location_polling()
 
     def start_server_location_polling(self):
         """Poll while a game runs and the user opted in (it contacts RoValra)."""

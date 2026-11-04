@@ -173,20 +173,14 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
 
     # Both Studio buttons follow an install.
     play = window.play_page
-    for view in window._studio_views():
-        assert view.set_studio_busy
-    assert window._studio_views() == [play, page]
-    window.studio_page.set_studio_busy(True, "Checking…")
-    play.set_studio_busy(True, "Checking…")
+    window.studio_status.set((None, ""))
     assert not page.launch_row.get_sensitive() and page.launch_row.get_title() == "Checking…"
     assert not play.studio.get_sensitive() and play.studio.get_label() == "Checking…"
-    page.show_studio_progress(0.5, "Roblox Studio: 280 of 567 MB")
-    play.show_studio_progress(0.5, "Roblox Studio: 280 of 567 MB")
+    assert not page.progress.get_visible() and not play.studio_progress.get_visible()
+    window.studio_status.set((0.5, "Roblox Studio: 280 of 567 MB"))
     assert page.progress.get_visible() and play.studio_progress.get_visible()
     assert page.progress.get_text() == play.studio_progress.get_text()
-    for view in window._studio_views():
-        view.set_studio_busy(False)
-        view.hide_studio_progress()
+    window.studio_status.set(None)
     assert page.launch_row.get_sensitive() and page.launch_row.get_title() == "Launch Roblox Studio"
     assert play.studio.get_sensitive() and play.studio.get_label() == "Roblox Studio"
     assert not page.progress.get_visible() and not play.studio_progress.get_visible()
@@ -209,8 +203,7 @@ with patch.object(core, "load_settings", return_value=dict(core.DEFAULT_SETTINGS
         flatpak = make_window()
         names = [flatpak.stack.get_pages().get_item(i).get_name() for i in range(flatpak.stack.get_pages().get_n_items())]
         assert names == ["play", "settings", "servers", "mods", "info"], names
-        assert not hasattr(flatpak, "studio_page")
-        assert flatpak._studio_views() == [flatpak.play_page]
+        assert flatpak.studio_page is None
         flatpak.destroy()
 
 print("PASS: Studio section, tabs, settings saved and validated, flags editor, releases, GPUs, buttons, Flatpak")

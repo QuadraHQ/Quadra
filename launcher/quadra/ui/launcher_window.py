@@ -51,25 +51,44 @@ class LauncherWindow(Adw.ApplicationWindow):
         super().__init__(application=app, title="Quadra")
         self.set_default_size(760, 580)
         self.set_resizable(True)
-        self.settings = core.load_settings()
+        self.settings = core.SettingsStore(
+            core.load_settings(), save=lambda values: core.save_settings(values)
+        )
         appearance = self.settings.get("launcher_appearance", "gnome")
         theme.install(appearance)
         if appearance != "gnome":
             self.set_default_size(960, 680)
         i18n.set_language(self.settings.get("language", "en"))
-        self.session = None
-        self.rpc = None
-        self.game_tracker = None
-        self.current_game_info = None
-        self._transport_warning_session = None
-        self._transport_warning_dialog = None
+        self.activity_changes = core.Subscribers()
+        self.client_changes = core.Subscribers()
+        self.studio_status = core.ObservableValue()
+        self._page_subscriptions = []
+        self._session = None
         # One long operation at a time: starting, updating, building,
         # restarting Darling or signing out. They share the client and Darling.
-        self.busy = None
+        self._busy = None
+        self.rpc = None
+        self.web = None
+        self.game_tracker = None
+        self.current_game_info = None
+        self.game_started_at = None
+        self._playtime_clock = 0.0
+        self._playtime_before_session = 0
+        self._playtime_saved_at = 0.0
+        self._rpc_retry_at = 0.0
+        self._watch_inflight = None
+        self._activity_join = None
+        self._shader_preload_session = None
+        self._shader_preload_dialog = None
+        self._update_required_dialog_active = False
+        self.stopping = False
+        self._transport_warning_session = None
+        self._transport_warning_dialog = None
         self.runtime_install_job = None
         self.cider_release = (
             None if runtime.is_bundled() else runtime_updates.cached(core.CACHE_DIR)
         )
+        self.cider_pin = self._cider_pin_for(self.cider_release)
         self.cider_update_checking = False
         self._notified_cider_revision = None
         self.quit_when_idle = False  # the window was closed during an operation
@@ -84,6 +103,9 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.settings_open = False
         self.runtime_widgets = []
         self.launch_cancelled = False
+        self.play_page = None
+        self.settings_page = None
+        self.studio_page = None
         setup_action = Gio.SimpleAction.new("setup", None)
         setup_action.connect("activate", lambda *_args: self.show_setup())
         self.add_action(setup_action)
@@ -94,6 +116,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.add_action(diagnostics_action)
         # QUADRA_PAGE opens another tab first (for screenshots).
         self.build(page or os.environ.get("QUADRA_PAGE", "play"))
+        self._follow_settings()
         self._startup_checked = False  # the update check runs when settings first open
         threading.Thread(target=self._sync_ciderdarling_shortcut, daemon=True).start()
         threading.Thread(target=self._load_flag_allowlist, daemon=True).start()
@@ -119,6 +142,63 @@ class LauncherWindow(Adw.ApplicationWindow):
             self._pending_uri_at = time.monotonic()
         self._pending_uri = value
 
+    @property
+    def session(self):
+        return self._session
+
+    @session.setter
+    def session(self, value):
+        if value is not self._session:
+            self._session = value
+            self.activity_changes.notify()
+
+    @property
+    def busy(self):
+        return self._busy
+
+    @busy.setter
+    def busy(self, value):
+        if value != self._busy:
+            self._busy = value
+            self.activity_changes.notify()
+
+    def watch_setting(self, keys, callback):
+        self._page_subscriptions.append(self.settings.watch(keys, callback))
+
+    def watch_activity(self, callback):
+        self._page_subscriptions.append(self.activity_changes.add(callback))
+
+    def watch_client(self, callback):
+        self._page_subscriptions.append(self.client_changes.add(callback))
+
+    def watch_studio(self, callback):
+        self._page_subscriptions.append(self.studio_status.watch(callback))
+
+    def _stop_page_subscriptions(self):
+        subscriptions, self._page_subscriptions = self._page_subscriptions, []
+        for unsubscribe in subscriptions:
+            unsubscribe()
+
+    def client_changed(self):
+        self.client_changes.notify()
+
+    def _follow_settings(self):
+        watch = self.settings.watch
+        watch("runtime_backend", lambda _key, _value: self.apply_runtime_state())
+        watch("launcher_appearance", lambda _key, appearance: self._show_launcher_appearance(appearance))
+        watch("language", lambda _key, code: self._show_language(code))
+        watch("discord_rpc", lambda _key, enabled: self._follow_discord_rpc(enabled))
+        watch(
+            ("discord_rpc_game", "discord_rpc_icon", "discord_rpc_time"),
+            lambda _key, _value: self._refresh_rpc_presence(),
+        )
+
+    @staticmethod
+    def _cider_pin_for(release):
+        if runtime.is_bundled():
+            return None
+        return runtime_updates.pin(release) if release else runtime.pinned_ciderdarling()
+
     def _sync_ciderdarling_shortcut(self):
         """Keep the CiderDarling Settings menu entry in step with the runtimes."""
         try:
@@ -130,7 +210,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         core.sync_ciderdarling_shortcut(installed)
 
     def show_ciderdarling_settings(self):
-        if "ciderdarling" not in self.settings_page._runtime_choices or os.environ.get(
+        if not self.settings_page.runtime_installed("ciderdarling") or os.environ.get(
             "FLATPAK_ID"
         ):
             self.stack.set_visible_child_name("settings")
@@ -206,14 +286,6 @@ class LauncherWindow(Adw.ApplicationWindow):
 
         dialog.connect("response", response)
         dialog.present(self)
-
-    def set_server_location_lookup(self, enabled):
-        self.set_setting("server_location_lookup", enabled)
-        logs = self.play_page.logs_view
-        if enabled:
-            logs.start_server_location_polling()
-        else:
-            logs.stop_server_location_polling()
 
     # -- runtime backend (Darling or Rosemary)
     def runtime_name(self):
@@ -311,7 +383,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             splash.close_splash()
 
     def skip_preload(self):
-        session = getattr(self, "_shader_preload_session", None)
+        session = self._shader_preload_session
         if session is not None:
             session.shader_preload_cancel.set()
 
@@ -347,7 +419,7 @@ class LauncherWindow(Adw.ApplicationWindow):
                 or not self.rosemary_ready()
             ):
                 progress(0.0, _("Checking for updates…"))
-                rosemary_runtime.ensure_ready(self.settings, progress)
+                rosemary_runtime.ensure_ready(self.settings.snapshot(), progress)
         except Exception as error:
             GLib.idle_add(
                 self._autostart_failed,
@@ -422,10 +494,6 @@ class LauncherWindow(Adw.ApplicationWindow):
             self.close_splash()
             self.present_settings()
 
-    def set_tray_icon(self, enabled):
-        self.set_setting("tray_icon", enabled)
-        self.get_application().apply_tray()
-
     def notify_server_location(self, location, ip=None):
         """Tell the user where the server they joined is (desktop notification;
         the launcher is usually hidden while a game runs). Once per server."""
@@ -445,10 +513,13 @@ class LauncherWindow(Adw.ApplicationWindow):
 
     def build(self, page):
         """(Re)create the interface, e.g. after the language changes."""
-        if getattr(self, "settings_page", None):
+        if self.settings_page:
             self.settings_page.flush()  # the new page reads the file
-        if getattr(self, "studio_page", None):
+        if self.studio_page:
             self.studio_page.flush()
+        if self.play_page:
+            self.play_page.logs_view.stop_server_location_polling()
+        self._stop_page_subscriptions()
         self.toasts = Adw.ToastOverlay()
         self.runtime_widgets = []
         self.stack = Adw.ViewStack()
@@ -578,6 +649,8 @@ class LauncherWindow(Adw.ApplicationWindow):
         else:
             self.setup_active = False
             self.content_stack.set_visible_child_name("launcher")
+        if self.session is not None and self.session.log_path:
+            self.play_page.logs_view.reset(self.session.log_path)
 
     def apply_launcher_appearance(self):
         appearance = self.settings.get("launcher_appearance", "gnome")
@@ -587,7 +660,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.settings_page.appearance_tabs.set_visible_child_name(
             "custom" if custom else "gnome"
         )
-        if getattr(self, "studio_page", None):
+        if self.studio_page:
             self.studio_page.appearance_tabs.set_visible_child_name(
                 "custom" if custom else "gnome"
             )
@@ -602,9 +675,10 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.play_page.set_appearance(appearance)
 
     def set_launcher_appearance(self, appearance):
-        if appearance not in ("grid", "gnome", "monochrome"):
-            return
-        self.set_setting("launcher_appearance", appearance)
+        if appearance in ("grid", "gnome", "monochrome"):
+            self.set_setting("launcher_appearance", appearance)
+
+    def _show_launcher_appearance(self, appearance):
         theme.install(appearance)
         self.apply_launcher_appearance()
 
@@ -631,7 +705,6 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.set_setting("setup_complete", True)
         self.dismiss_setup()
         self.stack.set_visible_child_name("play")
-        self.play_page.refresh()
         if launch:
             self.play_clicked()
 
@@ -649,7 +722,9 @@ class LauncherWindow(Adw.ApplicationWindow):
         except Exception:
             pass
 
-        if self.settings.get("auto_check_roblox_updates", True):
+        if not self.rosemary_selected() and self.settings.get(
+            "auto_check_roblox_updates", True
+        ):
             try:
                 installed = core.installed_version()
                 if installed:
@@ -718,7 +793,6 @@ class LauncherWindow(Adw.ApplicationWindow):
             )
             return False
         self.busy = what
-        self.play_page.refresh()
         return True
 
     def end(self, resume_pending=True):
@@ -726,11 +800,10 @@ class LauncherWindow(Adw.ApplicationWindow):
         if self.quit_when_idle:
             self.get_application().quit()
             return
-        self.play_page.refresh()
         if (
             resume_pending
             and self.pending_uri
-            and core.installed_version()
+            and self.runtime_ready()
             and not self.setup_active
         ):
             pending = self.pending_uri
@@ -738,9 +811,6 @@ class LauncherWindow(Adw.ApplicationWindow):
 
     def set_setting(self, key, value):
         self.settings[key] = value
-        core.save_settings(self.settings)
-        if key == "renderer":
-            self.play_page.refresh()
 
     def _periodic_ciderdarling_updates(self):
         if self.settings.get("auto_check_ciderdarling_updates", True):
@@ -770,7 +840,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         # subsequent check can present a newer release after it finishes.
         if release is not None and self.runtime_install_job is None:
             self.cider_release = release
-            page._cider_pin = runtime_updates.pin(release)
+            self.cider_pin = runtime_updates.pin(release)
             page.refresh_runtime_choices()
         page.refresh_ciderdarling()
         if page.ciderdarling_update_needed():
@@ -797,10 +867,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             return
         page = self.settings_page
         update = page.ciderdarling_update_needed()
-        if (
-            not update
-            and page._runtime_codes[page.runtime_row.get_selected()] != "ciderdarling"
-        ):
+        if not update and page.selected_runtime() != "ciderdarling":
             return
         if not self.begin("installing runtime"):
             return
@@ -859,7 +926,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.end(resume_pending=False)
         page = self.settings_page
         page.refresh_runtime_choices()
-        choice = page._runtime_choices.get("ciderdarling")
+        choice = page.installed_runtime("ciderdarling")
         if error:
             dialogs._error_dialog(self, _("Could not install CiderDarling"), error)
         elif choice is None or (
@@ -880,7 +947,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             threading.Thread(
                 target=self._sync_ciderdarling_shortcut, daemon=True
             ).start()
-            page.runtime_row.set_selected(page._runtime_codes.index("ciderdarling"))
+            page.select_runtime("ciderdarling")
             if (
                 core.DARLING_RUNTIME["runtime"] == "ciderdarling"
                 and page.runtime_apply_button.get_sensitive()
@@ -940,9 +1007,11 @@ class LauncherWindow(Adw.ApplicationWindow):
         threading.Thread(target=worker, daemon=True).start()
 
     def set_language(self, code):
+        self.set_setting("language", code)
+
+    def _show_language(self, code):
         if code == i18n.language():
             return
-        self.set_setting("language", code)
         i18n.set_language(code)
         # Rebuild after the combo row finished handling its own signal.
         GLib.idle_add(lambda: self.build("settings") and False)
@@ -981,8 +1050,8 @@ class LauncherWindow(Adw.ApplicationWindow):
             self.session
             or self.busy
             or self.setup_active
-            or getattr(self, "stopping", False)
-            or getattr(self, "_update_required_dialog_active", False)
+            or self.stopping
+            or self._update_required_dialog_active
         ):
             # The pending file remains in place.  A later activation or the
             # end of the current operation will retry this exact argument.
@@ -995,6 +1064,8 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.launch(browser_uri)
 
     def studio_clicked(self):
+        if self.studio_status.value is not None:
+            return
         if studio.running():
             dialogs._toast(self.toasts, _("Roblox Studio is already running"))
             return
@@ -1017,28 +1088,19 @@ class LauncherWindow(Adw.ApplicationWindow):
         )
         dialog.present(self)
 
-    def _studio_views(self):
-        """The pages with a Studio button: Play's, and the Studio section's."""
-        return [
-            view
-            for view in (self.play_page, getattr(self, "studio_page", None))
-            if view is not None
-        ]
-
     def _update_and_start_studio(self):
         """Installs or updates Studio when needed, then starts it."""
-        views = self._studio_views()
-        if getattr(self, "studio_page", None):
+        if self.studio_status.value is not None:
+            return
+        if self.studio_page:
             self.studio_page.flush()  # Studio reads the flags when it starts
-        for view in views:
-            view.set_studio_busy(True, _("Checking…"))
+        self.studio_status.set((None, ""))
 
         def progress(fraction, text):
-            for view in views:
-                GLib.idle_add(view.show_studio_progress, fraction, text)
+            GLib.idle_add(self.studio_status.set, (fraction, text))
 
         def work():
-            settings = dict(self.settings)
+            settings = self.settings.snapshot()
             try:
                 studio.install(progress, settings)
             except studio.ChannelError:
@@ -1052,10 +1114,8 @@ class LauncherWindow(Adw.ApplicationWindow):
             studio.spawn()
 
         def done(_result, error):
-            for view in views:
-                view.set_studio_busy(False)
-                view.hide_studio_progress()
-            if getattr(self, "studio_page", None):
+            self.studio_status.set(None)
+            if self.studio_page:
                 self.studio_page.refresh()
             if error:
                 dialogs._error_dialog(
@@ -1088,10 +1148,12 @@ class LauncherWindow(Adw.ApplicationWindow):
         def progress(fraction, text):
             GLib.idle_add(self.splash_update, text or None, fraction)
 
+        settings = self.settings.snapshot()
+
         def work():
             error = None
             try:
-                rosemary_runtime.ensure_ready(self.settings, progress)
+                rosemary_runtime.ensure_ready(settings, progress)
             except Exception as failure:
                 error = failure
             GLib.idle_add(finished, error)
@@ -1099,16 +1161,15 @@ class LauncherWindow(Adw.ApplicationWindow):
         def finished(error):
             self.close_splash()
             self.end(resume_pending=False)
+            self.client_changed()
             if error is not None:
                 self.present_settings()
-                self.settings_page.refresh_rosemary()
                 dialogs._error_dialog(
                     self,
                     _("Could not install Roblox with Rosemary"),
                     str(error) or repr(error),
                 )
                 return False
-            self.settings_page.refresh_rosemary()
             self.launch(
                 launch_uri, _installed=True
             )  # a second miss is an error, not another install
@@ -1126,15 +1187,15 @@ class LauncherWindow(Adw.ApplicationWindow):
         ):
             self._rosemary_install_then_launch(launch_uri)
             return
-        if getattr(self, "stopping", False) or not self.begin("starting"):
+        if self.stopping or not self.begin("starting"):
             return
         self.settings_page.flush()
         if self.rosemary_selected():
             session = rosemary_runtime.RosemarySession(
-                dict(self.settings), launch_uri=launch_uri
+                self.settings.snapshot(), launch_uri=launch_uri
             )
         else:
-            session = core.RobloxSession(dict(self.settings), launch_uri=launch_uri)
+            session = core.RobloxSession(self.settings.snapshot(), launch_uri=launch_uri)
         self._shader_preload_session = session
         session.shader_preload_progress = lambda done, total: GLib.idle_add(
             self._show_shader_preload, session, done, total
@@ -1160,7 +1221,7 @@ class LauncherWindow(Adw.ApplicationWindow):
 
     def _show_shader_preload(self, session, done, total, phase="pipelines"):
         if (
-            getattr(self, "_shader_preload_session", None) is not session
+            self._shader_preload_session is not session
             or session.shader_preload_cancel.is_set()
             or self.busy != "starting"
         ):
@@ -1176,7 +1237,7 @@ class LauncherWindow(Adw.ApplicationWindow):
                 labels.get(phase, _("Preparing Roblox")), done / total if total else 0
             )
             return False
-        dialog = getattr(self, "_shader_preload_dialog", None)
+        dialog = self._shader_preload_dialog
         if dialog is None:
             dialog = Adw.AlertDialog(
                 heading=_("Preparing Roblox"),
@@ -1206,8 +1267,8 @@ class LauncherWindow(Adw.ApplicationWindow):
         return False
 
     def _close_shader_preload(self, session):
-        if getattr(self, "_shader_preload_session", None) is session:
-            dialog = getattr(self, "_shader_preload_dialog", None)
+        if self._shader_preload_session is session:
+            dialog = self._shader_preload_dialog
             if dialog is not None:
                 dialog.disconnect(self._shader_preload_response)
                 dialog.close()
@@ -1227,32 +1288,15 @@ class LauncherWindow(Adw.ApplicationWindow):
             return None
 
     def _stop_web(self):
-        if getattr(self, "web", None):
+        if self.web:
             self.web.stop()
             self.web = None
 
-    def set_discord_rpc(self, enabled):
-        self.set_setting("discord_rpc", enabled)
-        if hasattr(self, "settings_page"):
-            if hasattr(self.settings_page, "discord_game"):
-                self.settings_page.discord_game.set_sensitive(enabled)
-            if hasattr(self.settings_page, "discord_icon"):
-                self.settings_page.discord_icon.set_sensitive(enabled)
-            if hasattr(self.settings_page, "discord_time"):
-                self.settings_page.discord_time.set_sensitive(enabled)
+    def _follow_discord_rpc(self, enabled):
         if not enabled:
             self._stop_rpc()
         elif self.session:
             self._start_rpc()
-
-    def set_discord_rpc_option(self, key, value):
-        self.set_setting(key, value)
-        if self.session and self.settings.get("discord_rpc", True):
-            self._refresh_rpc_presence()
-
-    def set_show_playtime(self, enabled):
-        self.set_setting("show_playtime", enabled)
-        self.play_page.refresh_playtime()
 
     def _on_game_activity_change(self, info: dict | None, session, tracker, generation):
         # The log and metadata workers only enqueue; GTK-owned state changes
@@ -1284,11 +1328,11 @@ class LauncherWindow(Adw.ApplicationWindow):
                 return False
         rpc = self.rpc
         start = (
-            getattr(self, "game_started_at", time.time())
+            self.game_started_at or time.time()
             if self.settings.get("discord_rpc_time", True)
             else None
         )
-        info = getattr(self, "current_game_info", None)
+        info = self.current_game_info
         brand = f"Quadra {__version__}"
         large_image, large_text = discord.LOGO, brand
         small_image = small_text = None
@@ -1360,7 +1404,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         if tracker:
             tracker.stop()
         self.current_game_info = None
-        if getattr(self, "rpc", None):
+        if self.rpc:
             rpc = self.rpc
             self.rpc = None
             rpc.close()
@@ -1374,7 +1418,6 @@ class LauncherWindow(Adw.ApplicationWindow):
             if session and session.launch_uri:
                 self.pending_uri = session.launch_uri
             self.present_settings()
-            self.play_page.refresh()
             dialogs._error_dialog(self, _("Could not start Roblox"), str(error) or repr(error))
             return
         self._stop_rpc()
@@ -1404,16 +1447,17 @@ class LauncherWindow(Adw.ApplicationWindow):
             self.pending_uri = uri_handoff.peek_pending()
         self.last_log = session.log_path
         self.game_started_at = time.time()
-        self.last_playtime_save = time.time()
+        self._playtime_clock = time.monotonic()
+        self._playtime_saved_at = self._playtime_clock
+        self._playtime_before_session = int(self.settings.get("playtime_seconds", 0))
+        self._rpc_retry_at = self._playtime_clock + 5
         self.current_game_info = None
         self._notified_server_ip = None
         self._start_activity(session)
         if int(self.settings.get("roblox_cpu_limit", 0) or 0) > 0:
             GLib.timeout_add_seconds(10, self._limit_cpus, session)
-        if hasattr(self, "play_page") and hasattr(self.play_page, "logs_view"):
-            self.play_page.logs_view.reset(session.log_path)
-            self.play_page.logs_view.update()
-        self.play_page.refresh()
+        self.play_page.logs_view.reset(session.log_path)
+        self.play_page.logs_view.update()
         if self.settings.get("discord_rpc", True):
             self._start_rpc()
         # Hide once the game window has had time to appear.
@@ -1479,7 +1523,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         # session if the previous one finished between timer turns.
         if self.session is not session:
             return False
-        if getattr(self, "_watch_inflight", None) is not None:
+        if self._watch_inflight is not None:
             return True
         self._watch_inflight = session
 
@@ -1529,6 +1573,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         self.show_splash(_("Updating Roblox…"))
         self.splash_update(indeterminate=True)
         pending = self.pending_uri
+        settings = self.settings.snapshot()
 
         def progress(fraction, text):
             GLib.idle_add(self.splash_update, text, fraction)
@@ -1536,7 +1581,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         def work():
             error = None
             try:
-                rosemary_runtime.ensure_latest(self.settings, progress, ignore_pin=True)
+                rosemary_runtime.ensure_latest(settings, progress, ignore_pin=True)
             except Exception as failure:
                 error = failure
             GLib.idle_add(finished, error)
@@ -1544,6 +1589,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         def finished(error):
             self.close_splash()
             self.end(resume_pending=False)
+            self.client_changed()
             if error is not None:
                 self.present_settings()
                 dialogs._error_dialog(
@@ -1570,14 +1616,14 @@ class LauncherWindow(Adw.ApplicationWindow):
         """Follow the player log for joins: server history, and the server
         location notification as soon as the server is known."""
         self._stop_activity()
+        self._activity_join = None
         if not session.log_path:
             return
-        self._activity_join = None
         target = session.game_log if hasattr(session, "game_log") else session.log_path
         self.activity = activity.ActivityWatcher(target, self._on_log_event).start()
 
     def _stop_activity(self):
-        watcher = getattr(self, "activity", None)
+        watcher = self.activity
         if watcher is not None:
             watcher.stop()
         self.activity = None
@@ -1603,7 +1649,7 @@ class LauncherWindow(Adw.ApplicationWindow):
             ).start()
         elif event.name in (logevents.UDMUX, logevents.JOINED):
             ip = event.data["server_ip"]
-            join = getattr(self, "_activity_join", None)
+            join = self._activity_join
             if join:
                 self._activity_join = (join[0], join[1], ip)
             if self.settings.get("server_location_lookup", False):
@@ -1714,9 +1760,7 @@ class LauncherWindow(Adw.ApplicationWindow):
         GLib.idle_add(self._refresh_history)
 
     def _refresh_history(self):
-        page = getattr(self, "servers_page", None)
-        if page is not None:
-            page.refresh()
+        self.servers_page.refresh()
         return False
 
     def _settle_mod_guard(self, status):
@@ -1739,44 +1783,31 @@ class LauncherWindow(Adw.ApplicationWindow):
                     "Roblox crashed soon after new mods were applied. Set aside: {names}"
                 ).format(names=", ".join(set_aside)),
             )
-            if hasattr(self, "mods_page"):
-                self.mods_page.refresh_guard()
+            self.mods_page.refresh_guard()
 
     def _watch_result(self, session, status):
         """Apply worker results on GTK's thread after polling/cleanup returns."""
-        if getattr(self, "_watch_inflight", None) is session:
+        if self._watch_inflight is session:
             self._watch_inflight = None
         if self.session is not session:
             return False
         self._show_transport_warning(session)
         if status is None:
-            # Active game: track playtime
-            self.settings["playtime_seconds"] = (
-                self.settings.get("playtime_seconds", 0) + 1
-            )
-            self.play_page.refresh_playtime()
-            if hasattr(self, "play_page") and hasattr(self.play_page, "logs_view"):
-                if self.play_page.stack.get_visible_child_name() == "logs":
-                    self.play_page.logs_view.update()
-            if time.time() - getattr(self, "last_playtime_save", 0) > 15:
-                self.last_playtime_save = time.time()
-                core.save_settings(self.settings)
+            self._count_playtime()
+            if self.play_page.stack.get_visible_child_name() == "logs":
+                self.play_page.logs_view.update()
             # Retry RPC connection if Discord was launched after the game
             if self.settings.get("discord_rpc", True):
-                rpc = getattr(self, "rpc", None)
-                if (rpc is None or not rpc.connected) and int(
-                    self.settings["playtime_seconds"]
-                ) % 5 == 0:
-                    self._start_rpc()
+                self._retry_rpc()
             return False
+        self._count_playtime()
         self.session = None
         self._stop_web()
         self._stop_rpc()
         self._stop_activity()
         self.play_page.logs_view.stop_server_location_polling()
-        core.save_settings(self.settings)
+        self.settings.save()
         self._settle_mod_guard(status)
-        self.play_page.refresh()
         # Roblox's macOS updater cannot reliably replace the host bundle through
         # Darling. It exits with success/a quit sentinel, so this is independent
         # of the frontend exit code and must precede pending-URI auto-retries.
@@ -1793,9 +1824,6 @@ class LauncherWindow(Adw.ApplicationWindow):
             target = core.required_client_update(self.last_log)
             if target and "channel" in target:
                 self.set_setting("roblox_channel", target["channel"])
-                self.settings_page.channel_row.set_subtitle(
-                    target["channel"] or _("Release (default)")
-                )
             self.pending_uri = (
                 self.pending_uri or uri_handoff.peek_pending() or session.launch_uri
             )
@@ -1839,6 +1867,21 @@ class LauncherWindow(Adw.ApplicationWindow):
                 )
         return False
 
+    def _count_playtime(self):
+        played = int(time.monotonic() - self._playtime_clock)
+        self.settings.stage("playtime_seconds", self._playtime_before_session + played)
+        if time.monotonic() - self._playtime_saved_at > 15:
+            self._playtime_saved_at = time.monotonic()
+            self.settings.save()
+
+    def _retry_rpc(self):
+        if self.rpc is not None and self.rpc.connected:
+            return
+        if time.monotonic() < self._rpc_retry_at:
+            return
+        self._rpc_retry_at = time.monotonic() + 5
+        self._start_rpc()
+
     def _mangohud_crash_dialog(self):
         dialog = Adw.AlertDialog(
             heading=_("MangoHud overlay crashed"),
@@ -1854,7 +1897,6 @@ class LauncherWindow(Adw.ApplicationWindow):
         def response(_dialog, choice):
             if choice == "disable":
                 self.set_setting("mangohud", False)
-                self.settings_page.mangohud_row.set_active(False)
                 dialogs._toast(self.toasts, _("MangoHud is off for the next launch"))
 
         dialog.connect("response", response)
@@ -1923,8 +1965,6 @@ class LauncherWindow(Adw.ApplicationWindow):
             def on_response(_d, result):
                 if result == "disable":
                     self.set_setting("raw_mouse", False)
-                    if hasattr(self, "settings_page"):
-                        self.settings_page.refresh_raw_mouse()
                     dialogs._toast(self.toasts, _("Raw mouse input disabled"))
 
             dialog.connect("response", on_response)
@@ -1959,9 +1999,8 @@ class LauncherWindow(Adw.ApplicationWindow):
         )
         if log_path:
             self.last_log = log_path
-            if hasattr(self, "play_page") and hasattr(self.play_page, "show_logs"):
-                self.play_page.show_logs(log_path)
-                return
+            self.play_page.show_logs(log_path)
+            return
         self.open_external_log(log_path)
 
     def open_external_log(self, log_path=None):

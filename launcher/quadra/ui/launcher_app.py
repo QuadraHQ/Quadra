@@ -64,6 +64,10 @@ class LauncherApp(Adw.Application):
             self.tray.stop()
             self.tray = None
 
+    def _tray_menu_changed(self):
+        if self.tray is not None:
+            self.tray.menu_changed()
+
     def _tray_entries(self):
         window = self.window
         running = bool(window and window.session)
@@ -121,7 +125,7 @@ class LauncherApp(Adw.Application):
                 window.settings_page.flush()
                 window._stop_web()
                 window._stop_rpc()
-                core.save_settings(window.settings)
+                window.settings.save()
             except Exception as error:
                 print("Saving before exit failed:", error)
         self.quit()
@@ -143,6 +147,8 @@ class LauncherApp(Adw.Application):
             # Keep running while the window is hidden during a game.
             self.hold()
             self.window.connect("close-request", self._close)
+            self.window.settings.watch("tray_icon", lambda _key, _value: self.apply_tray())
+            self.window.activity_changes.add(self._tray_menu_changed)
             self.apply_tray()
             # Roblox starts straight away behind a splash; the settings window
             # only opens when asked for (or when something needs the user:

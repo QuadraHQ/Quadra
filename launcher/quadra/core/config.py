@@ -208,7 +208,7 @@ def load_settings():
 
 
 def save_settings(settings):
-    files._write_atomically(locations.SETTINGS_FILE, json.dumps(settings, indent=2, ensure_ascii=False))
+    files._write_atomically(locations.SETTINGS_FILE, json.dumps(dict(settings), indent=2, ensure_ascii=False))
 
 
 def clear_last_error():
