@@ -1,3 +1,13 @@
+quadrahq (0.43.0-1) unstable; urgency=medium
+
+  * The launcher's pages share one state, so settings, the Play page, the tray and the Studio page stay in step.
+  * The Play page shows the renderer in use, including with Rosemary's Force OpenGL switch off.
+  * Discord Rich Presence finds Flatpak and Snap Discord clients and keeps game names and icons up to date.
+  * File pickers use GtkFileDialog and the dark style follows the system through GTK's colour scheme; GTK 4.12 or newer.
+  * The Flatpak uses the GNOME 51 runtime and is attached to releases.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Wed, 04 Nov 2026 15:30:43 +0700
+
 quadrahq (0.42.p3-1) unstable; urgency=medium
 
   * Settings > Roblox has a Clear Roblox cache button and a switch to clear it before each launch (Rosemary).

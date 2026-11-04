@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.43.0 — 2026-11-04
+
+- The launcher's state is one observable store shared by the pages (`core/state.py`). Settings, the Play page, the
+  tray, the logs view and the Studio page read and watch the same values, so a change made in one place shows
+  everywhere at once instead of after a restart. The Play page shows the renderer in use: with Rosemary it follows
+  the Force OpenGL switch instead of always saying OpenGL.
+- Discord Rich Presence:
+  - It finds the sockets of Discord clients in a Flatpak or a Snap (the Discord and Discord Canary Flatpaks, Vesktop,
+    and any other Flatpak app's socket), not only a natively installed Discord.
+  - It uses Roblox's Discord application.
+  - Game details are looked up again every minute while a game is played, and a lookup that fails part of the way keeps
+    what an earlier one found, so renamed games update in the saved game cache.
+  - Placeholder names (`[TITLE UNAVAILABLE]`, `[UNKNOWN]`) are never shown or saved, and an icon is only used once
+    Roblox says it is ready.
+  - A game saved without an icon is looked up again straight away, so the icon appears when the Show game icon setting
+    is on.
+  - Text is fitted to Discord's 2 to 128 character limits.
+  - Problems are printed in the launcher's output with Discord's reason, once each (no Discord found, a rejected
+    update).
+- Deprecated GTK APIs are replaced. The file pickers (Rosemary program, death sound, cursor, font, fast-flags export)
+  use `GtkFileDialog`, and a picker that fails shows an error instead of nothing. The dark style follows the system
+  through the CSS provider's colour scheme instead of `gtk-application-prefer-dark-theme`. Stylesheets load with
+  `load_from_string` and signals are handled through `GLibUnix`. The launcher needs GTK 4.12 or newer.
+- Flatpak:
+  - The recipe uses the GNOME 51 runtime, which supplies GTK 4, libadwaita, PyGObject and WebKitGTK on Freedesktop
+    26.08, instead of building them, so a build no longer compiles WebKitGTK.
+  - The launcher draws with OpenGL (set `GSK_RENDERER` to override it).
+  - It can reach the Discord, Discord Canary and Vesktop Flatpaks' sockets.
+  - The 1024×1024 icon is no longer exported, which Flatpak refused.
+  - CI builds it, and releases attach `quadrahq-<version>-x86_64.flatpak`.
+- Nix: a Rosemary variant of the package and module (the `rosemary` flake outputs). With Nix managing Rosemary, the
+  runtime choice in Settings and the onboarding page is fixed to it. The CiderDarling Metal host hash is fixed, and CI
+  checks the Rosemary runtime.
+- The release workflow runs on its own for a pushed commit whose message starts with `Release` and that changes
+  `__version__`. It also checks that `__version__` and `packaging/release.json` agree, and builds from the pushed
+  commit itself.
+- Development: `.envrc` loads the Nix development shell through direnv, the uv setup is removed again, the README
+  describes Quadra as a bootstrapper for the macOS Roblox Player and Studio, and the launcher is formatted with ruff.
+
 ## 0.42.p3 — 2026-11-02
 
 - Rosemary: Settings → Roblox has a **Clear Roblox cache** button and a switch that clears the cache before each

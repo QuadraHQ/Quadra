@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.43.0" date="2026-11-04">
+      <description>
+        <p>Moves to the GNOME 51 runtime. Discord Rich Presence works with the Discord, Discord Canary and Vesktop Flatpaks, and keeps game names and icons up to date. The launcher's pages share one state, so settings, the Play page and the tray stay in step, and the Play page shows the renderer in use.</p>
+      </description>
+    </release>
     <release version="0.42.p3" date="2026-11-02">
       <description>
         <p>Adds a Clear Roblox cache button, and a switch to clear it before each launch, for the Rosemary runtime. Settings hide what the chosen runtime does not use, and the runtime and theme are chosen in the onboarding page. New logo everywhere. GNOME is now the default launcher appearance (an install that saved another one keeps it). The logo keeps its colours in the Monochrome appearance. The VR warning is worded more briefly.</p>

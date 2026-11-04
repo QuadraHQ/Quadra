@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.42.p3
+%global upstream_version 0.43.0
 Name:           quadrahq
-Version:        0.42.p3
+Version:        0.43.0
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,13 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Wed Nov 04 2026 Quadra maintainers <noreply@aubree.wtf> - 0.43.0-1
+- The launcher's pages share one state, so settings, the Play page, the tray and the Studio page stay in step.
+- The Play page shows the renderer in use, including with Rosemary's Force OpenGL switch off.
+- Discord Rich Presence finds Flatpak and Snap Discord clients and keeps game names and icons up to date.
+- File pickers use GtkFileDialog and the dark style follows the system through GTK's colour scheme; GTK 4.12 or newer.
+- The Flatpak uses the GNOME 51 runtime and is attached to releases.
+
 * Mon Nov 02 2026 Quadra maintainers <noreply@aubree.wtf> - 0.42.p3-1
 - Settings > Roblox has a Clear Roblox cache button and a switch to clear it before each launch (Rosemary).
 - Settings hide what the chosen runtime does not use; the runtime and theme are chosen in the onboarding page.
