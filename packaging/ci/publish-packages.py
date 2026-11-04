@@ -24,7 +24,8 @@ def main():
     files = sorted(path for path in dist.iterdir() if path.is_file())
     if (not any(path.suffix == '.deb' for path in files)
             or not any(path.name.endswith('.pkg.tar.zst') for path in files)
-            or not any(path.suffix == '.rpm' and not path.name.endswith('.src.rpm') for path in files)):
+            or not any(path.suffix == '.rpm' and not path.name.endswith('.src.rpm') for path in files)
+            or not any(path.suffix == '.flatpak' for path in files)):
         raise ValueError('A distro package is missing; keeping the release unpublished')
     source = dist / f'quadrahq-{version}-source.tar.gz'
     digest = hashlib.sha256(source.read_bytes()).hexdigest()

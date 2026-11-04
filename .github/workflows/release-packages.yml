@@ -137,8 +137,29 @@ jobs:
           path: out/
           if-no-files-found: error
 
+  flatpak:
+    name: Package (flatpak)
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: flatpak/org.quadrahq.Quadra.yml
+          bundle: quadrahq-${{ needs.source.outputs.version }}-x86_64.flatpak
+          artifact-name: quadra-flatpak
+          build-dir: flatpak/build-dir
+          repo-dir: flatpak/repo
+          cache-key: flatpak-builder-${{ hashFiles('flatpak/org.quadrahq.Quadra.yml') }}
+
   publish:
-    needs: [source, regressions, build]
+    needs: [source, regressions, build, flatpak]
     if: github.event_name == 'push' || inputs.publish
     runs-on: ubuntu-24.04
     permissions:
