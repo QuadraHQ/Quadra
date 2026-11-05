@@ -1,12 +1,11 @@
 mod components;
-mod home_page;
-mod settings_page;
+mod pages;
 mod state;
 mod utils;
 
 use crate::components::header::bar;
-use home_page::home_page;
-use settings_page::settings_page;
+use crate::pages::home::home_page;
+use crate::pages::settings::settings_page;
 use state::AppState;
 
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
@@ -45,12 +44,7 @@ fn main() -> glib::ExitCode {
 fn build_ui(app: &Application, state: &AppState) {
     let stack = ViewStack::new();
 
-    stack.add_titled_with_icon(
-        &home_page(state),
-        Some("home"),
-        "Home",
-        "go-home-symbolic",
-    );
+    stack.add_titled_with_icon(&home_page(state), Some("home"), "Home", "go-home-symbolic");
     stack.add_titled_with_icon(
         &settings_page(state),
         Some("settings"),

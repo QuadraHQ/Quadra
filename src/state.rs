@@ -132,11 +132,15 @@ impl AppState {
         let settings = SavedSettings {
             runtime: self.runtime(),
             force_opengl: self.force_opengl(),
-            refresh_rate: Some(self.refresh_rate()).filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
+            refresh_rate: Some(self.refresh_rate())
+                .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
-            eprintln!("Failed to save settings to {}: {error}", settings_path().display());
+            eprintln!(
+                "Failed to save settings to {}: {error}",
+                settings_path().display()
+            );
         }
     }
 }

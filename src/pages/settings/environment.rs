@@ -1,37 +1,9 @@
 use crate::state::{AppState, Runtime, USE_MONITOR_REFRESH_RATE};
-use crate::utils::{scrollable, unfocus_on_outside_click};
 use adw::prelude::*;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn settings_page(state: &AppState) -> gtk::Widget {
-    let stack = adw::ViewStack::new();
-    stack.set_vexpand(true);
-
-    stack.add_titled_with_icon(
-        &scrollable(&env_section(state)),
-        Some("environment"),
-        "Environment",
-        "emblem-system-symbolic",
-    );
-
-    let switcher = adw::ViewSwitcher::builder()
-        .stack(&stack)
-        .policy(adw::ViewSwitcherPolicy::Wide)
-        .halign(gtk::Align::Center)
-        .margin_top(12)
-        .margin_bottom(12)
-        .build();
-
-    let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    page.append(&switcher);
-    page.append(&stack);
-    unfocus_on_outside_click(&page);
-
-    page.upcast()
-}
-
-fn env_section(state: &AppState) -> gtk::Box {
+pub fn env_section(state: &AppState) -> gtk::Box {
     // Quadra group
     let check_update_btn = gtk::Button::builder()
         .label("Check for updates")
