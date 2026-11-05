@@ -1,5 +1,8 @@
-use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
-use adw::{ViewStack, ViewSwitcher, ViewSwitcherPolicy, prelude::*};
+mod components;
+
+use crate::components::header::bar;
+
+use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
 use gtk::glib;
 
 const APP_ID: &str = "org.quadrahq.Quadra";
@@ -41,24 +44,10 @@ fn build_ui(app: &Application) {
         "emblem-system-symbolic",
     );
 
-    let switcher = ViewSwitcher::builder()
-        .stack(&stack)
-        .policy(ViewSwitcherPolicy::Wide)
-        .build();
-
-    let header = HeaderBar::new();
-    header.add_css_class("app-header");
-
-    let icon = gtk::Image::from_file("data/icons/org.quadrahq.Quadra.png");
-    icon.set_pixel_size(16);
-    icon.add_css_class("app-icon");
-
-    header.pack_start(&icon);
-    header.set_title_widget(Some(&switcher));
-
+    let header_bar = bar(&stack);
     let toolbar_view = ToolbarView::new();
 
-    toolbar_view.add_top_bar(&header);
+    toolbar_view.add_top_bar(&header_bar);
     toolbar_view.set_content(Some(&stack));
 
     let window = ApplicationWindow::builder()
