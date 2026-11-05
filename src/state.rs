@@ -13,6 +13,7 @@ pub const USE_MONITOR_REFRESH_RATE: u32 = 0;
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
 const SAVED_PROPERTIES: [&str; 3] = ["runtime", "force-opengl", "refresh-rate"];
+const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 2] = ["roblox-installed", "rosemary-installed"];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
 #[enum_type(name = "QuadraRuntime")]
@@ -68,6 +69,12 @@ mod imp {
         refresh_rate: Cell<u32>,
         #[property(get, set)]
         running: Cell<bool>,
+        #[property(get, set)]
+        roblox_installed: Cell<bool>,
+        #[property(get, set)]
+        rosemary_installed: Cell<bool>,
+        #[property(get)]
+        pub can_play: Cell<bool>,
         pub pending_save: RefCell<Option<glib::SourceId>>,
     }
 
@@ -102,6 +109,11 @@ impl AppState {
             state.connect_notify_local(Some(property), |state, _| state.schedule_save());
         }
 
+        for property in PROPERTIES_THAT_DECIDE_CAN_PLAY {
+            state.connect_notify_local(Some(property), |state, _| state.update_can_play());
+        }
+        state.update_can_play();
+
         state
     }
 
@@ -109,6 +121,14 @@ impl AppState {
         if let Some(pending_save) = self.imp().pending_save.take() {
             pending_save.remove();
             self.save();
+        }
+    }
+
+    fn update_can_play(&self) {
+        let can_play = self.roblox_installed() && self.rosemary_installed();
+        let could_play = self.imp().can_play.replace(can_play);
+        if could_play != can_play {
+            self.notify_can_play();
         }
     }
 
