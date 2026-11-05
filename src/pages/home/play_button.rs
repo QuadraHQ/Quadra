@@ -2,6 +2,51 @@ use crate::state::AppState;
 use adw::prelude::*;
 use gtk::glib;
 
+const PROPERTIES_THAT_DECIDE_ACTION: [&str; 2] = ["running", "can-play"];
+const ACTION_STYLE_CLASSES: [&str; 2] = ["suggested-action", "destructive-action"];
+
+#[derive(Clone, Copy)]
+enum PlayButtonAction {
+    InstallRoblox,
+    Play,
+    Stop,
+}
+
+impl PlayButtonAction {
+    fn for_state(state: &AppState) -> Self {
+        if state.running() {
+            Self::Stop
+        } else if state.can_play() {
+            Self::Play
+        } else {
+            Self::InstallRoblox
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::InstallRoblox => "Install Roblox",
+            Self::Play => "Play",
+            Self::Stop => "Stop",
+        }
+    }
+
+    fn icon_name(self) -> &'static str {
+        match self {
+            Self::InstallRoblox => "folder-download-symbolic",
+            Self::Play => "media-playback-start-symbolic",
+            Self::Stop => "media-playback-stop-symbolic",
+        }
+    }
+
+    fn style_class(self) -> &'static str {
+        match self {
+            Self::InstallRoblox | Self::Play => "suggested-action",
+            Self::Stop => "destructive-action",
+        }
+    }
+}
+
 pub fn play_button(state: &AppState) -> gtk::Button {
     let content = adw::ButtonContent::new();
 
@@ -15,42 +60,36 @@ pub fn play_button(state: &AppState) -> gtk::Button {
     button.connect_clicked(glib::clone!(
         #[strong]
         state,
-        move |_| {
-            if state.running() {
-                println!("stop clicked");
-            } else {
-                println!("play clicked");
-            }
+        move |_| match PlayButtonAction::for_state(&state) {
+            PlayButtonAction::InstallRoblox => println!("install roblox clicked"),
+            PlayButtonAction::Play => println!("play clicked"),
+            PlayButtonAction::Stop => println!("stop clicked"),
         }
     ));
 
-    state
-        .bind_property("can-play", &button, "sensitive")
-        .sync_create()
-        .build();
-
-    show_play_or_stop(&button, &content, state.running());
-    state.connect_running_notify(glib::clone!(
-        #[weak]
-        button,
-        #[weak]
-        content,
-        move |state| show_play_or_stop(&button, &content, state.running())
-    ));
+    show_action(&button, &content, PlayButtonAction::for_state(state));
+    for property in PROPERTIES_THAT_DECIDE_ACTION {
+        state.connect_notify_local(
+            Some(property),
+            glib::clone!(
+                #[weak]
+                button,
+                #[weak]
+                content,
+                move |state, _| show_action(&button, &content, PlayButtonAction::for_state(state))
+            ),
+        );
+    }
 
     button
 }
 
-fn show_play_or_stop(button: &gtk::Button, content: &adw::ButtonContent, running: bool) {
-    if running {
-        content.set_label("Stop");
-        content.set_icon_name("media-playback-stop-symbolic");
-        button.remove_css_class("suggested-action");
-        button.add_css_class("destructive-action");
-    } else {
-        content.set_label("Play");
-        content.set_icon_name("media-playback-start-symbolic");
-        button.remove_css_class("destructive-action");
-        button.add_css_class("suggested-action");
+fn show_action(button: &gtk::Button, content: &adw::ButtonContent, action: PlayButtonAction) {
+    content.set_label(action.label());
+    content.set_icon_name(action.icon_name());
+
+    for style_class in ACTION_STYLE_CLASSES {
+        button.remove_css_class(style_class);
     }
+    button.add_css_class(action.style_class());
 }
