@@ -1,4 +1,5 @@
 use super::bound_rows::choice_row;
+use super::environment_variables::environment_variables_group;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
 use crate::state::{AppState, Runtime};
@@ -41,6 +42,7 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     section.append(&rosemary_runtime_group(state));
     section.append(&graphics_group(state));
     section.append(&input_group(state));
+    section.append(&environment_variables_group(state));
 
     section
 }

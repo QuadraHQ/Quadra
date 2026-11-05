@@ -1,4 +1,6 @@
 use gtk::prelude::*;
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
     let clamp = adw::Clamp::builder().maximum_size(600).child(child).build();
@@ -36,4 +38,23 @@ pub fn unfocus_on_outside_click(container: &impl IsA<gtk::Widget>) {
     });
 
     container.add_controller(gesture);
+}
+
+pub fn find_in_path(program: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(program))
+        .find(|candidate| is_executable_file(candidate))
+}
+
+pub fn is_executable_file(path: &std::path::Path) -> bool {
+    path.metadata()
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
+pub fn path_for_display(path: &std::path::Path) -> String {
+    match path.strip_prefix(gtk::glib::home_dir()) {
+        Ok(path_inside_home) => format!("~/{}", path_inside_home.display()),
+        Err(_) => path.display().to_string(),
+    }
 }

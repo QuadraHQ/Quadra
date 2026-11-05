@@ -1,7 +1,9 @@
 mod choice;
+mod environment_variables;
 mod rosemary_options;
 
 pub use choice::Choice;
+pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use rosemary_options::{CommandKey, PresentationMode, SwapInterval, TitleBar};
 
 use std::error::Error;
@@ -21,9 +23,10 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 11] = [
+const SAVED_PROPERTIES: [&str; 13] = [
     "runtime",
     "runner",
+    "custom-runner-path",
     "prefix",
     "force-opengl",
     "refresh-rate",
@@ -33,8 +36,10 @@ const SAVED_PROPERTIES: [&str; 11] = [
     "command-key",
     "ctrl-for-edit-shortcuts",
     "plain-ctrl-click",
+    "environment-variables",
 ];
-const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 2] = ["roblox-installed", "rosemary-installed"];
+const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 3] =
+    ["roblox-installed", "rosemary-installed", "runner"];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
 #[enum_type(name = "QuadraRuntime")]
@@ -59,6 +64,8 @@ impl Choice for Runtime {
 struct SavedSettings {
     runtime: Runtime,
     runner: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    custom_runner_path: String,
     prefix: Option<String>,
     force_opengl: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,6 +76,8 @@ struct SavedSettings {
     command_key: CommandKey,
     ctrl_for_edit_shortcuts: bool,
     plain_ctrl_click: bool,
+    opened_before: bool,
+    environment_variables: EnvironmentVariables,
 }
 
 mod imp {
@@ -82,6 +91,8 @@ mod imp {
         runtime: Cell<Runtime>,
         #[property(get, set)]
         runner: RefCell<String>,
+        #[property(get, set)]
+        custom_runner_path: RefCell<String>,
         #[property(get, set)]
         available_runners: RefCell<Vec<String>>,
         #[property(get, set)]
@@ -107,7 +118,23 @@ mod imp {
         #[property(get, set)]
         plain_ctrl_click: Cell<bool>,
         #[property(get, set)]
+        environment_variables: RefCell<EnvironmentVariables>,
+        #[property(get, set)]
+        first_launch: Cell<bool>,
+        #[property(get, set)]
+        roblox_version: RefCell<String>,
+        #[property(get, set)]
+        busy: Cell<bool>,
+        #[property(get, set)]
+        task_description: RefCell<String>,
+        #[property(get, set)]
+        task_progress: Cell<f64>,
+        #[property(get, set)]
+        error_message: RefCell<String>,
+        #[property(get, set)]
         running: Cell<bool>,
+        #[property(get, set)]
+        stopping: Cell<bool>,
         #[property(get, set)]
         roblox_installed: Cell<bool>,
         #[property(get, set)]
@@ -141,6 +168,7 @@ impl AppState {
                 "runner",
                 settings.runner.unwrap_or_else(|| QUADRA_RUNNER.to_owned()),
             )
+            .property("custom-runner-path", settings.custom_runner_path)
             .property("available-runners", vec![QUADRA_RUNNER.to_owned()])
             .property(
                 "prefix",
@@ -161,6 +189,8 @@ impl AppState {
             .property("command-key", settings.command_key)
             .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
             .property("plain-ctrl-click", settings.plain_ctrl_click)
+            .property("environment-variables", settings.environment_variables)
+            .property("first-launch", !settings.opened_before)
             .build();
 
         for property in SAVED_PROPERTIES {
@@ -172,7 +202,16 @@ impl AppState {
         }
         state.update_can_play();
 
+        if state.first_launch() {
+            state.schedule_save();
+        }
+
         state
+    }
+
+    pub fn report_error(&self, message: &str) {
+        eprintln!("{message}");
+        self.set_error_message(message);
     }
 
     pub fn save_pending_changes(&self) {
@@ -183,7 +222,9 @@ impl AppState {
     }
 
     fn update_can_play(&self) {
-        let can_play = self.roblox_installed() && self.rosemary_installed();
+        let runner_will_be_installed_on_play = self.runner() == QUADRA_RUNNER;
+        let can_play = self.roblox_installed()
+            && (self.rosemary_installed() || runner_will_be_installed_on_play);
         let could_play = self.imp().can_play.replace(can_play);
         if could_play != can_play {
             self.notify_can_play();
@@ -208,6 +249,7 @@ impl AppState {
         let settings = SavedSettings {
             runtime: self.runtime(),
             runner: Some(self.runner()),
+            custom_runner_path: self.custom_runner_path(),
             prefix: Some(self.prefix()),
             force_opengl: self.force_opengl(),
             refresh_rate: Some(self.refresh_rate())
@@ -218,6 +260,8 @@ impl AppState {
             command_key: self.command_key(),
             ctrl_for_edit_shortcuts: self.ctrl_for_edit_shortcuts(),
             plain_ctrl_click: self.plain_ctrl_click(),
+            opened_before: true,
+            environment_variables: self.environment_variables(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

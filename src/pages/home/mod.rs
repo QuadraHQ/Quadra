@@ -1,9 +1,11 @@
 mod play_button;
+mod status_label;
 
 use crate::components::icon::app_icon;
 use crate::state::AppState;
 use adw::prelude::*;
 use play_button::play_button;
+use status_label::status_label;
 
 pub fn home_page(state: &AppState) -> gtk::Widget {
     let logo = app_icon(128);
@@ -13,12 +15,7 @@ pub fn home_page(state: &AppState) -> gtk::Widget {
         .css_classes(["title-1"])
         .build();
 
-    let subtitle = gtk::Label::builder()
-        .label("Roblox not found")
-        .css_classes(["dimmed"])
-        .wrap(true)
-        .justify(gtk::Justification::Center)
-        .build();
+    let subtitle = status_label(state);
 
     let play_button = play_button(state);
 

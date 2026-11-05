@@ -3,7 +3,7 @@ use adw::{HeaderBar, ViewStack, ViewSwitcher, ViewSwitcherPolicy, prelude::*};
 
 pub fn bar(stack: &ViewStack) -> HeaderBar {
     let switcher = ViewSwitcher::builder()
-        .stack(&stack)
+        .stack(stack)
         .policy(ViewSwitcherPolicy::Wide)
         .build();
 

@@ -1,5 +1,6 @@
 mod bound_rows;
 mod environment;
+mod environment_variables;
 mod rosemary_options;
 mod rosemary_runtime;
 

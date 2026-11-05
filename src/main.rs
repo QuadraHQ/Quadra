@@ -1,8 +1,10 @@
+mod backend;
 mod components;
 mod pages;
 mod state;
 mod utils;
 
+use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::pages::home::home_page;
 use crate::pages::settings::settings_page;
@@ -16,6 +18,7 @@ const APP_ID: &str = "org.quadrahq.Quadra1";
 fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     let state = AppState::load();
+    backend::initialize(&state);
 
     app.connect_activate(glib::clone!(
         #[strong]
@@ -66,5 +69,6 @@ fn build_ui(app: &Application, state: &AppState) {
         .content(&toolbar_view)
         .build();
 
+    show_errors_from(state, &window);
     window.present();
 }
