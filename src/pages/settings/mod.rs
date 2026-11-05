@@ -1,6 +1,7 @@
 mod bound_rows;
 mod environment;
 mod rosemary_options;
+mod rosemary_runtime;
 
 use crate::state::AppState;
 use crate::utils::{scrollable, unfocus_on_outside_click};

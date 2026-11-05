@@ -16,10 +16,15 @@ use gtk::subclass::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub const USE_MONITOR_REFRESH_RATE: u32 = 0;
+pub const QUADRA_RUNNER: &str = "Quadra";
+pub const QUADRA_PREFIX: &str = "Quadra";
+pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 9] = [
+const SAVED_PROPERTIES: [&str; 11] = [
     "runtime",
+    "runner",
+    "prefix",
     "force-opengl",
     "refresh-rate",
     "presentation-mode",
@@ -53,6 +58,8 @@ impl Choice for Runtime {
 #[serde(default)]
 struct SavedSettings {
     runtime: Runtime,
+    runner: Option<String>,
+    prefix: Option<String>,
     force_opengl: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     refresh_rate: Option<u32>,
@@ -73,6 +80,16 @@ mod imp {
     pub struct AppState {
         #[property(get, set, builder(Runtime::default()))]
         runtime: Cell<Runtime>,
+        #[property(get, set)]
+        runner: RefCell<String>,
+        #[property(get, set)]
+        available_runners: RefCell<Vec<String>>,
+        #[property(get, set)]
+        prefix: RefCell<String>,
+        #[property(get, set)]
+        available_prefixes: RefCell<Vec<String>>,
+        #[property(get, set)]
+        darwin_base_installed: Cell<bool>,
         #[property(get, set)]
         force_opengl: Cell<bool>,
         #[property(get, set)]
@@ -120,6 +137,19 @@ impl AppState {
 
         let state: Self = glib::Object::builder()
             .property("runtime", settings.runtime)
+            .property(
+                "runner",
+                settings.runner.unwrap_or_else(|| QUADRA_RUNNER.to_owned()),
+            )
+            .property("available-runners", vec![QUADRA_RUNNER.to_owned()])
+            .property(
+                "prefix",
+                settings.prefix.unwrap_or_else(|| QUADRA_PREFIX.to_owned()),
+            )
+            .property(
+                "available-prefixes",
+                vec![QUADRA_PREFIX.to_owned(), ROSEMARY_DEFAULT_PREFIX.to_owned()],
+            )
             .property("force-opengl", settings.force_opengl)
             .property(
                 "refresh-rate",
@@ -177,6 +207,8 @@ impl AppState {
     fn save(&self) {
         let settings = SavedSettings {
             runtime: self.runtime(),
+            runner: Some(self.runner()),
+            prefix: Some(self.prefix()),
             force_opengl: self.force_opengl(),
             refresh_rate: Some(self.refresh_rate())
                 .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
