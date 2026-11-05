@@ -1,17 +1,16 @@
 mod backend;
 mod components;
 mod pages;
+mod quadra;
 mod state;
 mod utils;
 
-use crate::components::error_dialog::show_errors_from;
-use crate::components::header::bar;
-use crate::pages::home::home_page;
-use crate::pages::settings::settings_page;
-use state::AppState;
-
-use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
+use adw::{Application, prelude::*};
 use gtk::glib;
+use quadra::Quadra;
+use state::AppState;
+use std::cell::OnceCell;
+use std::rc::Rc;
 
 const APP_ID: &str = "org.quadrahq.Quadra1";
 
@@ -19,56 +18,39 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     let state = AppState::load();
     backend::initialize(&state);
+    let quadra: Rc<OnceCell<Rc<Quadra>>> = Rc::default();
 
-    app.connect_activate(glib::clone!(
+    app.connect_startup(glib::clone!(
         #[strong]
         state,
-        move |app| build_ui(app, &state)
+        #[strong]
+        quadra,
+        move |app| {
+            load_style();
+            quadra.get_or_init(|| Quadra::start(app, &state));
+        }
     ));
 
-    app.connect_shutdown(move |_| state.save_pending_changes());
-
-    app.connect_startup(|_| {
-        let provider = gtk::CssProvider::new();
-        provider.load_from_string(
-            ".app-header { padding-left: 0px; }
-             .app-header .app-icon { margin-left: 8px; }",
-        );
-        gtk::style_context_add_provider_for_display(
-            &gtk::gdk::Display::default().unwrap(),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+    app.connect_activate(move |_| {
+        if let Some(quadra) = quadra.get() {
+            quadra.activate();
+        }
     });
+
+    app.connect_shutdown(move |_| state.save_pending_changes());
 
     app.run()
 }
 
-fn build_ui(app: &Application, state: &AppState) {
-    let stack = ViewStack::new();
-
-    stack.add_titled_with_icon(&home_page(state), Some("home"), "Home", "go-home-symbolic");
-    stack.add_titled_with_icon(
-        &settings_page(state),
-        Some("settings"),
-        "Settings",
-        "emblem-system-symbolic",
+fn load_style() {
+    let provider = gtk::CssProvider::new();
+    provider.load_from_string(
+        ".app-header { padding-left: 0px; }
+         .app-header .app-icon { margin-left: 8px; }",
     );
-
-    let header_bar = bar(&stack);
-    let toolbar_view = ToolbarView::new();
-
-    toolbar_view.add_top_bar(&header_bar);
-    toolbar_view.set_content(Some(&stack));
-
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title("Quadra")
-        .default_width(800)
-        .default_height(600)
-        .content(&toolbar_view)
-        .build();
-
-    show_errors_from(state, &window);
-    window.present();
+    gtk::style_context_add_provider_for_display(
+        &gtk::gdk::Display::default().unwrap(),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
 }

@@ -43,10 +43,19 @@ pub fn latest_release() -> anyhow::Result<RobloxRelease> {
 pub fn install(release: &RobloxRelease, progress: &Progress) -> anyhow::Result<()> {
     let archive_name = format!("{}-RobloxPlayer.zip", release.client_version_upload);
     let archive = paths::downloads_directory().join(&archive_name);
-    progress.step(format!("Downloading Roblox {}", release.version));
+    let is_update = installed_release().is_some();
+    if is_update {
+        progress.step(format!("Downloading the Roblox {} update", release.version));
+    } else {
+        progress.step(format!("Downloading Roblox {}", release.version));
+    }
     download_file(&download_url(&archive_name), &archive, progress)?;
 
-    progress.step(format!("Installing Roblox {}", release.version));
+    if is_update {
+        progress.step(format!("Updating Roblox to {}", release.version));
+    } else {
+        progress.step(format!("Installing Roblox {}", release.version));
+    }
     let unpacking = paths::roblox_directory().join(".unpacking");
     remove_directory_if_present(&unpacking)?;
     zip::ZipArchive::new(File::open(&archive)?)

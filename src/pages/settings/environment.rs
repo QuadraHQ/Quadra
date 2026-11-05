@@ -1,8 +1,8 @@
-use super::bound_rows::choice_row;
+use super::bound_rows::{choice_row, switch_row};
 use super::environment_variables::environment_variables_group;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
-use crate::state::{AppState, Runtime};
+use crate::state::{AppState, LaunchMode, Runtime};
 use adw::prelude::*;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,8 +23,16 @@ pub fn env_section(state: &AppState) -> gtk::Box {
 
     let force_update_btn = adw::ButtonRow::builder().title("Force update").build();
 
+    let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
+    launch_mode_row.set_subtitle("Settings stay available from the system tray");
+
+    let run_in_background_row = switch_row(state, "run-in-background", "Run in the background");
+    run_in_background_row.set_subtitle("Keep Quadra in the system tray after its window closes");
+
     let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
     quadra_group.add(&launcher_info);
+    quadra_group.add(&launch_mode_row);
+    quadra_group.add(&run_in_background_row);
     quadra_group.add(&force_update_btn);
 
     // Runtime selection

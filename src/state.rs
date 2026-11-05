@@ -1,9 +1,11 @@
 mod choice;
 mod environment_variables;
+mod launch_mode;
 mod rosemary_options;
 
 pub use choice::Choice;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
+pub use launch_mode::LaunchMode;
 pub use rosemary_options::{CommandKey, PresentationMode, SwapInterval, TitleBar};
 
 use std::error::Error;
@@ -23,7 +25,9 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 13] = [
+const SAVED_PROPERTIES: [&str; 15] = [
+    "launch-mode",
+    "run-in-background",
     "runtime",
     "runner",
     "custom-runner-path",
@@ -62,6 +66,8 @@ impl Choice for Runtime {
 #[derive(Default, Serialize, Deserialize)]
 #[serde(default)]
 struct SavedSettings {
+    launch_mode: LaunchMode,
+    run_in_background: bool,
     runtime: Runtime,
     runner: Option<String>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -87,6 +93,10 @@ mod imp {
     #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::AppState)]
     pub struct AppState {
+        #[property(get, set, builder(LaunchMode::default()))]
+        launch_mode: Cell<LaunchMode>,
+        #[property(get, set)]
+        run_in_background: Cell<bool>,
         #[property(get, set, builder(Runtime::default()))]
         runtime: Cell<Runtime>,
         #[property(get, set)]
@@ -163,6 +173,8 @@ impl AppState {
         let settings = read_saved_settings();
 
         let state: Self = glib::Object::builder()
+            .property("launch-mode", settings.launch_mode)
+            .property("run-in-background", settings.run_in_background)
             .property("runtime", settings.runtime)
             .property(
                 "runner",
@@ -247,6 +259,8 @@ impl AppState {
 
     fn save(&self) {
         let settings = SavedSettings {
+            launch_mode: self.launch_mode(),
+            run_in_background: self.run_in_background(),
             runtime: self.runtime(),
             runner: Some(self.runner()),
             custom_runner_path: self.custom_runner_path(),

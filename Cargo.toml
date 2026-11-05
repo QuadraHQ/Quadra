@@ -9,6 +9,7 @@ anyhow = "1.0.104"
 async-channel = "2.5.0"
 flate2 = "1.1.10"
 gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
+ksni = { version = "0.3.7", default-features = false, features = ["blocking", "async-io"] }
 libc = "0.2.191"
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = "0.11.1"
