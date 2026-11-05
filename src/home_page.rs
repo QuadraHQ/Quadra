@@ -1,7 +1,8 @@
 use crate::components::icon::app_icon;
+use crate::state::AppState;
 use adw::prelude::*;
 
-pub fn home_page() -> gtk::Widget {
+pub fn home_page(state: &AppState) -> gtk::Widget {
     let logo = app_icon(128);
 
     let title = gtk::Label::builder()
@@ -28,6 +29,12 @@ pub fn home_page() -> gtk::Widget {
         .margin_top(12)
         .build();
     play_button.connect_clicked(|_| println!("play clicked"));
+
+    state
+        .bind_property("running", &play_button, "sensitive")
+        .invert_boolean()
+        .sync_create()
+        .build();
 
     let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)

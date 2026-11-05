@@ -1,11 +1,13 @@
 mod components;
 mod home_page;
 mod settings_page;
+mod state;
 mod utils;
 
 use crate::components::header::bar;
 use home_page::home_page;
 use settings_page::settings_page;
+use state::AppState;
 
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
 use gtk::glib;
@@ -14,8 +16,15 @@ const APP_ID: &str = "org.quadrahq.Quadra1";
 
 fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
+    let state = AppState::load();
 
-    app.connect_activate(build_ui);
+    app.connect_activate(glib::clone!(
+        #[strong]
+        state,
+        move |app| build_ui(app, &state)
+    ));
+
+    app.connect_shutdown(move |_| state.save_pending_changes());
 
     app.connect_startup(|_| {
         let provider = gtk::CssProvider::new();
@@ -33,17 +42,17 @@ fn main() -> glib::ExitCode {
     app.run()
 }
 
-fn build_ui(app: &Application) {
+fn build_ui(app: &Application, state: &AppState) {
     let stack = ViewStack::new();
 
     stack.add_titled_with_icon(
-        &home_page(),
+        &home_page(state),
         Some("home"),
         "Home",
         "go-home-symbolic",
     );
     stack.add_titled_with_icon(
-        &settings_page(),
+        &settings_page(state),
         Some("settings"),
         "Settings",
         "emblem-system-symbolic",

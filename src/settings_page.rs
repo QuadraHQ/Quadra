@@ -1,14 +1,15 @@
+use crate::state::{AppState, Runtime, USE_MONITOR_REFRESH_RATE};
 use crate::utils::{scrollable, unfocus_on_outside_click};
 use adw::prelude::*;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn settings_page() -> gtk::Widget {
+pub fn settings_page(state: &AppState) -> gtk::Widget {
     let stack = adw::ViewStack::new();
     stack.set_vexpand(true);
 
     stack.add_titled_with_icon(
-        &scrollable(&env_section()),
+        &scrollable(&env_section(state)),
         Some("environment"),
         "Environment",
         "emblem-system-symbolic",
@@ -30,7 +31,7 @@ pub fn settings_page() -> gtk::Widget {
     page.upcast()
 }
 
-fn env_section() -> gtk::Box {
+fn env_section(state: &AppState) -> gtk::Box {
     // Quadra group
     let check_update_btn = gtk::Button::builder()
         .label("Check for updates")
@@ -51,7 +52,7 @@ fn env_section() -> gtk::Box {
     quadra_group.add(&force_update_btn);
 
     // Runtime selection
-    let runtime_model = gtk::StringList::new(&["Rosemary", "Darling"]);
+    let runtime_model = gtk::StringList::new(&Runtime::ALL.map(Runtime::label));
 
     let runtime_row = adw::ComboRow::builder()
         .title("Run Roblox with")
@@ -63,6 +64,14 @@ fn env_section() -> gtk::Box {
         .description("Which compatibility layer the macOS Roblox client runs on.")
         .build();
     runtime_group.add(&runtime_row);
+
+    state
+        .bind_property("runtime", &runtime_row, "selected")
+        .transform_to(|_, runtime: Runtime| Some(runtime.position()))
+        .transform_from(|_, position: u32| Runtime::at_position(position))
+        .bidirectional()
+        .sync_create()
+        .build();
 
     // Runtime settings
     let opengl_row = adw::SwitchRow::builder()
@@ -84,10 +93,41 @@ fn env_section() -> gtk::Box {
     options_group.add(&opengl_row);
     options_group.add(&refresh_rate_row);
 
+    state
+        .bind_property("force-opengl", &opengl_row, "active")
+        .bidirectional()
+        .sync_create()
+        .build();
+
+    state
+        .bind_property("refresh-rate", &refresh_rate_input, "text")
+        .transform_to(|_, rate: u32| Some(refresh_rate_as_text(rate)))
+        .transform_from(|_, text: String| refresh_rate_from_text(&text))
+        .bidirectional()
+        .sync_create()
+        .build();
+
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&quadra_group);
     section.append(&runtime_group);
     section.append(&options_group);
 
     section
+}
+
+fn refresh_rate_as_text(rate: u32) -> String {
+    if rate == USE_MONITOR_REFRESH_RATE {
+        String::new()
+    } else {
+        rate.to_string()
+    }
+}
+
+fn refresh_rate_from_text(text: &str) -> Option<u32> {
+    let text = text.trim();
+    if text.is_empty() {
+        Some(USE_MONITOR_REFRESH_RATE)
+    } else {
+        text.parse().ok()
+    }
 }
