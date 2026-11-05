@@ -10,7 +10,7 @@ pub fn bar(stack: &ViewStack) -> HeaderBar {
     let header = HeaderBar::new();
     header.add_css_class("app-header");
 
-    header.pack_start(&app_icon());
+    header.pack_start(&app_icon(16));
     header.set_title_widget(Some(&switcher));
 
     header
