@@ -23,7 +23,7 @@ pub enum Runtime {
 }
 
 impl Runtime {
-    pub const ALL: [Runtime; 2] = [Runtime::Rosemary, Runtime::Darling];
+    pub const ALL: [Runtime; 1] = [Runtime::Rosemary];
 
     pub fn label(self) -> &'static str {
         match self {
