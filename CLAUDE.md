@@ -1,1 +1,2 @@
-Use `nix develop .#dev-env` for a fully setup developer environment, if `nix` exists.
+- Read `AI_USAGE_POLICY.md` before making any changes.
+- Use `nix develop .#dev-env` for a fully setup developer environment, if `nix` exists.
