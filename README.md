@@ -466,25 +466,15 @@ Roblox's alternate hosts. Much of this follows [Vinegar](https://github.com/vine
 </details>
 
 <details>
-<summary>Flatpak (Discontinued)</summary>
+<summary>Flatpak (experimental)</summary>
 
-The Flatpak brings Darling along and runs it without root (see
-[flatpak/darling-noroot.c](flatpak/darling-noroot.c)), so nothing has to be
-installed on the system. Version 0.22Patch1 does not include a Flatpak bundle, as the Flatpak is temporarily discontinued to focus on better function on the native version.
-The last testing bundle is available in
-[release 0.19](https://github.com/QuadraHQ/Quadra/releases/tag/v0.19):
+Download the Flatpak from the releases and install:
 
 ```bash
-flatpak install --user MacOBlox-0.19-x86_64.flatpak
+flatpak install --user quadrahq-0.43.1-x86_64.flatpak
 ```
 
-It keeps its own Darling prefix, so sign in to Roblox again there. Roblox Studio
-is not in the Flatpak yet. The current experimental recipe uses the GNOME 51
-runtime, which supplies GTK 4, libadwaita, Adwaita icons, PyGObject and
-WebKitGTK on top of Freedesktop 26.08. The launcher draws with OpenGL rather
-than Vulkan (set `GSK_RENDERER` to override it); Roblox keeps its renderer
-setting. Graphics drivers and Vulkan layer extensions must match 26.08. To
-build it yourself:
+To build it yourself:
 
 ```bash
 flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//51 org.gnome.Sdk//51 org.freedesktop.Sdk.Extension.llvm22//26.08
@@ -519,4 +509,3 @@ icons from [Simple Icons](https://simpleicons.org)
 
 
 > © 2026 QuadraHQ via the GNU General Public License, and Roblox® is a registered trademarked of Roblox Corporation. Quadra and QuadraHQ is not affiliated with, nor endorsed by Roblox Corporation, and any relatives or Roblox Corporation
-
