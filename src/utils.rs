@@ -12,6 +12,23 @@ pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .build()
 }
 
+pub fn scroll_into_view_once_shown(widget: &impl IsA<gtk::Widget>) {
+    widget.add_tick_callback(|widget, _| {
+        let is_laid_out = widget.width() > 0;
+        if !is_laid_out {
+            return gtk::glib::ControlFlow::Continue;
+        }
+
+        let viewport = widget
+            .ancestor(gtk::Viewport::static_type())
+            .and_downcast::<gtk::Viewport>();
+        if let Some(viewport) = viewport {
+            viewport.scroll_to(widget, None);
+        }
+        gtk::glib::ControlFlow::Break
+    });
+}
+
 pub fn unfocus_on_outside_click(container: &impl IsA<gtk::Widget>) {
     let gesture = gtk::GestureClick::new();
     // Capture phase, so this runs before the clicked child handles the event.

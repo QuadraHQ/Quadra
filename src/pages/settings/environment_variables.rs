@@ -1,4 +1,5 @@
 use crate::state::{AppState, EnvironmentVariable, EnvironmentVariables};
+use crate::utils::scroll_into_view_once_shown;
 use adw::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
@@ -45,6 +46,7 @@ pub fn environment_variables_group(state: &AppState) -> adw::PreferencesGroup {
                 ..Default::default()
             };
             let row = add_variable_row(&group, &rows, &state, &new_variable);
+            scroll_into_view_once_shown(&row);
             row.grab_focus();
             save_variables(&state, &rows);
         }
