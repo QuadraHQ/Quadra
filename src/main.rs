@@ -1,5 +1,6 @@
 mod components;
 mod settings_page;
+mod utils;
 
 use crate::components::header::bar;
 use settings_page::settings_page;
@@ -55,8 +56,8 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Quadra")
-        .default_width(960)
-        .default_height(800)
+        .default_width(800)
+        .default_height(600)
         .content(&toolbar_view)
         .build();
 
