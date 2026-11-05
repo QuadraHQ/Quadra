@@ -1,3 +1,9 @@
+mod choice;
+mod rosemary_options;
+
+pub use choice::Choice;
+pub use rosemary_options::{CommandKey, PresentationMode, SwapInterval, TitleBar};
+
 use std::error::Error;
 use std::fs;
 use std::io::ErrorKind;
@@ -12,7 +18,17 @@ use serde::{Deserialize, Serialize};
 pub const USE_MONITOR_REFRESH_RATE: u32 = 0;
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 3] = ["runtime", "force-opengl", "refresh-rate"];
+const SAVED_PROPERTIES: [&str; 9] = [
+    "runtime",
+    "force-opengl",
+    "refresh-rate",
+    "presentation-mode",
+    "opengl-swap-interval",
+    "title-bar",
+    "command-key",
+    "ctrl-for-edit-shortcuts",
+    "plain-ctrl-click",
+];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 2] = ["roblox-installed", "rosemary-installed"];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
@@ -23,25 +39,13 @@ pub enum Runtime {
     Rosemary,
 }
 
-impl Runtime {
-    pub const ALL: [Runtime; 1] = [Runtime::Rosemary];
+impl Choice for Runtime {
+    const ALL: &'static [Self] = &[Self::Rosemary];
 
-    pub fn label(self) -> &'static str {
+    fn label(self) -> &'static str {
         match self {
-            Runtime::Rosemary => "Rosemary",
+            Self::Rosemary => "Rosemary",
         }
-    }
-
-    pub fn position(self) -> u32 {
-        let position = Self::ALL
-            .iter()
-            .position(|&runtime| runtime == self)
-            .expect("Runtime::ALL lists every runtime");
-        position as u32
-    }
-
-    pub fn at_position(position: u32) -> Option<Runtime> {
-        Self::ALL.get(position as usize).copied()
     }
 }
 
@@ -52,6 +56,12 @@ struct SavedSettings {
     force_opengl: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     refresh_rate: Option<u32>,
+    presentation_mode: PresentationMode,
+    opengl_swap_interval: SwapInterval,
+    title_bar: TitleBar,
+    command_key: CommandKey,
+    ctrl_for_edit_shortcuts: bool,
+    plain_ctrl_click: bool,
 }
 
 mod imp {
@@ -67,6 +77,18 @@ mod imp {
         force_opengl: Cell<bool>,
         #[property(get, set)]
         refresh_rate: Cell<u32>,
+        #[property(get, set, builder(PresentationMode::default()))]
+        presentation_mode: Cell<PresentationMode>,
+        #[property(get, set, builder(SwapInterval::default()))]
+        opengl_swap_interval: Cell<SwapInterval>,
+        #[property(get, set, builder(TitleBar::default()))]
+        title_bar: Cell<TitleBar>,
+        #[property(get, set, builder(CommandKey::default()))]
+        command_key: Cell<CommandKey>,
+        #[property(get, set)]
+        ctrl_for_edit_shortcuts: Cell<bool>,
+        #[property(get, set)]
+        plain_ctrl_click: Cell<bool>,
         #[property(get, set)]
         running: Cell<bool>,
         #[property(get, set)]
@@ -103,6 +125,12 @@ impl AppState {
                 "refresh-rate",
                 settings.refresh_rate.unwrap_or(USE_MONITOR_REFRESH_RATE),
             )
+            .property("presentation-mode", settings.presentation_mode)
+            .property("opengl-swap-interval", settings.opengl_swap_interval)
+            .property("title-bar", settings.title_bar)
+            .property("command-key", settings.command_key)
+            .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
+            .property("plain-ctrl-click", settings.plain_ctrl_click)
             .build();
 
         for property in SAVED_PROPERTIES {
@@ -152,6 +180,12 @@ impl AppState {
             force_opengl: self.force_opengl(),
             refresh_rate: Some(self.refresh_rate())
                 .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
+            presentation_mode: self.presentation_mode(),
+            opengl_swap_interval: self.opengl_swap_interval(),
+            title_bar: self.title_bar(),
+            command_key: self.command_key(),
+            ctrl_for_edit_shortcuts: self.ctrl_for_edit_shortcuts(),
+            plain_ctrl_click: self.plain_ctrl_click(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
