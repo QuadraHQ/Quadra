@@ -1,8 +1,10 @@
 mod components;
+mod home_page;
 mod settings_page;
 mod utils;
 
 use crate::components::header::bar;
+use home_page::home_page;
 use settings_page::settings_page;
 
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
@@ -35,7 +37,7 @@ fn build_ui(app: &Application) {
     let stack = ViewStack::new();
 
     stack.add_titled_with_icon(
-        &gtk::Label::new(Some("Home page")),
+        &home_page(),
         Some("home"),
         "Home",
         "go-home-symbolic",
