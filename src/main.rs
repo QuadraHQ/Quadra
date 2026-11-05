@@ -1,11 +1,13 @@
 mod components;
+mod settings_page;
 
 use crate::components::header::bar;
+use settings_page::settings_page;
 
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
 use gtk::glib;
 
-const APP_ID: &str = "org.quadrahq.Quadra";
+const APP_ID: &str = "org.quadrahq.Quadra1";
 
 fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
@@ -38,7 +40,7 @@ fn build_ui(app: &Application) {
         "go-home-symbolic",
     );
     stack.add_titled_with_icon(
-        &gtk::Label::new(Some("Settings page")),
+        &settings_page(),
         Some("settings"),
         "Settings",
         "emblem-system-symbolic",
