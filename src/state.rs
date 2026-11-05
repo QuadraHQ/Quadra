@@ -20,7 +20,6 @@ const SAVED_PROPERTIES: [&str; 3] = ["runtime", "force-opengl", "refresh-rate"];
 pub enum Runtime {
     #[default]
     Rosemary,
-    Darling,
 }
 
 impl Runtime {
@@ -29,7 +28,6 @@ impl Runtime {
     pub fn label(self) -> &'static str {
         match self {
             Runtime::Rosemary => "Rosemary",
-            Runtime::Darling => "Darling",
         }
     }
 
