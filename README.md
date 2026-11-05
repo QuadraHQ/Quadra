@@ -471,7 +471,7 @@ Roblox's alternate hosts. Much of this follows [Vinegar](https://github.com/vine
 Download the Flatpak from the releases and install:
 
 ```bash
-flatpak install --user quadrahq-0.43.1-x86_64.flatpak
+flatpak install --user quadrahq-0.43.2-x86_64.flatpak
 ```
 
 To build it yourself:

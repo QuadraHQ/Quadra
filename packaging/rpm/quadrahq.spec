@@ -1,7 +1,7 @@
 %bcond_with prebuilt_metal
-%global upstream_version 0.43.1
+%global upstream_version 0.43.2
 Name:           quadrahq
-Version:        0.43.1
+Version:        0.43.2
 Release:        1%{?dist}
 Summary:        Run the macOS Roblox client on Linux through Darling
 License:        GPL-3.0-only AND MIT AND ISC AND OFL-1.1
@@ -101,6 +101,9 @@ python3 -m compileall -q -d "%{_datadir}/quadrahq/launcher" "%{buildroot}%{_data
 %{_datadir}/mime/packages/org.quadrahq.Quadra.xml
 
 %changelog
+* Thu Nov 05 2026 Quadra maintainers <noreply@aubree.wtf> - 0.43.2-1
+- The launcher starts again on distributions without GLibUnix: it uses GLibUnix's signal function when available and GLib.unix_signal_add otherwise.
+
 * Wed Nov 04 2026 Quadra maintainers <noreply@aubree.wtf> - 0.43.1-1
 - Fix VR on Roblox 0.746: Roblox moved the graphics device's getVR and setVR methods, and Quadra now finds them by their code.
 - The launcher handles signals through GLib.unix_signal_add again instead of GLibUnix, which some distributions do not provide.

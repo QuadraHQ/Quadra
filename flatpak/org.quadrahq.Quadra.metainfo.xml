@@ -68,6 +68,11 @@
     <control>keyboard</control>
   </supports>
   <releases>
+    <release version="0.43.2" date="2026-11-05">
+      <description>
+        <p>The launcher starts again on systems whose GLib does not provide GLibUnix, and uses GLibUnix where it is available. Nothing else changes from 0.43.1.</p>
+      </description>
+    </release>
     <release version="0.43.1" date="2026-11-04">
       <description>
         <p>Fixes VR on Roblox 0.746, which moved the graphics device's VR methods, so VR works again on both 0.745 and 0.746. The launcher handles signals through GLib again instead of GLibUnix, which some distributions do not provide. Nothing else changes from 0.43.0.</p>

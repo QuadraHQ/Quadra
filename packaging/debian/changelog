@@ -1,3 +1,9 @@
+quadrahq (0.43.2-1) unstable; urgency=medium
+
+  * The launcher starts again on distributions without GLibUnix: it uses GLibUnix's signal function when available and GLib.unix_signal_add otherwise.
+
+ -- Quadra maintainers <noreply@aubree.wtf>  Thu, 05 Nov 2026 07:30:00 +0700
+
 quadrahq (0.43.1-1) unstable; urgency=medium
 
   * Fix VR on Roblox 0.746: Roblox moved the graphics device's getVR and setVR methods, and Quadra now finds them by their code.

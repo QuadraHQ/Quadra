@@ -3,6 +3,13 @@
 ## Unreleased
 
 
+## 0.43.2 — 2026-11-05
+
+- The launcher starts again on distributions whose GLib bindings do not provide `GLibUnix`. 0.43.1 still asked for
+  `GLibUnix` when loading the UI, which failed there. Quadra now uses GLibUnix's signal function when it is
+  available (GLib 2.80 and newer) and `GLib.unix_signal_add` otherwise.
+- The README lists the Flatpak as experimental instead of discontinued.
+
 ## 0.43.1 — 2026-11-04
 
 - Fix VR on Roblox 0.746, which said "Unavailable: unsupported client graphics device or VR emulator". Roblox added
