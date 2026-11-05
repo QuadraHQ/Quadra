@@ -4,7 +4,12 @@ import os
 import signal
 import threading
 
-from gi.repository import Adw, Gdk, Gio, GLib, GLibUnix, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+
+try:
+    from gi.repository import GLibUnix
+except ImportError:  # GLib older than 2.80, or bindings without GLibUnix
+    GLibUnix = None
 
 from .. import core, tray
 from .. import uri as uri_handoff
@@ -219,15 +224,17 @@ def main(page=None, open_settings=False):
             if connection:
                 connection.flush_sync(None)
             return 0
+    # GLib 2.80 moved unix_signal_add to GLibUnix; PyGObject exposes it as
+    # signal_add or signal_add_full depending on the version.
+    unix_signal_add = (
+        getattr(GLibUnix, "signal_add", None)
+        or getattr(GLibUnix, "signal_add_full", None)
+        or GLib.unix_signal_add
+    )
     for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         if number == signal.SIGHUP and signal.getsignal(number) == signal.SIG_IGN:
             continue  # started with nohup: closing the terminal must not end the game
-        try:
-            GLibUnix.signal_add(
-                GLib.PRIORITY_DEFAULT, number, application.stop_from_signal, number
-            )
-        except AttributeError:
-            GLib.unix_signal_add(
-                GLib.PRIORITY_DEFAULT, number, application.stop_from_signal, number
-            )
+        unix_signal_add(
+            GLib.PRIORITY_DEFAULT, number, application.stop_from_signal, number
+        )
     return application.run(None)

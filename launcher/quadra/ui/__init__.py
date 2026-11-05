@@ -30,7 +30,10 @@ import gi
 # Before any module below imports GTK.
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-gi.require_version("GLibUnix", "2.0")
+try:
+    gi.require_version("GLibUnix", "2.0")
+except ValueError:
+    pass  # GLib older than 2.80: launcher_app uses GLib.unix_signal_add
 
 from .. import namespace
 from . import (
