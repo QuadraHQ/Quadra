@@ -22,7 +22,6 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 
 - Server browser
 - VR
-- Discord RPC
 - Roblox Studio
 - Support for the Darling runtime
 

@@ -35,6 +35,14 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     quadra_group.add(&run_in_background_row);
     quadra_group.add(&force_update_btn);
 
+    let discord_rich_presence_row =
+        switch_row(state, "discord-rich-presence", "Show what you're playing");
+    discord_rich_presence_row
+        .set_subtitle("Show the Roblox game you're in on your Discord profile");
+
+    let discord_group = adw::PreferencesGroup::builder().title("Discord").build();
+    discord_group.add(&discord_rich_presence_row);
+
     // Runtime selection
     let runtime_row = choice_row::<Runtime>(state, "runtime", "Run Roblox with");
 
@@ -46,6 +54,7 @@ pub fn env_section(state: &AppState) -> gtk::Box {
 
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&quadra_group);
+    section.append(&discord_group);
     section.append(&runtime_group);
     section.append(&rosemary_runtime_group(state));
     section.append(&graphics_group(state));

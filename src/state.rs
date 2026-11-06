@@ -27,9 +27,10 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 16] = [
+const SAVED_PROPERTIES: [&str; 17] = [
     "launch-mode",
     "run-in-background",
+    "discord-rich-presence",
     "runtime",
     "runner",
     "custom-runner-path",
@@ -71,6 +72,8 @@ impl Choice for Runtime {
 struct SavedSettings {
     launch_mode: LaunchMode,
     run_in_background: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discord_rich_presence: Option<bool>,
     runtime: Runtime,
     runner: Option<String>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -106,6 +109,8 @@ mod imp {
         launch_mode: Cell<LaunchMode>,
         #[property(get, set)]
         run_in_background: Cell<bool>,
+        #[property(get, set)]
+        discord_rich_presence: Cell<bool>,
         #[property(get, set, builder(Runtime::default()))]
         runtime: Cell<Runtime>,
         #[property(get, set)]
@@ -201,6 +206,10 @@ impl AppState {
         let state: Self = glib::Object::builder()
             .property("launch-mode", settings.launch_mode)
             .property("run-in-background", settings.run_in_background)
+            .property(
+                "discord-rich-presence",
+                settings.discord_rich_presence.unwrap_or(true),
+            )
             .property("runtime", settings.runtime)
             .property(
                 "runner",
@@ -326,6 +335,7 @@ impl AppState {
         let settings = SavedSettings {
             launch_mode: self.launch_mode(),
             run_in_background: self.run_in_background(),
+            discord_rich_presence: Some(self.discord_rich_presence()),
             runtime: self.runtime(),
             runner: Some(self.runner()),
             custom_runner_path: self.custom_runner_path(),

@@ -1,6 +1,10 @@
 mod background;
+mod discord_ipc;
+mod discord_presence;
 mod download;
 mod fast_flags;
+mod game_activity;
+mod game_details;
 mod launch;
 mod live_log;
 mod paths;
@@ -27,6 +31,7 @@ pub fn initialize(state: &AppState) {
         });
     }
 
+    discord_presence::initialize(state);
     refresh(state);
     if state.first_launch() {
         prefer_an_installed_runner(state);
