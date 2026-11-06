@@ -9,7 +9,7 @@ fn style_class(action: PlayAction) -> Option<&'static str> {
     match action {
         PlayAction::InstallRoblox | PlayAction::Play => Some("suggested-action"),
         PlayAction::Stop => Some("destructive-action"),
-        PlayAction::Stopping => None,
+        PlayAction::Opening | PlayAction::Stopping => None,
     }
 }
 

@@ -1,9 +1,10 @@
 use crate::backend;
 use crate::state::AppState;
 
-pub const PROPERTIES_THAT_DECIDE_PLAY_ACTION: [&str; 6] = [
+pub const PROPERTIES_THAT_DECIDE_PLAY_ACTION: [&str; 7] = [
     "running",
     "stopping",
+    "roblox-graphics-started",
     "busy",
     "can-play",
     "roblox-installed",
@@ -14,6 +15,7 @@ pub const PROPERTIES_THAT_DECIDE_PLAY_ACTION: [&str; 6] = [
 pub enum PlayAction {
     InstallRoblox,
     Play,
+    Opening,
     Stop,
     Stopping,
 }
@@ -22,6 +24,8 @@ impl PlayAction {
     pub fn for_state(state: &AppState) -> Self {
         if state.running() && state.stopping() {
             Self::Stopping
+        } else if state.running() && !state.roblox_graphics_started() {
+            Self::Opening
         } else if state.running() {
             Self::Stop
         } else if !state.roblox_installed() {
@@ -36,7 +40,7 @@ impl PlayAction {
             Self::InstallRoblox => !state.busy(),
             Self::Play => state.can_play() && !state.busy(),
             Self::Stop => true,
-            Self::Stopping => false,
+            Self::Opening | Self::Stopping => false,
         }
     }
 
@@ -53,6 +57,7 @@ impl PlayAction {
         match self {
             Self::InstallRoblox => "Install Roblox",
             Self::Play => "Play",
+            Self::Opening => "Opening…",
             Self::Stop => "Stop",
             Self::Stopping => "Stopping…",
         }
@@ -61,7 +66,7 @@ impl PlayAction {
     pub fn icon_name(self) -> &'static str {
         match self {
             Self::InstallRoblox => "folder-download-symbolic",
-            Self::Play => "media-playback-start-symbolic",
+            Self::Play | Self::Opening => "media-playback-start-symbolic",
             Self::Stop | Self::Stopping => "media-playback-stop-symbolic",
         }
     }
@@ -71,7 +76,7 @@ impl PlayAction {
             Self::InstallRoblox => backend::install_roblox(state),
             Self::Play => backend::play(state),
             Self::Stop => backend::stop(state),
-            Self::Stopping => {}
+            Self::Opening | Self::Stopping => {}
         }
     }
 }
