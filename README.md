@@ -20,8 +20,11 @@
 
 This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
 
+- FastFlags
+- Server browser
 - VR
 - Discord RPC
+- Roblox Studio
 - Support for the Darling runtime
 
 ## Build instructions
