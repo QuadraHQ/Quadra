@@ -22,3 +22,13 @@
 git clone https://github.com/QuadraHQ/quadra-rewrite && cd quadra-rewrite
 cargo build
 ```
+
+## Relevant directories
+
+- `~/.local/share/quadra`: Where Quadra stores its data
+- `~/.local/share/quadra/prefix`: The Rosemary prefix Roblox runs in
+- `~/.local/share/quadra/rosemary/<version>`: Installed Rosemary versions
+- `~/.local/share/quadra/roblox`: The Roblox Player installation
+- `~/.local/share/quadra/logs`: Quadra and Roblox logs
+- `~/.cache/quadra/downloads`: Downloaded files, such as Rosemary and Roblox packages
+- `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
