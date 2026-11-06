@@ -16,6 +16,14 @@
   A bootstrapper for the macOS Roblox Player client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a>.
 </p>
 
+## EXPERIMENTAL WARNING
+
+This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
+
+- VR
+- Discord RPC
+- Support for the Darling runtime
+
 ## Build instructions
 
 ```
