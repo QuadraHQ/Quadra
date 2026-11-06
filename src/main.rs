@@ -12,7 +12,7 @@ use state::AppState;
 use std::cell::OnceCell;
 use std::rc::Rc;
 
-const APP_ID: &str = "org.quadrahq.Quadra1";
+const APP_ID: &str = "org.quadrahq.Quadra";
 
 fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();

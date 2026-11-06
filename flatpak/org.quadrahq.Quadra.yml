@@ -1,0 +1,42 @@
+id: org.quadrahq.Quadra
+runtime: org.gnome.Platform
+runtime-version: "51"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+
+command: quadra-rewrite
+
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+
+cleanup:
+  - /share/doc
+  - /share/man
+
+modules:
+  - name: quadra-rewrite
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: /run/build/quadra-rewrite/cargo
+    build-commands:
+      - |
+        export RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-rpath,/app/lib64 -C link-arg=-Wl,-rpath,/app/lib"
+        cargo --offline build --release --locked
+      - install -Dm755 target/release/quadra-rewrite -t /app/bin/
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - target
+          - build-dir
+          - .flatpak-builder
+      - cargo-sources.json
