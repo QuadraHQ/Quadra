@@ -20,7 +20,6 @@ pub fn play_button(state: &AppState) -> gtk::Button {
         .child(&content)
         .css_classes(["pill"])
         .halign(gtk::Align::Center)
-        .margin_top(12)
         .build();
 
     button.connect_clicked(glib::clone!(

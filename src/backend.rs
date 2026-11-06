@@ -1,6 +1,7 @@
 mod background;
 mod download;
 mod launch;
+mod live_log;
 mod paths;
 mod prefix;
 mod quadra_rosemary;

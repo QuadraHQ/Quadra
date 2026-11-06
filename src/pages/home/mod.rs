@@ -1,9 +1,11 @@
+mod logs_button;
 mod play_button;
 mod status_label;
 
 use crate::components::icon::app_icon;
 use crate::state::AppState;
 use adw::prelude::*;
+use logs_button::logs_button;
 use play_button::play_button;
 use status_label::status_label;
 
@@ -17,6 +19,8 @@ pub fn home_page(state: &AppState) -> gtk::Widget {
 
     let subtitle = status_label(state);
 
+    let logs_button = logs_button(state);
+
     let play_button = play_button(state);
 
     let content = gtk::Box::builder()
@@ -29,6 +33,7 @@ pub fn home_page(state: &AppState) -> gtk::Widget {
     content.append(&logo);
     content.append(&title);
     content.append(&subtitle);
+    content.append(&logs_button);
     content.append(&play_button);
 
     content.upcast()

@@ -1,5 +1,5 @@
 use super::runners::Runner;
-use super::{paths, prefix, roblox};
+use super::{live_log, paths, prefix, roblox};
 use crate::state::{
     AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
 };
@@ -10,6 +10,8 @@ use std::fs::{self, File};
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 const LOG_FILE: &str = "roblox.log";
@@ -27,7 +29,9 @@ thread_local! {
 
 pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     fs::create_dir_all(paths::logs_directory())?;
-    let log = File::create(paths::logs_directory().join(LOG_FILE))?;
+    let log_path = paths::logs_directory().join(LOG_FILE);
+    let log = File::create(&log_path)?;
+    let log_reader = File::open(&log_path)?;
 
     let mut command = Command::new(&runner.executable);
     command
@@ -48,9 +52,13 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     }));
     state.set_running(true);
 
+    let roblox_exited = Arc::new(AtomicBool::new(false));
+    live_log::follow(state, log_reader, roblox_exited.clone());
+
     let (exit_sender, exit_receiver) = async_channel::bounded(1);
     std::thread::spawn(move || {
         let _ = child.wait();
+        roblox_exited.store(true, Ordering::Release);
         let _ = exit_sender.send_blocking(());
     });
 

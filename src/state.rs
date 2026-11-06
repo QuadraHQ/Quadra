@@ -86,9 +86,14 @@ struct SavedSettings {
     environment_variables: EnvironmentVariables,
 }
 
+const LOG_CLEARED: &str = "log-cleared";
+const LOG_APPENDED: &str = "log-appended";
+
 mod imp {
     use super::*;
+    use glib::subclass::Signal;
     use std::cell::{Cell, RefCell};
+    use std::sync::OnceLock;
 
     #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::AppState)]
@@ -152,6 +157,7 @@ mod imp {
         #[property(get)]
         pub can_play: Cell<bool>,
         pub pending_save: RefCell<Option<glib::SourceId>>,
+        pub log: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -161,7 +167,19 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for AppState {}
+    impl ObjectImpl for AppState {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![
+                    Signal::builder(LOG_CLEARED).build(),
+                    Signal::builder(LOG_APPENDED)
+                        .param_types([String::static_type()])
+                        .build(),
+                ]
+            })
+        }
+    }
 }
 
 glib::wrapper! {
@@ -224,6 +242,44 @@ impl AppState {
     pub fn report_error(&self, message: &str) {
         eprintln!("{message}");
         self.set_error_message(message);
+    }
+
+    pub fn log(&self) -> String {
+        self.imp().log.borrow().clone()
+    }
+
+    pub fn clear_log(&self) {
+        self.imp().log.borrow_mut().clear();
+        self.emit_by_name::<()>(LOG_CLEARED, &[]);
+    }
+
+    pub fn append_log(&self, text: &str) {
+        self.imp().log.borrow_mut().push_str(text);
+        self.emit_by_name::<()>(LOG_APPENDED, &[&text]);
+    }
+
+    pub fn connect_log_cleared(&self, handler: impl Fn(&Self) + 'static) -> glib::SignalHandlerId {
+        self.connect_local(LOG_CLEARED, false, move |values| {
+            let state = values[0]
+                .get::<Self>()
+                .expect("signal is emitted by AppState");
+            handler(&state);
+            None
+        })
+    }
+
+    pub fn connect_log_appended(
+        &self,
+        handler: impl Fn(&Self, &str) + 'static,
+    ) -> glib::SignalHandlerId {
+        self.connect_local(LOG_APPENDED, false, move |values| {
+            let state = values[0]
+                .get::<Self>()
+                .expect("signal is emitted by AppState");
+            let text = values[1].get::<&str>().expect("log-appended carries text");
+            handler(&state, text);
+            None
+        })
     }
 
     pub fn save_pending_changes(&self) {
