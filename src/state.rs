@@ -149,6 +149,8 @@ mod imp {
         #[property(get, set)]
         running: Cell<bool>,
         #[property(get, set)]
+        roblox_graphics_started: Cell<bool>,
+        #[property(get, set)]
         stopping: Cell<bool>,
         #[property(get, set)]
         roblox_installed: Cell<bool>,

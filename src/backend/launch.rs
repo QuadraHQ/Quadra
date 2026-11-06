@@ -50,6 +50,7 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
         rosemary: runner.executable.clone(),
         prefix_directory: prefix::directory_for(&state.prefix()),
     }));
+    state.set_roblox_graphics_started(false);
     state.set_running(true);
 
     let roblox_exited = Arc::new(AtomicBool::new(false));
@@ -68,6 +69,7 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
         RUNNING_ROBLOX.replace(None);
         state.set_stopping(false);
         state.set_running(false);
+        state.set_roblox_graphics_started(false);
         super::refresh(&state);
     });
 

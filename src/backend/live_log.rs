@@ -8,6 +8,7 @@ use std::time::Duration;
 
 const CHECK_FOR_NEW_OUTPUT_EVERY: Duration = Duration::from_millis(200);
 const READ_CHUNK_SIZE: usize = 8192;
+const GRAPHICS_STARTED_MARKER: &str = "[FLog::Graphics]";
 
 pub fn follow(state: &AppState, log: File, writer_finished: Arc<AtomicBool>) {
     state.clear_log();
@@ -22,6 +23,9 @@ pub fn follow(state: &AppState, log: File, writer_finished: Arc<AtomicBool>) {
                 output.push_str(&more_output);
             }
             state.append_log(&output);
+            if !state.roblox_graphics_started() && output.contains(GRAPHICS_STARTED_MARKER) {
+                state.set_roblox_graphics_started(true);
+            }
         }
     });
 }
