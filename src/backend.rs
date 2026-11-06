@@ -1,5 +1,6 @@
 mod background;
 mod download;
+mod fast_flags;
 mod launch;
 mod live_log;
 mod paths;

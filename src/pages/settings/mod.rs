@@ -1,6 +1,8 @@
 mod bound_rows;
 mod environment;
 mod environment_variables;
+mod fast_flag_allowlist;
+mod fast_flags;
 mod rosemary_options;
 mod rosemary_runtime;
 
@@ -8,6 +10,7 @@ use crate::state::AppState;
 use crate::utils::{scrollable, unfocus_on_outside_click};
 use adw::prelude::*;
 use environment::env_section;
+use fast_flags::fast_flags_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
     let stack = adw::ViewStack::new();
@@ -18,6 +21,12 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         Some("environment"),
         "Environment",
         "emblem-system-symbolic",
+    );
+    stack.add_titled_with_icon(
+        &scrollable(&fast_flags_section(state)),
+        Some("fast-flags"),
+        "FastFlags",
+        "emoji-flags-symbolic",
     );
 
     let switcher = adw::ViewSwitcher::builder()

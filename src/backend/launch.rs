@@ -1,5 +1,5 @@
 use super::runners::Runner;
-use super::{live_log, paths, prefix, roblox};
+use super::{fast_flags, live_log, paths, prefix, roblox};
 use crate::state::{
     AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
 };
@@ -28,6 +28,8 @@ thread_local! {
 }
 
 pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
+    fast_flags::write_client_settings(&state.fast_flags())?;
+
     fs::create_dir_all(paths::logs_directory())?;
     let log_path = paths::logs_directory().join(LOG_FILE);
     let log = File::create(&log_path)?;

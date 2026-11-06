@@ -1,10 +1,12 @@
 mod choice;
 mod environment_variables;
+mod fast_flags;
 mod launch_mode;
 mod rosemary_options;
 
 pub use choice::Choice;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
+pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
 pub use rosemary_options::{CommandKey, PresentationMode, SwapInterval, TitleBar};
 
@@ -25,7 +27,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 15] = [
+const SAVED_PROPERTIES: [&str; 16] = [
     "launch-mode",
     "run-in-background",
     "runtime",
@@ -41,6 +43,7 @@ const SAVED_PROPERTIES: [&str; 15] = [
     "ctrl-for-edit-shortcuts",
     "plain-ctrl-click",
     "environment-variables",
+    "fast-flags",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 3] =
     ["roblox-installed", "rosemary-installed", "runner"];
@@ -84,6 +87,7 @@ struct SavedSettings {
     plain_ctrl_click: bool,
     opened_before: bool,
     environment_variables: EnvironmentVariables,
+    fast_flags: FastFlags,
 }
 
 const LOG_CLEARED: &str = "log-cleared";
@@ -134,6 +138,8 @@ mod imp {
         plain_ctrl_click: Cell<bool>,
         #[property(get, set)]
         environment_variables: RefCell<EnvironmentVariables>,
+        #[property(get, set)]
+        fast_flags: RefCell<FastFlags>,
         #[property(get, set)]
         first_launch: Cell<bool>,
         #[property(get, set)]
@@ -222,6 +228,7 @@ impl AppState {
             .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
             .property("plain-ctrl-click", settings.plain_ctrl_click)
             .property("environment-variables", settings.environment_variables)
+            .property("fast-flags", settings.fast_flags)
             .property("first-launch", !settings.opened_before)
             .build();
 
@@ -334,6 +341,7 @@ impl AppState {
             plain_ctrl_click: self.plain_ctrl_click(),
             opened_before: true,
             environment_variables: self.environment_variables(),
+            fast_flags: self.fast_flags(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
