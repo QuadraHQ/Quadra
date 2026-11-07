@@ -3,6 +3,27 @@ use gtk::glib;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
+#[enum_type(name = "QuadraRenderer")]
+pub enum Renderer {
+    #[default]
+    #[serde(rename = "metal")]
+    Metal,
+    #[serde(rename = "opengl")]
+    OpenGl,
+}
+
+impl Choice for Renderer {
+    const ALL: &'static [Self] = &[Self::Metal, Self::OpenGl];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Metal => "Metal (via Vulkan)",
+            Self::OpenGl => "OpenGL",
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
 #[enum_type(name = "QuadraPresentationMode")]
 #[serde(rename_all = "snake_case")]
 pub enum PresentationMode {

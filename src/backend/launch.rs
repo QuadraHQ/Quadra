@@ -1,7 +1,8 @@
 use super::runners::Runner;
 use super::{fast_flags, live_log, mangohud, paths, prefix, roblox};
 use crate::state::{
-    AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
+    AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
+    USE_MONITOR_REFRESH_RATE,
 };
 use anyhow::Context;
 use gtk::glib;
@@ -148,7 +149,7 @@ fn rosemary_environment(state: &AppState) -> Vec<(String, String)> {
         environment.push(("ROSEMARY_PREFIX_SETUP", "download".to_owned()));
     }
 
-    if state.force_opengl() {
+    if state.renderer() == Renderer::OpenGl {
         environment.push(("VK_DRIVER_FILES", "/dev/null".to_owned()));
         if let Some(swap_interval) = swap_interval_value(state.opengl_swap_interval()) {
             environment.push(("ROSEMARY_SWAP_INTERVAL", swap_interval.to_owned()));

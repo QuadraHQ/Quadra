@@ -8,7 +8,7 @@ pub use choice::Choice;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
-pub use rosemary_options::{CommandKey, PresentationMode, SwapInterval, TitleBar};
+pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
 
 use std::error::Error;
 use std::fs;
@@ -35,7 +35,7 @@ const SAVED_PROPERTIES: [&str; 18] = [
     "runner",
     "custom-runner-path",
     "prefix",
-    "force-opengl",
+    "renderer",
     "mangohud",
     "refresh-rate",
     "presentation-mode",
@@ -80,7 +80,10 @@ struct SavedSettings {
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_runner_path: String,
     prefix: Option<String>,
-    force_opengl: bool,
+    #[serde(rename = "force_opengl", skip_serializing)]
+    legacy_force_opengl: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    renderer: Option<Renderer>,
     mangohud: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     refresh_rate: Option<u32>,
@@ -93,6 +96,16 @@ struct SavedSettings {
     opened_before: bool,
     environment_variables: EnvironmentVariables,
     fast_flags: FastFlags,
+}
+
+impl SavedSettings {
+    fn chosen_renderer(&self) -> Renderer {
+        match self.renderer {
+            Some(renderer) => renderer,
+            None if self.legacy_force_opengl => Renderer::OpenGl,
+            None => Renderer::default(),
+        }
+    }
 }
 
 const LOG_CLEARED: &str = "log-cleared";
@@ -127,8 +140,8 @@ mod imp {
         available_prefixes: RefCell<Vec<String>>,
         #[property(get, set)]
         darwin_base_installed: Cell<bool>,
-        #[property(get, set)]
-        force_opengl: Cell<bool>,
+        #[property(get, set, builder(Renderer::default()))]
+        renderer: Cell<Renderer>,
         #[property(get, set)]
         mangohud: Cell<bool>,
         #[property(get, set)]
@@ -206,6 +219,7 @@ glib::wrapper! {
 impl AppState {
     pub fn load() -> Self {
         let settings = read_saved_settings();
+        let renderer = settings.chosen_renderer();
 
         let state: Self = glib::Object::builder()
             .property("launch-mode", settings.launch_mode)
@@ -229,7 +243,7 @@ impl AppState {
                 "available-prefixes",
                 vec![QUADRA_PREFIX.to_owned(), ROSEMARY_DEFAULT_PREFIX.to_owned()],
             )
-            .property("force-opengl", settings.force_opengl)
+            .property("renderer", renderer)
             .property("mangohud", settings.mangohud)
             .property(
                 "refresh-rate",
@@ -345,7 +359,8 @@ impl AppState {
             runner: Some(self.runner()),
             custom_runner_path: self.custom_runner_path(),
             prefix: Some(self.prefix()),
-            force_opengl: self.force_opengl(),
+            legacy_force_opengl: false,
+            renderer: Some(self.renderer()),
             mangohud: self.mangohud(),
             refresh_rate: Some(self.refresh_rate())
                 .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),

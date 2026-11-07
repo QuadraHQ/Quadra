@@ -1,13 +1,15 @@
 use super::bound_rows::{choice_row, switch_row};
 use super::mangohud::mangohud_row;
 use crate::state::{
-    AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
+    AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
+    USE_MONITOR_REFRESH_RATE,
 };
 use adw::prelude::*;
 
 pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
-    let opengl_row = switch_row(state, "force-opengl", "Force OpenGL");
-    opengl_row.set_subtitle("For machines without a GPU that supports Vulkan");
+    let renderer_row = choice_row::<Renderer>(state, "renderer", "Renderer");
+    renderer_row
+        .set_subtitle("The graphics API used for Rosemary. Use OpenGL if you have older hardware.");
 
     let presentation_mode_row =
         choice_row::<PresentationMode>(state, "presentation-mode", "Vulkan presentation mode");
@@ -16,16 +18,18 @@ pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
 
     let swap_interval_row =
         choice_row::<SwapInterval>(state, "opengl-swap-interval", "OpenGL swap interval");
-    swap_interval_row.set_subtitle("Used instead of the presentation mode when OpenGL is forced.");
+    swap_interval_row
+        .set_subtitle("Used instead of the presentation mode with the OpenGL renderer.");
 
     state
-        .bind_property("force-opengl", &presentation_mode_row, "sensitive")
-        .invert_boolean()
+        .bind_property("renderer", &presentation_mode_row, "sensitive")
+        .transform_to(|_, renderer: Renderer| Some(renderer == Renderer::Metal))
         .sync_create()
         .build();
 
     state
-        .bind_property("force-opengl", &swap_interval_row, "sensitive")
+        .bind_property("renderer", &swap_interval_row, "sensitive")
+        .transform_to(|_, renderer: Renderer| Some(renderer == Renderer::OpenGl))
         .sync_create()
         .build();
 
@@ -33,7 +37,7 @@ pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
         .title("Graphics")
         .description("Rosemary options for how Roblox draws to the screen.")
         .build();
-    group.add(&opengl_row);
+    group.add(&renderer_row);
     group.add(&presentation_mode_row);
     group.add(&swap_interval_row);
     group.add(&refresh_rate_row(state));
