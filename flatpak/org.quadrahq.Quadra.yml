@@ -47,4 +47,6 @@ modules:
           - target
           - build-dir
           - .flatpak-builder
+          - flatpak_app
+          - repo
       - cargo-sources.json
