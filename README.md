@@ -31,6 +31,7 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 - Git
 - rustup
 - GTK4 and libadwaita
+- clang for VR support (optional; without it Quadra builds without VR)
 - flatpak-builder for building Flatpaks
 
 **Fetch source:**
@@ -59,6 +60,7 @@ cd flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub -
 - `~/.local/share/quadra/roblox`: The Roblox Player installation
 - `~/.local/share/quadra/logs`: Quadra and Roblox logs
 - `~/.cache/quadra/downloads`: Downloaded files, such as Rosemary and Roblox packages
+- `~/.cache/quadra/vr`: The VR library Rosemary loads into Roblox
 - `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
 
 ## License

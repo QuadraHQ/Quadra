@@ -17,6 +17,7 @@ pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
 use std::error::Error;
 use std::fs;
 use std::io::ErrorKind;
+use std::ops::RangeInclusive;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -26,12 +27,14 @@ use gtk::subclass::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub const USE_MONITOR_REFRESH_RATE: u32 = 0;
+pub const DEFAULT_VR_RENDER_SCALE: u32 = 70;
+pub const VR_RENDER_SCALE_RANGE: RangeInclusive<u32> = 40..=150;
 pub const QUADRA_RUNNER: &str = "Quadra";
 pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 19] = [
+const SAVED_PROPERTIES: [&str; 23] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -51,6 +54,10 @@ const SAVED_PROPERTIES: [&str; 19] = [
     "environment-variables",
     "fast-flags",
     "preferred-region",
+    "vr",
+    "vr-mirror",
+    "vr-render-scale",
+    "vr-zink",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 3] =
     ["roblox-installed", "rosemary-installed", "runner"];
@@ -103,6 +110,12 @@ struct SavedSettings {
     fast_flags: FastFlags,
     #[serde(skip_serializing_if = "String::is_empty")]
     preferred_region: String,
+    vr: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vr_mirror: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vr_render_scale: Option<u32>,
+    vr_zink: bool,
 }
 
 impl SavedSettings {
@@ -175,6 +188,16 @@ mod imp {
         regions: RefCell<Regions>,
         #[property(get, set)]
         server_history: RefCell<ServerHistory>,
+        #[property(get, set)]
+        vr: Cell<bool>,
+        #[property(get, set)]
+        vr_mirror: Cell<bool>,
+        #[property(get, set)]
+        vr_render_scale: Cell<u32>,
+        #[property(get, set)]
+        vr_zink: Cell<bool>,
+        #[property(get, set)]
+        vr_status: RefCell<String>,
         #[property(get, set)]
         first_launch: Cell<bool>,
         #[property(get, set)]
@@ -271,6 +294,16 @@ impl AppState {
             .property("environment-variables", settings.environment_variables)
             .property("fast-flags", settings.fast_flags)
             .property("preferred-region", settings.preferred_region)
+            .property("vr", settings.vr)
+            .property("vr-mirror", settings.vr_mirror.unwrap_or(true))
+            .property(
+                "vr-render-scale",
+                settings
+                    .vr_render_scale
+                    .unwrap_or(DEFAULT_VR_RENDER_SCALE)
+                    .clamp(*VR_RENDER_SCALE_RANGE.start(), *VR_RENDER_SCALE_RANGE.end()),
+            )
+            .property("vr-zink", settings.vr_zink)
             .property("first-launch", !settings.opened_before)
             .build();
 
@@ -388,6 +421,10 @@ impl AppState {
             environment_variables: self.environment_variables(),
             fast_flags: self.fast_flags(),
             preferred_region: self.preferred_region(),
+            vr: self.vr(),
+            vr_mirror: Some(self.vr_mirror()),
+            vr_render_scale: Some(self.vr_render_scale()),
+            vr_zink: self.vr_zink(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

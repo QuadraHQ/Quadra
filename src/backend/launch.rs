@@ -1,4 +1,5 @@
 use super::runners::Runner;
+use super::vr::{self, VrSession};
 use super::{fast_flags, live_log, paths, prefix, roblox};
 use crate::state::{
     AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
@@ -8,6 +9,7 @@ use anyhow::Context;
 use gtk::glib;
 use std::cell::RefCell;
 use std::fs::{self, File};
+use std::io::Write;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -18,6 +20,7 @@ use std::time::Duration;
 const LOG_FILE: &str = "roblox.log";
 const FORCE_STOP_DELAY: Duration = Duration::from_secs(10);
 const PROTOCOL_STRING_ARGUMENT: &str = "-protocolString";
+const VULKAN_DRIVERS_VARIABLE: &str = "VK_DRIVER_FILES";
 
 struct RunningRoblox {
     process_group: i32,
@@ -33,12 +36,21 @@ pub fn start_roblox(
     state: &AppState,
     runner: &Runner,
     launch_uri: Option<&str>,
+    vr: Option<&Result<VrSession, String>>,
 ) -> anyhow::Result<()> {
-    fast_flags::write_client_settings(&state.fast_flags())?;
+    let vr_session = vr.and_then(|vr| vr.as_ref().ok());
+    let fast_flags = match vr_session {
+        Some(_) => vr::with_opengl_renderer(state.fast_flags()),
+        None => state.fast_flags(),
+    };
+    fast_flags::write_client_settings(&fast_flags)?;
 
     fs::create_dir_all(paths::logs_directory())?;
     let log_path = paths::logs_directory().join(LOG_FILE);
-    let log = File::create(&log_path)?;
+    let mut log = File::create(&log_path)?;
+    if let Some(vr) = vr {
+        writeln!(log, "{}", vr_log_line(vr))?;
+    }
     let log_reader = File::open(&log_path)?;
 
     let mut command = Command::new(&runner.executable);
@@ -47,7 +59,7 @@ pub fn start_roblox(
         command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
     }
     command
-        .envs(rosemary_environment(state))
+        .envs(rosemary_environment(state, vr_session))
         .stdin(Stdio::null())
         .stdout(log.try_clone()?)
         .stderr(log)
@@ -130,7 +142,7 @@ fn signal_process_group(process_group: i32, signal: libc::c_int) {
     }
 }
 
-fn rosemary_environment(state: &AppState) -> Vec<(String, String)> {
+fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec<(String, String)> {
     let mut environment: Vec<(&str, String)> = Vec::new();
 
     if let Some(prefix_directory) = prefix::directory_for(&state.prefix()) {
@@ -139,7 +151,7 @@ fn rosemary_environment(state: &AppState) -> Vec<(String, String)> {
     }
 
     if state.renderer() == Renderer::OpenGl {
-        environment.push(("VK_DRIVER_FILES", "/dev/null".to_owned()));
+        environment.push((VULKAN_DRIVERS_VARIABLE, "/dev/null".to_owned()));
         if let Some(swap_interval) = swap_interval_value(state.opengl_swap_interval()) {
             environment.push(("ROSEMARY_SWAP_INTERVAL", swap_interval.to_owned()));
         }
@@ -186,7 +198,21 @@ fn rosemary_environment(state: &AppState) -> Vec<(String, String)> {
             .map(|variable| (variable.name.clone(), variable.value.clone())),
     );
 
+    if let Some(vr_session) = vr_session {
+        if vr_session.runs_on_zink() {
+            environment.retain(|(name, _)| name != VULKAN_DRIVERS_VARIABLE);
+        }
+        environment.extend(vr_session.environment());
+    }
+
     environment
+}
+
+fn vr_log_line(vr: &Result<VrSession, String>) -> String {
+    match vr {
+        Ok(vr_session) => vr_session.description(),
+        Err(reason) => format!("VR: {reason} Roblox starts without VR."),
+    }
 }
 
 fn presentation_mode_value(mode: PresentationMode) -> Option<&'static str> {

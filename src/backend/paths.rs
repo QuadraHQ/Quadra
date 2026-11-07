@@ -43,3 +43,7 @@ pub fn regions_cache_file() -> PathBuf {
         .join("quadra")
         .join("rovalra-regions.json")
 }
+
+pub fn vr_directory() -> PathBuf {
+    glib::user_cache_dir().join("quadra").join("vr")
+}

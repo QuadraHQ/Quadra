@@ -16,6 +16,7 @@ mod regions;
 mod roblox;
 mod runners;
 mod server_history;
+mod vr;
 
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
@@ -195,6 +196,8 @@ fn start_playing(state: &AppState, destination: Destination) {
     };
     let should_install_quadra_rosemary = runner.is_quadra() && !runner.is_installed();
     let installed = roblox::installed_release();
+    let vr_settings = vr::VrSettings::wanted_by(state);
+    let rosemary = runner.executable.clone();
 
     run_task(
         state,
@@ -214,14 +217,17 @@ fn start_playing(state: &AppState, destination: Destination) {
                 }
                 Err(error) => return Err(error),
             }
-            Ok(destination.resolve(progress))
+            let vr_session = vr_settings.map(|settings| vr::prepare(settings, &rosemary));
+            Ok((destination.resolve(progress), vr_session))
         },
-        move |state, launch| {
+        move |state, (launch, vr_session)| {
             refresh(state);
             if let Some(picked_server) = launch.picked_server {
                 server_history::expect_join_to(picked_server);
             }
-            if let Err(error) = launch::start_roblox(state, &runner, launch.uri.as_deref()) {
+            if let Err(error) =
+                launch::start_roblox(state, &runner, launch.uri.as_deref(), vr_session.as_ref())
+            {
                 state.report_error(&format!("{error:#}"));
             }
         },
@@ -257,6 +263,13 @@ fn refresh_selected_runner_status(state: &AppState) {
     let selected_runner_is_installed =
         selected_runner(state).is_some_and(|runner| runner.is_installed());
     state.set_rosemary_installed(selected_runner_is_installed);
+
+    let installed_rosemary = selected_runner(state).filter(Runner::is_installed);
+    state.set_vr_status(vr::status(
+        installed_rosemary
+            .as_ref()
+            .map(|runner| runner.executable.as_path()),
+    ));
 }
 
 fn prefer_an_installed_runner(state: &AppState) {

@@ -6,12 +6,14 @@ mod fast_flags;
 mod mangohud;
 mod rosemary_options;
 mod rosemary_runtime;
+mod vr;
 
 use crate::state::AppState;
 use crate::utils::{scrollable, unfocus_on_outside_click};
 use adw::prelude::*;
 use environment::env_section;
 use fast_flags::fast_flags_section;
+use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
     let stack = adw::ViewStack::new();
@@ -28,6 +30,12 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         Some("fast-flags"),
         "FastFlags",
         "emoji-flags-symbolic",
+    );
+    stack.add_titled_with_icon(
+        &scrollable(&vr_section(state)),
+        Some("vr"),
+        "VR",
+        "input-gaming-symbolic",
     );
 
     let switcher = adw::ViewSwitcher::builder()

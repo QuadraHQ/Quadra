@@ -1,0 +1,9 @@
+--- !tapi-tbd
+tbd-version: 4
+targets: [ x86_64-macos ]
+install-name: '/usr/lib/libSystem.B.dylib'
+current-version: 1311
+exports:
+  - targets: [ x86_64-macos ]
+    symbols: [ _calloc, _dlsym, __dyld_get_image_header, __dyld_get_image_name, __dyld_get_image_vmaddr_slide, dyld_stub_binder, _free, _getenv, _getpagesize, _mach_absolute_time, _mach_timebase_info, _memcpy, _memmem, _mprotect, _pthread_self, _snprintf, _sqrtf, ___stack_chk_fail, ___stack_chk_guard, _strlen, _tanf, _write ]
+...
