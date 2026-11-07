@@ -1,5 +1,5 @@
 use super::runners::Runner;
-use super::{fast_flags, live_log, mangohud, paths, prefix, roblox};
+use super::{fast_flags, live_log, paths, prefix, roblox};
 use crate::state::{
     AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
@@ -17,6 +17,7 @@ use std::time::Duration;
 
 const LOG_FILE: &str = "roblox.log";
 const FORCE_STOP_DELAY: Duration = Duration::from_secs(10);
+const PROTOCOL_STRING_ARGUMENT: &str = "-protocolString";
 
 struct RunningRoblox {
     process_group: i32,
@@ -28,7 +29,11 @@ thread_local! {
     static RUNNING_ROBLOX: RefCell<Option<RunningRoblox>> = const { RefCell::new(None) };
 }
 
-pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
+pub fn start_roblox(
+    state: &AppState,
+    runner: &Runner,
+    launch_uri: Option<&str>,
+) -> anyhow::Result<()> {
     fast_flags::write_client_settings(&state.fast_flags())?;
 
     fs::create_dir_all(paths::logs_directory())?;
@@ -36,9 +41,12 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     let log = File::create(&log_path)?;
     let log_reader = File::open(&log_path)?;
 
-    let mut command = roblox_command(state, runner);
+    let mut command = Command::new(&runner.executable);
+    command.arg(roblox::app_path());
+    if let Some(launch_uri) = launch_uri {
+        command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
+    }
     command
-        .arg(roblox::app_path())
         .envs(rosemary_environment(state))
         .stdin(Stdio::null())
         .stdout(log.try_clone()?)
@@ -77,25 +85,6 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     });
 
     Ok(())
-}
-
-fn roblox_command(state: &AppState, runner: &Runner) -> Command {
-    if !state.mangohud() {
-        return Command::new(&runner.executable);
-    }
-
-    match mangohud::executable() {
-        Some(mangohud) => {
-            let mut command = Command::new(mangohud);
-            command.arg(&runner.executable);
-            command
-        }
-        None => {
-            let mut command = Command::new(&runner.executable);
-            command.env("MANGOHUD", "1");
-            command
-        }
-    }
 }
 
 pub fn stop_roblox() {
@@ -159,6 +148,10 @@ fn rosemary_environment(state: &AppState) -> Vec<(String, String)> {
             "ROSEMARY_METAL_PRESENTATION_MODE",
             presentation_mode.to_owned(),
         ));
+    }
+
+    if state.mangohud() {
+        environment.push(("MANGOHUD", "1".to_owned()));
     }
 
     if state.refresh_rate() != USE_MONITOR_REFRESH_RATE {

@@ -5,6 +5,7 @@ use crate::components::launch_window::launch_window;
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::pages::home::home_page;
+use crate::pages::servers::servers_page;
 use crate::pages::settings::settings_page;
 use crate::state::{AppState, LaunchMode};
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
@@ -19,6 +20,7 @@ const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launc
 #[derive(Clone, Copy)]
 enum Page {
     Home,
+    Servers,
     Settings,
 }
 
@@ -26,6 +28,7 @@ impl Page {
     fn name(self) -> &'static str {
         match self {
             Self::Home => "home",
+            Self::Servers => "servers",
             Self::Settings => "settings",
         }
     }
@@ -165,6 +168,12 @@ fn pages(state: &AppState) -> ViewStack {
         Some(Page::Home.name()),
         "Home",
         "go-home-symbolic",
+    );
+    pages.add_titled_with_icon(
+        &servers_page(state),
+        Some(Page::Servers.name()),
+        "Servers",
+        "network-server-symbolic",
     );
     pages.add_titled_with_icon(
         &settings_page(state),

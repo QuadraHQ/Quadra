@@ -31,3 +31,15 @@ pub fn butter_runner_directories() -> [PathBuf; 2] {
         glib::home_dir().join(".var/app/io.github.microlift.butter/data/butter/runners"),
     ]
 }
+
+pub fn server_history_file() -> PathBuf {
+    glib::user_config_dir()
+        .join("quadra")
+        .join("server-history.json")
+}
+
+pub fn regions_cache_file() -> PathBuf {
+    glib::user_cache_dir()
+        .join("quadra")
+        .join("rovalra-regions.json")
+}

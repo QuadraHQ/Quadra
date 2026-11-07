@@ -2,13 +2,17 @@ mod choice;
 mod environment_variables;
 mod fast_flags;
 mod launch_mode;
+mod regions;
 mod rosemary_options;
+mod server_history;
 
 pub use choice::Choice;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
+pub use regions::{Region, Regions, country_and_city_of};
 pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
+pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
 
 use std::error::Error;
 use std::fs;
@@ -27,7 +31,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 18] = [
+const SAVED_PROPERTIES: [&str; 19] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -46,6 +50,7 @@ const SAVED_PROPERTIES: [&str; 18] = [
     "plain-ctrl-click",
     "environment-variables",
     "fast-flags",
+    "preferred-region",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 3] =
     ["roblox-installed", "rosemary-installed", "runner"];
@@ -96,6 +101,8 @@ struct SavedSettings {
     opened_before: bool,
     environment_variables: EnvironmentVariables,
     fast_flags: FastFlags,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    preferred_region: String,
 }
 
 impl SavedSettings {
@@ -162,6 +169,12 @@ mod imp {
         environment_variables: RefCell<EnvironmentVariables>,
         #[property(get, set)]
         fast_flags: RefCell<FastFlags>,
+        #[property(get, set)]
+        preferred_region: RefCell<String>,
+        #[property(get, set)]
+        regions: RefCell<Regions>,
+        #[property(get, set)]
+        server_history: RefCell<ServerHistory>,
         #[property(get, set)]
         first_launch: Cell<bool>,
         #[property(get, set)]
@@ -257,6 +270,7 @@ impl AppState {
             .property("plain-ctrl-click", settings.plain_ctrl_click)
             .property("environment-variables", settings.environment_variables)
             .property("fast-flags", settings.fast_flags)
+            .property("preferred-region", settings.preferred_region)
             .property("first-launch", !settings.opened_before)
             .build();
 
@@ -373,6 +387,7 @@ impl AppState {
             opened_before: true,
             environment_variables: self.environment_variables(),
             fast_flags: self.fast_flags(),
+            preferred_region: self.preferred_region(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

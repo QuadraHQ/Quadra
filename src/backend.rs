@@ -1,4 +1,5 @@
 mod background;
+mod destination;
 mod discord_ipc;
 mod discord_presence;
 mod download;
@@ -11,14 +12,18 @@ mod mangohud;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
+mod regions;
 mod roblox;
 mod runners;
+mod server_history;
 
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
-use crate::state::{AppState, QUADRA_PREFIX, QUADRA_RUNNER};
+use crate::state::{AppState, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
 use background::run_task;
+use destination::Destination;
+use gtk::glib;
 use gtk::prelude::*;
 use runners::Runner;
 use std::path::Path;
@@ -33,6 +38,7 @@ pub fn initialize(state: &AppState) {
     }
 
     discord_presence::initialize(state);
+    server_history::initialize(state);
     refresh(state);
     if state.first_launch() {
         prefer_an_installed_runner(state);
@@ -127,6 +133,59 @@ pub fn repair_prefix(state: &AppState) {
 }
 
 pub fn play(state: &AppState) {
+    start_playing(state, Destination::RobloxApp);
+}
+
+pub fn join_game(state: &AppState, place_id: u64) {
+    let region_key = state.preferred_region();
+    let destination = if region_key.is_empty() {
+        Destination::AnyServer { place_id }
+    } else {
+        Destination::ServerInRegion {
+            place_id,
+            region_label: state.regions().label_of(&region_key),
+            avoided_job_ids: state.server_history().job_ids_in(place_id),
+            region_key,
+        }
+    };
+    start_playing(state, destination);
+}
+
+pub fn rejoin_server(state: &AppState, place_id: u64, job_id: &str) {
+    start_playing(
+        state,
+        Destination::Server {
+            place_id,
+            job_id: job_id.to_owned(),
+        },
+    );
+}
+
+pub fn load_regions(state: &AppState) {
+    if !state.regions().0.is_empty() {
+        return;
+    }
+
+    let (regions_sender, regions_receiver) = async_channel::bounded(1);
+    std::thread::spawn(move || {
+        let _ = regions_sender.send_blocking(regions::available());
+    });
+
+    let state = state.clone();
+    glib::spawn_future_local(async move {
+        match regions_receiver.recv().await {
+            Ok(Ok(regions)) => state.set_regions(Regions(regions)),
+            Ok(Err(error)) => eprintln!("Couldn't get the list of regions: {error:#}"),
+            Err(_) => {}
+        }
+    });
+}
+
+pub fn forget_server_history(state: &AppState) {
+    server_history::forget_all(state);
+}
+
+fn start_playing(state: &AppState, destination: Destination) {
     if state.busy() || state.running() {
         return;
     }
@@ -155,11 +214,14 @@ pub fn play(state: &AppState) {
                 }
                 Err(error) => return Err(error),
             }
-            Ok(())
+            Ok(destination.resolve(progress))
         },
-        move |state, ()| {
+        move |state, launch| {
             refresh(state);
-            if let Err(error) = launch::start_roblox(state, &runner) {
+            if let Some(picked_server) = launch.picked_server {
+                server_history::expect_join_to(picked_server);
+            }
+            if let Err(error) = launch::start_roblox(state, &runner, launch.uri.as_deref()) {
                 state.report_error(&format!("{error:#}"));
             }
         },
@@ -167,7 +229,7 @@ pub fn play(state: &AppState) {
 }
 
 pub fn mangohud_is_installed() -> bool {
-    mangohud::executable().is_some()
+    mangohud::is_installed()
 }
 
 pub fn stop(state: &AppState) {
