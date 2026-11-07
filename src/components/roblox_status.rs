@@ -10,6 +10,8 @@ pub const PROPERTIES_THAT_DECIDE_STATUS: [&str; 7] = [
     "roblox-version",
 ];
 
+const QUADRA_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub fn status_text(state: &AppState) -> String {
     if state.busy() {
         let percent = (state.task_progress() * 100.0).round();
@@ -21,7 +23,11 @@ pub fn status_text(state: &AppState) -> String {
     } else if state.running() && !state.roblox_graphics_started() {
         "Opening Roblox…".to_owned()
     } else if state.roblox_installed() {
-        format!("Roblox {}", state.roblox_version())
+        format!(
+            "Roblox {} • Quadra {}",
+            state.roblox_version(),
+            QUADRA_VERSION
+        )
     } else {
         "Roblox isn't installed".to_owned()
     }
