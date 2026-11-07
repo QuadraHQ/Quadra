@@ -75,3 +75,7 @@ pub fn path_for_display(path: &std::path::Path) -> String {
         Err(_) => path.display().to_string(),
     }
 }
+
+pub fn is_running_in_flatpak() -> bool {
+    std::path::Path::new("/.flatpak-info").exists()
+}

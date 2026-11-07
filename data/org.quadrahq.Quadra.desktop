@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Quadra
+Comment=Run Roblox on Linux
+Exec=quadra-rewrite
+Icon=org.quadrahq.Quadra
+Terminal=false
+Categories=Game;
+StartupNotify=true

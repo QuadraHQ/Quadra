@@ -1,7 +1,8 @@
-use super::icon::APP_ICON_PATH;
+use super::icon::app_icon_texture;
 use super::play_action::{PROPERTIES_THAT_DECIDE_PLAY_ACTION, PlayAction};
 use super::roblox_status::{PROPERTIES_THAT_DECIDE_STATUS, status_text};
 use crate::state::AppState;
+use crate::utils::is_running_in_flatpak;
 use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
@@ -117,7 +118,7 @@ impl TrayIcon {
             icon: app_icon_pixmap(),
             requests,
         };
-        let handle = tray.spawn()?;
+        let handle = tray.disable_dbus_name(is_running_in_flatpak()).spawn()?;
 
         glib::spawn_future_local(async move {
             while let Ok(request) = received_requests.recv().await {
@@ -164,10 +165,10 @@ fn keep_status_shown(state: &AppState, handle: Handle<QuadraTray>) -> Vec<glib::
 }
 
 fn app_icon_pixmap() -> Vec<ksni::Icon> {
-    let texture = match gdk::Texture::from_filename(APP_ICON_PATH) {
+    let texture = match app_icon_texture() {
         Ok(texture) => texture,
         Err(error) => {
-            eprintln!("Failed to load the tray icon from {APP_ICON_PATH}: {error}");
+            eprintln!("Failed to load the tray icon: {error}");
             return Vec::new();
         }
     };

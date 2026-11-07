@@ -13,6 +13,7 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=dri
+  - --talk-name=org.kde.StatusNotifierWatcher
   - --filesystem=xdg-run/discord-ipc-0
   - --filesystem=xdg-run/app/com.discordapp.Discord:create
   - --filesystem=xdg-run/app/dev.vencord.Vesktop:create
@@ -37,6 +38,8 @@ modules:
         export RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-rpath,/app/lib64 -C link-arg=-Wl,-rpath,/app/lib"
         cargo --offline build --release --locked
       - install -Dm755 target/release/quadra-rewrite -t /app/bin/
+      - install -Dm644 data/icons/org.quadrahq.Quadra.png -t /app/share/icons/hicolor/256x256/apps/
+      - install -Dm644 data/org.quadrahq.Quadra.desktop -t /app/share/applications/
     sources:
       - type: dir
         path: ..
