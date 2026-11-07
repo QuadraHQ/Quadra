@@ -27,9 +27,22 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 
 ## Build instructions
 
+**Fetch source:**
+
 ```
 git clone https://github.com/QuadraHQ/quadra-rewrite && cd quadra-rewrite
+```
+
+**Build directly from source:**
+
+```
 cargo build
+```
+
+**Build Flatpak:**
+
+```
+cd flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install build-dir org.quadrahq.Quadra.yml
 ```
 
 ## Relevant directories
@@ -41,3 +54,7 @@ cargo build
 - `~/.local/share/quadra/logs`: Quadra and Roblox logs
 - `~/.cache/quadra/downloads`: Downloaded files, such as Rosemary and Roblox packages
 - `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
+
+## License
+
+GPL-3.0-only.
