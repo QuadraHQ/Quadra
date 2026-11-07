@@ -27,6 +27,13 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 
 ## Build instructions
 
+**Prerequisites:**
+
+- Git
+- rustup
+- GTK4 and libadwaita
+- flatpak-builder for building Flatpaks
+
 **Fetch source:**
 
 ```
