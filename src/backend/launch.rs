@@ -1,5 +1,5 @@
 use super::runners::Runner;
-use super::{fast_flags, live_log, paths, prefix, roblox};
+use super::{fast_flags, live_log, mangohud, paths, prefix, roblox};
 use crate::state::{
     AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
 };
@@ -35,7 +35,7 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     let log = File::create(&log_path)?;
     let log_reader = File::open(&log_path)?;
 
-    let mut command = Command::new(&runner.executable);
+    let mut command = roblox_command(state, runner);
     command
         .arg(roblox::app_path())
         .envs(rosemary_environment(state))
@@ -76,6 +76,25 @@ pub fn start_roblox(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
     });
 
     Ok(())
+}
+
+fn roblox_command(state: &AppState, runner: &Runner) -> Command {
+    if !state.mangohud() {
+        return Command::new(&runner.executable);
+    }
+
+    match mangohud::executable() {
+        Some(mangohud) => {
+            let mut command = Command::new(mangohud);
+            command.arg(&runner.executable);
+            command
+        }
+        None => {
+            let mut command = Command::new(&runner.executable);
+            command.env("MANGOHUD", "1");
+            command
+        }
+    }
 }
 
 pub fn stop_roblox() {

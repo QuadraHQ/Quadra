@@ -1,4 +1,5 @@
 use super::bound_rows::{choice_row, switch_row};
+use super::mangohud::mangohud_row;
 use crate::state::{
     AppState, CommandKey, PresentationMode, SwapInterval, TitleBar, USE_MONITOR_REFRESH_RATE,
 };
@@ -36,6 +37,7 @@ pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&presentation_mode_row);
     group.add(&swap_interval_row);
     group.add(&refresh_rate_row(state));
+    group.add(&mangohud_row(state));
 
     group
 }

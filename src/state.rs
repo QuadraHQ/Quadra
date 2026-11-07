@@ -27,7 +27,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 17] = [
+const SAVED_PROPERTIES: [&str; 18] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -36,6 +36,7 @@ const SAVED_PROPERTIES: [&str; 17] = [
     "custom-runner-path",
     "prefix",
     "force-opengl",
+    "mangohud",
     "refresh-rate",
     "presentation-mode",
     "opengl-swap-interval",
@@ -80,6 +81,7 @@ struct SavedSettings {
     custom_runner_path: String,
     prefix: Option<String>,
     force_opengl: bool,
+    mangohud: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     refresh_rate: Option<u32>,
     presentation_mode: PresentationMode,
@@ -127,6 +129,8 @@ mod imp {
         darwin_base_installed: Cell<bool>,
         #[property(get, set)]
         force_opengl: Cell<bool>,
+        #[property(get, set)]
+        mangohud: Cell<bool>,
         #[property(get, set)]
         refresh_rate: Cell<u32>,
         #[property(get, set, builder(PresentationMode::default()))]
@@ -226,6 +230,7 @@ impl AppState {
                 vec![QUADRA_PREFIX.to_owned(), ROSEMARY_DEFAULT_PREFIX.to_owned()],
             )
             .property("force-opengl", settings.force_opengl)
+            .property("mangohud", settings.mangohud)
             .property(
                 "refresh-rate",
                 settings.refresh_rate.unwrap_or(USE_MONITOR_REFRESH_RATE),
@@ -341,6 +346,7 @@ impl AppState {
             custom_runner_path: self.custom_runner_path(),
             prefix: Some(self.prefix()),
             force_opengl: self.force_opengl(),
+            mangohud: self.mangohud(),
             refresh_rate: Some(self.refresh_rate())
                 .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
             presentation_mode: self.presentation_mode(),

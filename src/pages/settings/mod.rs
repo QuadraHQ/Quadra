@@ -3,6 +3,7 @@ mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
+mod mangohud;
 mod rosemary_options;
 mod rosemary_runtime;
 

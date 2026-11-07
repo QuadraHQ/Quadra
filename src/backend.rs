@@ -7,6 +7,7 @@ mod game_activity;
 mod game_details;
 mod launch;
 mod live_log;
+mod mangohud;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
@@ -163,6 +164,10 @@ pub fn play(state: &AppState) {
             }
         },
     );
+}
+
+pub fn mangohud_is_installed() -> bool {
+    mangohud::executable().is_some()
 }
 
 pub fn stop(state: &AppState) {
