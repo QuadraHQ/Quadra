@@ -20,8 +20,7 @@
 
 This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
 
-- VR
-- Roblox Studio
+- Auto-updater
 - Support for the Darling runtime
 
 ## Build instructions
