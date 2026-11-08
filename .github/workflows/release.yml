@@ -79,8 +79,8 @@ jobs:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           mkdir release-files
-          cp "$(find artifacts -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
-          cp "$(find artifacts -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
+          cp "$(find artifacts -type f -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
+          cp "$(find artifacts -type f -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
           ls -la release-files
 
       - name: Create tag and release
