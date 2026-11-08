@@ -13,6 +13,8 @@ pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .build()
 }
 
+pub const APP_ICON_PNG: &[u8] = include_bytes!("../data/icons/org.quadrahq.Quadra.png");
+
 pub fn show_only_while_roblox_is_selected(page: &adw::ViewStackPage, state: &AppState) {
     state
         .bind_property("selected-client", page, "visible")

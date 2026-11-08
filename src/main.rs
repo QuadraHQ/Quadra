@@ -1,4 +1,5 @@
 mod backend;
+mod command_line;
 mod components;
 mod pages;
 mod quadra;
@@ -6,7 +7,7 @@ mod state;
 mod utils;
 
 use adw::{Application, prelude::*};
-use gtk::glib;
+use gtk::{gio, glib};
 use quadra::Quadra;
 use state::AppState;
 use std::cell::OnceCell;
@@ -15,7 +16,11 @@ use std::rc::Rc;
 const APP_ID: &str = "org.quadrahq.Quadra";
 
 fn main() -> glib::ExitCode {
-    let app = Application::builder().application_id(APP_ID).build();
+    let app = Application::builder()
+        .application_id(APP_ID)
+        .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
+        .build();
+    command_line::add_options(&app);
     let state = AppState::load();
     backend::initialize(&state);
     let quadra: Rc<OnceCell<Rc<Quadra>>> = Rc::default();
@@ -28,6 +33,20 @@ fn main() -> glib::ExitCode {
         move |app| {
             load_style();
             quadra.get_or_init(|| Quadra::start(app, &state));
+        }
+    ));
+
+    app.connect_command_line(glib::clone!(
+        #[strong]
+        quadra,
+        move |_, command_line| {
+            if let Some(quadra) = quadra.get() {
+                match command_line::launch_requested_by(command_line) {
+                    Some(request) => quadra.launch_directly(request),
+                    None => quadra.activate(),
+                }
+            }
+            glib::ExitCode::SUCCESS
         }
     ));
 

@@ -1,4 +1,4 @@
-use crate::backend;
+use crate::backend::{self, StudioTarget};
 use crate::state::{AppState, Client};
 
 pub const PROPERTIES_THAT_DECIDE_PLAY_ACTION: [&str; 11] = [
@@ -86,7 +86,7 @@ impl PlayAction {
         match self {
             Self::Install(client) => backend::install(state, client),
             Self::Play(Client::Player) => backend::play(state),
-            Self::Play(Client::Studio) => backend::open_studio(state),
+            Self::Play(Client::Studio) => backend::open_studio(state, StudioTarget::StartPage),
             Self::Stop => backend::stop(state),
             Self::Opening | Self::Stopping => {}
         }

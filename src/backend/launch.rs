@@ -1,3 +1,4 @@
+use super::launch_request::StudioTarget;
 use super::runners::Runner;
 use super::vr::{self, VrSession};
 use super::{fast_flags, live_log, paths, prefix, roblox};
@@ -8,6 +9,7 @@ use crate::state::{
 use anyhow::Context;
 use gtk::glib;
 use std::cell::RefCell;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::Write;
 use std::os::unix::process::CommandExt;
@@ -55,10 +57,15 @@ pub fn start_roblox(
     run(state, Client::Player, runner, command, vr.map(vr_log_line))
 }
 
-pub fn start_studio(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
+pub fn start_studio(
+    state: &AppState,
+    runner: &Runner,
+    target: &StudioTarget,
+) -> anyhow::Result<()> {
     let mut command = Command::new(&runner.executable);
     command
         .arg(roblox::app_path(Client::Studio))
+        .args(studio_arguments(state, target))
         .envs(rosemary_environment(state, None));
 
     run(state, Client::Studio, runner, command, None)
@@ -227,6 +234,23 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
     }
 
     environment
+}
+
+fn studio_arguments(state: &AppState, target: &StudioTarget) -> Vec<OsString> {
+    match target {
+        StudioTarget::StartPage => Vec::new(),
+        StudioTarget::Link(link) => vec![PROTOCOL_STRING_ARGUMENT.into(), link.into()],
+        StudioTarget::PlaceFile(place_file) => vec![
+            "-task".into(),
+            "EditFile".into(),
+            "-localPlaceFile".into(),
+            prefix::path_seen_from_macos(
+                prefix::directory_for(&state.prefix()).as_deref(),
+                place_file,
+            )
+            .into(),
+        ],
+    }
 }
 
 fn vr_log_line(vr: &Result<VrSession, String>) -> String {

@@ -1,4 +1,4 @@
-use crate::backend;
+use crate::backend::{self, LaunchRequest};
 use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
@@ -11,7 +11,7 @@ use crate::state::{AppState, LaunchMode};
 use crate::utils::show_only_while_roblox_is_selected;
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
 use gtk::glib;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 4] =
@@ -42,6 +42,7 @@ pub struct Quadra {
     launch_window: ApplicationWindow,
     pages: ViewStack,
     tray_icon: RefCell<Option<TrayIcon>>,
+    launched_directly: Cell<bool>,
 }
 
 impl Quadra {
@@ -55,6 +56,7 @@ impl Quadra {
             launch_window: launch_window(app, state),
             pages,
             tray_icon: RefCell::new(None),
+            launched_directly: Cell::new(false),
         });
 
         quadra.window.connect_visible_notify(glib::clone!(
@@ -88,21 +90,29 @@ impl Quadra {
     }
 
     pub fn activate(&self) {
-        let should_launch_roblox_right_away = self.state.launch_mode() == LaunchMode::LaunchRoblox
-            && !self.state.running()
-            && !self.state.busy();
-
-        if should_launch_roblox_right_away {
-            backend::play(&self.state);
-            if self.state.busy() {
-                self.launch_window.present();
-            }
+        if self.state.launch_mode() == LaunchMode::LaunchRoblox {
+            self.launch_directly(LaunchRequest::Roblox { link: None });
         } else {
             self.show(Page::Home);
         }
     }
 
+    pub fn launch_directly(&self, request: LaunchRequest) {
+        if self.state.running() || self.state.busy() {
+            self.show(Page::Home);
+            return;
+        }
+
+        self.launched_directly.set(true);
+        self.state.set_selected_client(request.client());
+        backend::launch(&self.state, request);
+        if self.state.busy() {
+            self.launch_window.present();
+        }
+    }
+
     fn show(&self, page: Page) {
+        self.launched_directly.set(false);
         self.pages.set_visible_child_name(page.name());
         self.window.present();
     }
@@ -127,11 +137,12 @@ impl Quadra {
 
     fn should_keep_running_without_window(&self) -> bool {
         let can_be_reopened_from_tray = self.tray_icon.borrow().is_some();
-        let is_launching_roblox_right_away = self.state.launch_mode() == LaunchMode::LaunchRoblox
-            && (self.state.busy() || self.state.running());
+        let launches_without_window =
+            self.state.launch_mode() == LaunchMode::LaunchRoblox || self.launched_directly.get();
+        let is_launching_right_away =
+            launches_without_window && (self.state.busy() || self.state.running());
 
-        (self.state.run_in_background() && can_be_reopened_from_tray)
-            || is_launching_roblox_right_away
+        (self.state.run_in_background() && can_be_reopened_from_tray) || is_launching_right_away
     }
 
     fn quit_if_nothing_keeps_it_open(&self) {

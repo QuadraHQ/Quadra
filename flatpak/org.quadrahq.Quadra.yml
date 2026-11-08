@@ -19,6 +19,9 @@ finish-args:
   - --filesystem=xdg-run/app/dev.vencord.Vesktop:create
   - --filesystem=xdg-run/.flatpak/dev.vencord.Vesktop:create
   - --filesystem=xdg-run/snap.discord:create
+  - --filesystem=xdg-data/applications:create
+  - --filesystem=xdg-data/mime:create
+  - --filesystem=xdg-config/mimeapps.list
 
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin

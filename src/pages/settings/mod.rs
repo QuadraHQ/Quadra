@@ -3,6 +3,7 @@ mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
+mod integration;
 mod mangohud;
 mod rosemary_options;
 mod rosemary_runtime;
@@ -13,6 +14,7 @@ use crate::utils::{scrollable, show_only_while_roblox_is_selected, unfocus_on_ou
 use adw::prelude::*;
 use environment::env_section;
 use fast_flags::fast_flags_section;
+use integration::integration_section;
 use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
@@ -36,6 +38,12 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         Some("vr"),
         "VR",
         "input-gaming-symbolic",
+    );
+    stack.add_titled_with_icon(
+        &scrollable(&integration_section(state)),
+        Some("integration"),
+        "Integration",
+        "view-app-grid-symbolic",
     );
     show_only_while_roblox_is_selected(&fast_flags, state);
     show_only_while_roblox_is_selected(&vr, state);

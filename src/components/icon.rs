@@ -1,8 +1,7 @@
+use crate::utils::APP_ICON_PNG;
 use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
-
-const APP_ICON_PNG: &[u8] = include_bytes!("../../data/icons/org.quadrahq.Quadra.png");
 
 pub fn app_icon_texture() -> Result<gdk::Texture, glib::Error> {
     gdk::Texture::from_bytes(&glib::Bytes::from_static(APP_ICON_PNG))

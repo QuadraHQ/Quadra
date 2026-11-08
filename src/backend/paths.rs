@@ -1,3 +1,4 @@
+use crate::utils::is_running_in_flatpak;
 use gtk::glib;
 use std::path::PathBuf;
 
@@ -19,6 +20,36 @@ pub fn roblox_directory() -> PathBuf {
 
 pub fn studio_directory() -> PathBuf {
     quadra_data_directory().join("studio")
+}
+
+pub fn applications_directory() -> PathBuf {
+    host_data_directory().join("applications")
+}
+
+pub fn mime_directory() -> PathBuf {
+    host_data_directory().join("mime")
+}
+
+pub fn mime_defaults_file() -> PathBuf {
+    if is_running_in_flatpak() {
+        glib::home_dir().join(".config/mimeapps.list")
+    } else {
+        glib::user_config_dir().join("mimeapps.list")
+    }
+}
+
+fn host_data_directory() -> PathBuf {
+    if is_running_in_flatpak() {
+        glib::home_dir().join(".local/share")
+    } else {
+        glib::user_data_dir()
+    }
+}
+
+pub fn desktop_entry_icon_file() -> PathBuf {
+    quadra_data_directory()
+        .join("icons")
+        .join("org.quadrahq.Quadra.png")
 }
 
 pub fn logs_directory() -> PathBuf {

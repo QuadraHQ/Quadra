@@ -3,6 +3,7 @@ use super::regions::{self, PickedServer};
 
 pub enum Destination {
     RobloxApp,
+    Link(String),
     AnyServer {
         place_id: u64,
     },
@@ -28,6 +29,10 @@ impl Destination {
         match self {
             Self::RobloxApp => Launch {
                 uri: None,
+                picked_server: None,
+            },
+            Self::Link(link) => Launch {
+                uri: Some(link),
                 picked_server: None,
             },
             Self::AnyServer { place_id } => any_server_in(place_id),

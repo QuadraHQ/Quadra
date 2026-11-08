@@ -1,6 +1,6 @@
 use super::icon::app_icon;
 use super::roblox_status::{PROPERTIES_THAT_DECIDE_STATUS, status_text};
-use crate::state::{AppState, Client};
+use crate::state::AppState;
 use adw::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
@@ -21,8 +21,13 @@ fn has_measurable_progress(state: &AppState) -> bool {
     state.task_progress() > 0.0
 }
 
+fn starting_text(state: &AppState) -> String {
+    format!("Starting {}", state.current_client().name())
+}
+
 #[derive(Clone)]
 struct LaunchProgress {
+    title: gtk::Label,
     status: gtk::Label,
     progress_bar: gtk::ProgressBar,
     pulsing: Rc<RefCell<Option<glib::SourceId>>>,
@@ -30,7 +35,9 @@ struct LaunchProgress {
 
 impl LaunchProgress {
     fn show(&self, state: &AppState) {
-        self.status.set_label(&status_text(state, Client::Player));
+        self.title.set_label(&starting_text(state));
+        self.status
+            .set_label(&status_text(state, state.current_client()));
         if has_measurable_progress(state) {
             self.progress_bar.set_fraction(state.task_progress());
         }
@@ -61,12 +68,8 @@ impl LaunchProgress {
 }
 
 pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::ApplicationWindow {
-    let title = gtk::Label::builder()
-        .label("Starting Roblox")
-        .css_classes(["title-2"])
-        .build();
-
     let progress = LaunchProgress {
+        title: gtk::Label::builder().css_classes(["title-2"]).build(),
         status: gtk::Label::builder()
             .css_classes(["dimmed"])
             .wrap(true)
@@ -98,7 +101,7 @@ pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::Applicati
         .margin_bottom(32)
         .build();
     content.append(&app_icon(64));
-    content.append(&title);
+    content.append(&progress.title);
     content.append(&progress.status);
     content.append(&progress.progress_bar);
 
@@ -107,7 +110,7 @@ pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::Applicati
 
     let window = adw::ApplicationWindow::builder()
         .application(app)
-        .title("Starting Roblox")
+        .title(starting_text(state))
         .default_width(360)
         .resizable(false)
         .hide_on_close(true)
@@ -121,7 +124,12 @@ pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::Applicati
             glib::clone!(
                 #[strong]
                 progress,
-                move |state, _| progress.show(state)
+                #[weak]
+                window,
+                move |state, _| {
+                    progress.show(state);
+                    window.set_title(Some(&starting_text(state)));
+                }
             ),
         );
     }

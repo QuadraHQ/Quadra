@@ -1,4 +1,5 @@
 mod background;
+mod desktop_entries;
 mod destination;
 mod discord_ipc;
 mod discord_presence;
@@ -6,9 +7,12 @@ mod download;
 mod fast_flags;
 mod game_activity;
 mod game_details;
+mod handlers;
 mod launch;
+mod launch_request;
 mod live_log;
 mod mangohud;
+mod mime_defaults;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
@@ -18,6 +22,9 @@ mod runners;
 mod server_history;
 mod vr;
 
+pub use desktop_entries::Shortcut;
+pub use handlers::Handler;
+pub use launch_request::{LaunchRequest, StudioTarget};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
@@ -145,6 +152,14 @@ pub fn play(state: &AppState) {
     start_playing(state, Destination::RobloxApp);
 }
 
+pub fn launch(state: &AppState, request: LaunchRequest) {
+    match request {
+        LaunchRequest::Roblox { link: None } => play(state),
+        LaunchRequest::Roblox { link: Some(link) } => start_playing(state, Destination::Link(link)),
+        LaunchRequest::Studio(target) => open_studio(state, target),
+    }
+}
+
 pub fn join_game(state: &AppState, place_id: u64) {
     let region_key = state.preferred_region();
     let destination = if region_key.is_empty() {
@@ -232,7 +247,7 @@ fn start_playing(state: &AppState, destination: Destination) {
     );
 }
 
-pub fn open_studio(state: &AppState) {
+pub fn open_studio(state: &AppState, target: StudioTarget) {
     if state.busy() || state.running() {
         return;
     }
@@ -253,11 +268,42 @@ pub fn open_studio(state: &AppState) {
         },
         move |state, ()| {
             refresh(state);
-            if let Err(error) = launch::start_studio(state, &runner) {
+            if let Err(error) = launch::start_studio(state, &runner, &target) {
                 state.report_error(&format!("{error:#}"));
             }
         },
     );
+}
+
+pub fn has_shortcut(shortcut: Shortcut) -> bool {
+    shortcut.entry().exists()
+}
+
+pub fn add_shortcut(state: &AppState, shortcut: Shortcut) {
+    if let Err(error) = shortcut.entry().add() {
+        state.report_error(&format!("{error:#}"));
+    }
+}
+
+pub fn remove_shortcut(state: &AppState, shortcut: Shortcut) {
+    if let Err(error) = shortcut.entry().remove() {
+        state.report_error(&format!("{error:#}"));
+    }
+}
+
+pub fn handler_is_enabled(handler: Handler) -> bool {
+    handlers::is_enabled(handler)
+}
+
+pub fn set_handler_enabled(state: &AppState, handler: Handler, enabled: bool) {
+    let result = if enabled {
+        handlers::enable(handler)
+    } else {
+        handlers::disable(handler)
+    };
+    if let Err(error) = result {
+        state.report_error(&format!("{error:#}"));
+    }
 }
 
 pub fn mangohud_is_installed() -> bool {
