@@ -2,3 +2,7 @@
 .flatpak-builder
 build-dir
 repo
+
+AppDir
+*.AppImage
+/appimage/tools

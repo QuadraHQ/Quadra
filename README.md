@@ -32,6 +32,7 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 - GTK4 and libadwaita
 - clang for VR support (optional; without it Quadra builds without VR)
 - flatpak-builder for building Flatpaks
+- curl for building AppImages
 
 **Fetch source:**
 
@@ -50,6 +51,14 @@ cargo build
 ```
 cd flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install build-dir org.quadrahq.Quadra.yml
 ```
+
+**Build AppImage:**
+
+```
+./appimage/build.sh
+```
+
+The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 
 ## Relevant directories
 
