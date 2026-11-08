@@ -4,14 +4,20 @@ on:
   push:
     branches: ["**"]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
 
 concurrency:
-  group: appimage-${{ github.ref }}
+  group: appimage-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   appimage:
     name: Build AppImage
+    if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
     runs-on: ubuntu-latest
     container:
       image: debian:trixie

@@ -5,12 +5,13 @@ on:
     branches: [main]
 
 jobs:
-  release:
-    name: Create release
+  version:
+    name: Read version
     if: startsWith(github.event.head_commit.message, 'release:')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,6 +33,33 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
+  appimage:
+    name: AppImage
+    needs: version
+    uses: ./.github/workflows/appimage.yml
+    with:
+      release: true
+
+  flatpak:
+    name: Flatpak
+    needs: version
+    uses: ./.github/workflows/flatpak.yml
+    permissions:
+      contents: write
+    with:
+      release: true
+
+  release:
+    name: Create release
+    needs: [version, appimage, flatpak]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Write release notes from commit logs
         run: |
           if previous_tag="$(git describe --tags --abbrev=0 HEAD^ 2> /dev/null)"; then
@@ -42,13 +70,26 @@ jobs:
           git log --no-merges --pretty='- %s (%h)' "$range" > release-notes.md
           cat release-notes.md
 
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Name release files after the version
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          mkdir release-files
+          cp "$(find artifacts -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
+          cp "$(find artifacts -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
+          ls -la release-files
+
       - name: Create tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          TAG: ${{ needs.version.outputs.tag }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
         run: |
-          gh release create "$TAG" \
+          gh release create "$TAG" release-files/* \
             --target "$GITHUB_SHA" \
             --title "$TAG" \
             --notes-file release-notes.md \

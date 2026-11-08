@@ -4,14 +4,20 @@ on:
   push:
     branches: ["**"]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
 
 concurrency:
-  group: flatpak-${{ github.ref }}
+  group: flatpak-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   cargo-sources:
     name: Update cargo-sources.json
+    if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
