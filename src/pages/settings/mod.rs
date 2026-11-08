@@ -9,7 +9,7 @@ mod rosemary_runtime;
 mod vr;
 
 use crate::state::AppState;
-use crate::utils::{scrollable, unfocus_on_outside_click};
+use crate::utils::{scrollable, show_only_while_roblox_is_selected, unfocus_on_outside_click};
 use adw::prelude::*;
 use environment::env_section;
 use fast_flags::fast_flags_section;
@@ -25,18 +25,20 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "Environment",
         "emblem-system-symbolic",
     );
-    stack.add_titled_with_icon(
+    let fast_flags = stack.add_titled_with_icon(
         &scrollable(&fast_flags_section(state)),
         Some("fast-flags"),
         "FastFlags",
         "emoji-flags-symbolic",
     );
-    stack.add_titled_with_icon(
+    let vr = stack.add_titled_with_icon(
         &scrollable(&vr_section(state)),
         Some("vr"),
         "VR",
         "input-gaming-symbolic",
     );
+    show_only_while_roblox_is_selected(&fast_flags, state);
+    show_only_while_roblox_is_selected(&vr, state);
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)

@@ -1,5 +1,5 @@
 use super::roblox;
-use crate::state::{FastFlagValue, FastFlags};
+use crate::state::{Client, FastFlagValue, FastFlags};
 use anyhow::Context;
 use std::collections::BTreeMap;
 use std::fs;
@@ -7,7 +7,7 @@ use std::fs;
 const CLIENT_SETTINGS_INSIDE_APP: &str = "Contents/MacOS/ClientSettings/ClientAppSettings.json";
 
 pub fn write_client_settings(flags: &FastFlags) -> anyhow::Result<()> {
-    let path = roblox::app_path().join(CLIENT_SETTINGS_INSIDE_APP);
+    let path = roblox::app_path(Client::Player).join(CLIENT_SETTINGS_INSIDE_APP);
     let client_settings: BTreeMap<&str, String> = flags
         .0
         .iter()

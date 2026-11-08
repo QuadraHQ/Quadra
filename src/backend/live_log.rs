@@ -1,4 +1,4 @@
-use crate::state::AppState;
+use crate::state::{AppState, Client};
 use gtk::glib;
 use std::fs::File;
 use std::io::Read;
@@ -8,7 +8,13 @@ use std::time::Duration;
 
 const CHECK_FOR_NEW_OUTPUT_EVERY: Duration = Duration::from_millis(200);
 const READ_CHUNK_SIZE: usize = 8192;
-const GRAPHICS_STARTED_MARKER: &str = "[FLog::Graphics]";
+
+fn started_marker(client: Client) -> &'static str {
+    match client {
+        Client::Player => "[FLog::Graphics]",
+        Client::Studio => "[FLog::StudioMain]",
+    }
+}
 
 pub fn follow(state: &AppState, log: File, writer_finished: Arc<AtomicBool>) {
     state.clear_log();
@@ -23,7 +29,8 @@ pub fn follow(state: &AppState, log: File, writer_finished: Arc<AtomicBool>) {
                 output.push_str(&more_output);
             }
             state.append_log(&output);
-            if !state.roblox_graphics_started() && output.contains(GRAPHICS_STARTED_MARKER) {
+            let has_started = output.contains(started_marker(state.running_client()));
+            if !state.roblox_graphics_started() && has_started {
                 state.set_roblox_graphics_started(true);
             }
         }

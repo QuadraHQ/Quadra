@@ -2,7 +2,7 @@ use super::runners::Runner;
 use super::vr::{self, VrSession};
 use super::{fast_flags, live_log, paths, prefix, roblox};
 use crate::state::{
-    AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
+    AppState, Client, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
 };
 use anyhow::Context;
@@ -45,21 +45,41 @@ pub fn start_roblox(
     };
     fast_flags::write_client_settings(&fast_flags)?;
 
-    fs::create_dir_all(paths::logs_directory())?;
-    let log_path = paths::logs_directory().join(LOG_FILE);
-    let mut log = File::create(&log_path)?;
-    if let Some(vr) = vr {
-        writeln!(log, "{}", vr_log_line(vr))?;
-    }
-    let log_reader = File::open(&log_path)?;
-
     let mut command = Command::new(&runner.executable);
-    command.arg(roblox::app_path());
+    command.arg(roblox::app_path(Client::Player));
     if let Some(launch_uri) = launch_uri {
         command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
     }
+    command.envs(rosemary_environment(state, vr_session));
+
+    run(state, Client::Player, runner, command, vr.map(vr_log_line))
+}
+
+pub fn start_studio(state: &AppState, runner: &Runner) -> anyhow::Result<()> {
+    let mut command = Command::new(&runner.executable);
     command
-        .envs(rosemary_environment(state, vr_session))
+        .arg(roblox::app_path(Client::Studio))
+        .envs(rosemary_environment(state, None));
+
+    run(state, Client::Studio, runner, command, None)
+}
+
+fn run(
+    state: &AppState,
+    client: Client,
+    runner: &Runner,
+    mut command: Command,
+    first_log_line: Option<String>,
+) -> anyhow::Result<()> {
+    fs::create_dir_all(paths::logs_directory())?;
+    let log_path = paths::logs_directory().join(LOG_FILE);
+    let mut log = File::create(&log_path)?;
+    if let Some(first_log_line) = first_log_line {
+        writeln!(log, "{first_log_line}")?;
+    }
+    let log_reader = File::open(&log_path)?;
+
+    command
         .stdin(Stdio::null())
         .stdout(log.try_clone()?)
         .stderr(log)
@@ -74,6 +94,7 @@ pub fn start_roblox(
         prefix_directory: prefix::directory_for(&state.prefix()),
     }));
     state.set_roblox_graphics_started(false);
+    state.set_running_client(client);
     state.set_running(true);
 
     let roblox_exited = Arc::new(AtomicBool::new(false));

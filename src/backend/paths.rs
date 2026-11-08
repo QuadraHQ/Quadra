@@ -17,6 +17,10 @@ pub fn roblox_directory() -> PathBuf {
     quadra_data_directory().join("roblox")
 }
 
+pub fn studio_directory() -> PathBuf {
+    quadra_data_directory().join("studio")
+}
+
 pub fn logs_directory() -> PathBuf {
     quadra_data_directory().join("logs")
 }

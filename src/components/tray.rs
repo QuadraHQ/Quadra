@@ -27,11 +27,12 @@ struct TrayStatus {
 
 impl TrayStatus {
     fn of(state: &AppState) -> Self {
-        let play_action = PlayAction::for_state(state);
+        let client = state.current_client();
+        let play_action = PlayAction::for_client(state, client);
         Self {
             play_action,
             play_action_is_available: play_action.is_available(state),
-            description: status_text(state),
+            description: status_text(state, client),
         }
     }
 }

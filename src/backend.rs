@@ -20,7 +20,7 @@ mod vr;
 
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
-use crate::state::{AppState, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
+use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
 use background::run_task;
 use destination::Destination;
@@ -56,7 +56,7 @@ pub fn refresh(state: &AppState) {
     );
     refresh_selected_runner_status(state);
 
-    let installed_roblox = roblox::installed_release();
+    let installed_roblox = roblox::installed_release(Client::Player);
     state.set_roblox_installed(installed_roblox.is_some());
     state.set_roblox_version(
         installed_roblox
@@ -64,10 +64,18 @@ pub fn refresh(state: &AppState) {
             .unwrap_or_default(),
     );
 
+    let installed_studio = roblox::installed_release(Client::Studio);
+    state.set_studio_installed(installed_studio.is_some());
+    state.set_studio_version(
+        installed_studio
+            .map(|release| release.version)
+            .unwrap_or_default(),
+    );
+
     state.set_darwin_base_installed(prefix::has_darwin_base(&paths::quadra_prefix_directory()));
 }
 
-pub fn install_roblox(state: &AppState) {
+pub fn install(state: &AppState, client: Client) {
     if state.busy() {
         return;
     }
@@ -81,7 +89,7 @@ pub fn install_roblox(state: &AppState) {
         .map(|runner| runner.executable);
     let quadra_prefix_needs_darwin_base =
         state.prefix() == QUADRA_PREFIX && !state.darwin_base_installed();
-    let roblox_is_missing = !state.roblox_installed();
+    let client_is_missing = !state.is_installed(client);
 
     run_task(
         state,
@@ -98,10 +106,10 @@ pub fn install_roblox(state: &AppState) {
                 prefix::install_darwin_base(&rosemary, &paths::quadra_prefix_directory())?;
             }
 
-            if roblox_is_missing {
-                progress.step("Finding the latest Roblox version");
-                let latest = roblox::latest_release()?;
-                roblox::install(&latest, progress)?;
+            if client_is_missing {
+                progress.step(format!("Finding the latest {} version", client.name()));
+                let latest = roblox::latest_release(client)?;
+                roblox::install(client, &latest, progress)?;
             }
 
             Ok(())
@@ -195,7 +203,7 @@ fn start_playing(state: &AppState, destination: Destination) {
         return;
     };
     let should_install_quadra_rosemary = runner.is_quadra() && !runner.is_installed();
-    let installed = roblox::installed_release();
+    let installed = roblox::installed_release(Client::Player);
     let vr_settings = vr::VrSettings::wanted_by(state);
     let rosemary = runner.executable.clone();
 
@@ -206,17 +214,7 @@ fn start_playing(state: &AppState, destination: Destination) {
                 quadra_rosemary::install(progress)?;
             }
 
-            progress.step("Checking for Roblox updates");
-            match roblox::latest_release() {
-                Ok(latest) if Some(&latest) != installed.as_ref() => {
-                    roblox::install(&latest, progress)?
-                }
-                Ok(_) => {}
-                Err(error) if installed.is_some() => {
-                    eprintln!("Starting the installed Roblox without updating: {error:#}")
-                }
-                Err(error) => return Err(error),
-            }
+            roblox::install_or_update(Client::Player, installed.as_ref(), progress)?;
             let vr_session = vr_settings.map(|settings| vr::prepare(settings, &rosemary));
             Ok((destination.resolve(progress), vr_session))
         },
@@ -228,6 +226,34 @@ fn start_playing(state: &AppState, destination: Destination) {
             if let Err(error) =
                 launch::start_roblox(state, &runner, launch.uri.as_deref(), vr_session.as_ref())
             {
+                state.report_error(&format!("{error:#}"));
+            }
+        },
+    );
+}
+
+pub fn open_studio(state: &AppState) {
+    if state.busy() || state.running() {
+        return;
+    }
+    let Some(runner) = selected_runner(state) else {
+        state.report_error("The selected runner can't be found. Choose another one in Settings.");
+        return;
+    };
+    let should_install_quadra_rosemary = runner.is_quadra() && !runner.is_installed();
+    let installed = roblox::installed_release(Client::Studio);
+
+    run_task(
+        state,
+        move |progress| {
+            if should_install_quadra_rosemary {
+                quadra_rosemary::install(progress)?;
+            }
+            roblox::install_or_update(Client::Studio, installed.as_ref(), progress)
+        },
+        move |state, ()| {
+            refresh(state);
+            if let Err(error) = launch::start_studio(state, &runner) {
                 state.report_error(&format!("{error:#}"));
             }
         },

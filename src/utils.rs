@@ -1,3 +1,4 @@
+use crate::state::{AppState, Client};
 use gtk::prelude::*;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -10,6 +11,14 @@ pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .child(&clamp)
         .vexpand(true)
         .build()
+}
+
+pub fn show_only_while_roblox_is_selected(page: &adw::ViewStackPage, state: &AppState) {
+    state
+        .bind_property("selected-client", page, "visible")
+        .transform_to(|_, client: Client| Some(client == Client::Player))
+        .sync_create()
+        .build();
 }
 
 pub fn scroll_into_view_once_shown(widget: &impl IsA<gtk::Widget>) {

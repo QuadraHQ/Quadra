@@ -1,4 +1,5 @@
 mod choice;
+mod client;
 mod environment_variables;
 mod fast_flags;
 mod launch_mode;
@@ -7,6 +8,7 @@ mod rosemary_options;
 mod server_history;
 
 pub use choice::Choice;
+pub use client::Client;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
@@ -59,8 +61,12 @@ const SAVED_PROPERTIES: [&str; 23] = [
     "vr-render-scale",
     "vr-zink",
 ];
-const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 3] =
-    ["roblox-installed", "rosemary-installed", "runner"];
+const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
+    "roblox-installed",
+    "studio-installed",
+    "rosemary-installed",
+    "runner",
+];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
 #[enum_type(name = "QuadraRuntime")]
@@ -203,6 +209,12 @@ mod imp {
         #[property(get, set)]
         roblox_version: RefCell<String>,
         #[property(get, set)]
+        studio_version: RefCell<String>,
+        #[property(get, set, builder(Client::default()))]
+        selected_client: Cell<Client>,
+        #[property(get, set, builder(Client::default()))]
+        running_client: Cell<Client>,
+        #[property(get, set)]
         busy: Cell<bool>,
         #[property(get, set)]
         task_description: RefCell<String>,
@@ -219,9 +231,13 @@ mod imp {
         #[property(get, set)]
         roblox_installed: Cell<bool>,
         #[property(get, set)]
+        studio_installed: Cell<bool>,
+        #[property(get, set)]
         rosemary_installed: Cell<bool>,
         #[property(get)]
         pub can_play: Cell<bool>,
+        #[property(get)]
+        pub can_open_studio: Cell<bool>,
         pub pending_save: RefCell<Option<glib::SourceId>>,
         pub log: RefCell<String>,
     }
@@ -373,13 +389,53 @@ impl AppState {
         }
     }
 
+    pub fn is_installed(&self, client: Client) -> bool {
+        match client {
+            Client::Player => self.roblox_installed(),
+            Client::Studio => self.studio_installed(),
+        }
+    }
+
+    pub fn version_of(&self, client: Client) -> String {
+        match client {
+            Client::Player => self.roblox_version(),
+            Client::Studio => self.studio_version(),
+        }
+    }
+
+    pub fn can_start(&self, client: Client) -> bool {
+        match client {
+            Client::Player => self.can_play(),
+            Client::Studio => self.can_open_studio(),
+        }
+    }
+
+    pub fn is_running(&self, client: Client) -> bool {
+        self.running() && self.running_client() == client
+    }
+
+    pub fn current_client(&self) -> Client {
+        if self.running() {
+            self.running_client()
+        } else {
+            self.selected_client()
+        }
+    }
+
     fn update_can_play(&self) {
         let runner_will_be_installed_on_play = self.runner() == QUADRA_RUNNER;
-        let can_play = self.roblox_installed()
-            && (self.rosemary_installed() || runner_will_be_installed_on_play);
+        let runner_is_ready = self.rosemary_installed() || runner_will_be_installed_on_play;
+
+        let can_play = self.roblox_installed() && runner_is_ready;
         let could_play = self.imp().can_play.replace(can_play);
         if could_play != can_play {
             self.notify_can_play();
+        }
+
+        let can_open_studio = self.studio_installed() && runner_is_ready;
+        let could_open_studio = self.imp().can_open_studio.replace(can_open_studio);
+        if could_open_studio != can_open_studio {
+            self.notify_can_open_studio();
         }
     }
 

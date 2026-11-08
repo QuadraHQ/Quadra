@@ -1,5 +1,5 @@
 use crate::components::play_action::{PROPERTIES_THAT_DECIDE_PLAY_ACTION, PlayAction};
-use crate::state::AppState;
+use crate::state::{AppState, Client};
 use adw::prelude::*;
 use gtk::glib;
 
@@ -7,13 +7,13 @@ const ACTION_STYLE_CLASSES: [&str; 2] = ["suggested-action", "destructive-action
 
 fn style_class(action: PlayAction) -> Option<&'static str> {
     match action {
-        PlayAction::InstallRoblox | PlayAction::Play => Some("suggested-action"),
+        PlayAction::Install(_) | PlayAction::Play(_) => Some("suggested-action"),
         PlayAction::Stop => Some("destructive-action"),
         PlayAction::Opening | PlayAction::Stopping => None,
     }
 }
 
-pub fn play_button(state: &AppState) -> gtk::Button {
+pub fn play_button(state: &AppState, client: Client) -> gtk::Button {
     let content = adw::ButtonContent::new();
 
     let button = gtk::Button::builder()
@@ -25,10 +25,10 @@ pub fn play_button(state: &AppState) -> gtk::Button {
     button.connect_clicked(glib::clone!(
         #[strong]
         state,
-        move |_| PlayAction::for_state(&state).perform(&state)
+        move |_| PlayAction::for_client(&state, client).perform(&state)
     ));
 
-    show_action(&button, &content, state);
+    show_action(&button, &content, state, client);
     for property in PROPERTIES_THAT_DECIDE_PLAY_ACTION {
         state.connect_notify_local(
             Some(property),
@@ -37,7 +37,7 @@ pub fn play_button(state: &AppState) -> gtk::Button {
                 button,
                 #[weak]
                 content,
-                move |state, _| show_action(&button, &content, state)
+                move |state, _| show_action(&button, &content, state, client)
             ),
         );
     }
@@ -45,8 +45,13 @@ pub fn play_button(state: &AppState) -> gtk::Button {
     button
 }
 
-fn show_action(button: &gtk::Button, content: &adw::ButtonContent, state: &AppState) {
-    let action = PlayAction::for_state(state);
+fn show_action(
+    button: &gtk::Button,
+    content: &adw::ButtonContent,
+    state: &AppState,
+    client: Client,
+) {
+    let action = PlayAction::for_client(state, client);
 
     content.set_label(action.label());
     content.set_icon_name(action.icon_name());

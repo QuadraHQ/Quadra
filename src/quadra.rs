@@ -8,6 +8,7 @@ use crate::pages::home::home_page;
 use crate::pages::servers::servers_page;
 use crate::pages::settings::settings_page;
 use crate::state::{AppState, LaunchMode};
+use crate::utils::show_only_while_roblox_is_selected;
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
 use gtk::glib;
 use std::cell::RefCell;
@@ -111,7 +112,7 @@ impl Quadra {
             TrayRequest::OpenHome => self.show(Page::Home),
             TrayRequest::OpenSettings => self.show(Page::Settings),
             TrayRequest::PerformPlayAction => {
-                let action = PlayAction::for_state(&self.state);
+                let action = PlayAction::for_client(&self.state, self.state.current_client());
                 if action.is_available(&self.state) {
                     action.perform(&self.state);
                 }
@@ -169,12 +170,13 @@ fn pages(state: &AppState) -> ViewStack {
         "Home",
         "go-home-symbolic",
     );
-    pages.add_titled_with_icon(
+    let servers = pages.add_titled_with_icon(
         &servers_page(state),
         Some(Page::Servers.name()),
         "Servers",
         "network-server-symbolic",
     );
+    show_only_while_roblox_is_selected(&servers, state);
     pages.add_titled_with_icon(
         &settings_page(state),
         Some(Page::Settings.name()),

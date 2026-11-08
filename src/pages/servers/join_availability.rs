@@ -1,5 +1,5 @@
 use crate::components::play_action::{PROPERTIES_THAT_DECIDE_PLAY_ACTION, PlayAction};
-use crate::state::AppState;
+use crate::state::{AppState, Client};
 use adw::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
@@ -47,6 +47,6 @@ fn show_availability(state: &AppState, join_widgets: &[glib::WeakRef<gtk::Widget
 }
 
 fn can_join(state: &AppState) -> bool {
-    let action = PlayAction::for_state(state);
-    action == PlayAction::Play && action.is_available(state)
+    let action = PlayAction::for_client(state, Client::Player);
+    action == PlayAction::Play(Client::Player) && action.is_available(state)
 }

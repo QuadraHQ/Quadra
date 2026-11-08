@@ -1,40 +1,47 @@
+mod client_page;
 mod logs_button;
 mod play_button;
 mod status_label;
 
-use crate::components::icon::app_icon;
-use crate::state::AppState;
+use crate::state::{AppState, Client};
 use adw::prelude::*;
-use logs_button::logs_button;
-use play_button::play_button;
-use status_label::status_label;
+use client_page::client_page;
+use gtk::glib;
 
 pub fn home_page(state: &AppState) -> gtk::Widget {
-    let logo = app_icon(128);
+    let clients = adw::ViewStack::builder().vexpand(true).build();
+    for client in Client::ALL {
+        clients.add_titled(
+            &client_page(state, client),
+            Some(client.page_name()),
+            client.short_name(),
+        );
+    }
+    clients.set_visible_child_name(state.selected_client().page_name());
+    clients.connect_visible_child_name_notify(glib::clone!(
+        #[weak]
+        state,
+        move |clients| {
+            let shown_client = clients
+                .visible_child_name()
+                .and_then(|name| Client::with_page_name(&name));
+            if let Some(client) = shown_client {
+                state.set_selected_client(client);
+            }
+        }
+    ));
 
-    let title = gtk::Label::builder()
-        .label("Quadra")
-        .css_classes(["title-1"])
+    let switcher = adw::InlineViewSwitcher::builder()
+        .stack(&clients)
+        .halign(gtk::Align::Center)
+        .margin_top(12)
         .build();
-
-    let subtitle = status_label(state);
-
-    let logs_button = logs_button(state);
-
-    let play_button = play_button(state);
 
     let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
-        .spacing(12)
-        .halign(gtk::Align::Center)
-        .valign(gtk::Align::Center)
-        .vexpand(true)
         .build();
-    content.append(&logo);
-    content.append(&title);
-    content.append(&subtitle);
-    content.append(&logs_button);
-    content.append(&play_button);
+    content.append(&switcher);
+    content.append(&clients);
 
     content.upcast()
 }

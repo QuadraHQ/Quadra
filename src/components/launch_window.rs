@@ -1,6 +1,6 @@
 use super::icon::app_icon;
 use super::roblox_status::{PROPERTIES_THAT_DECIDE_STATUS, status_text};
-use crate::state::AppState;
+use crate::state::{AppState, Client};
 use adw::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;
@@ -30,7 +30,7 @@ struct LaunchProgress {
 
 impl LaunchProgress {
     fn show(&self, state: &AppState) {
-        self.status.set_label(&status_text(state));
+        self.status.set_label(&status_text(state, Client::Player));
         if has_measurable_progress(state) {
             self.progress_bar.set_fraction(state.task_progress());
         }
