@@ -1,3 +1,5 @@
+Read [AI_USAGE_POLICY.md](AI_USAGE_POLICY.md) before making changes.
+
 This is a Roblox bootstrapper that runs the macOS client on Linux. The UI toolkit used is GTK4 with libadwaita.
 
 There are some things to know before making changes:
