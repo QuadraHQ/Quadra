@@ -22,8 +22,8 @@ use std::error::Error;
 use std::fs;
 use std::io::ErrorKind;
 use std::ops::RangeInclusive;
-use std::path::PathBuf;
-use std::time::Duration;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gtk::glib;
 use gtk::prelude::*;
@@ -339,7 +339,12 @@ glib::wrapper! {
 
 impl AppState {
     pub fn load() -> Self {
-        let settings = read_saved_settings();
+        let LoadedSettings {
+            settings,
+            file_existed,
+            problem,
+            save_repaired_settings,
+        } = read_saved_settings();
         let renderer = settings.chosen_renderer();
 
         let state: Self = glib::Object::builder()
@@ -406,7 +411,7 @@ impl AppState {
             .property("notify-server-location", settings.notify_server_location)
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
-            .property("first-launch", !settings.opened_before)
+            .property("first-launch", !file_existed && !settings.opened_before)
             .build();
 
         for property in SAVED_PROPERTIES {
@@ -418,8 +423,13 @@ impl AppState {
         }
         state.update_can_play();
 
-        if state.first_launch() {
+        if state.first_launch() || save_repaired_settings {
             state.schedule_save();
+        }
+
+        if let Some(problem) = problem {
+            let state = state.clone();
+            glib::idle_add_local_once(move || state.report_error(&problem));
         }
 
         state
@@ -596,22 +606,110 @@ pub fn settings_path() -> PathBuf {
     glib::user_config_dir().join("quadra").join("config.toml")
 }
 
-fn read_saved_settings() -> SavedSettings {
+enum SettingsProblem {
+    Unparsable,
+    InvalidValues(Vec<String>),
+}
+
+fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
+    let Ok(table) = toml::from_str::<toml::Table>(contents) else {
+        return (SavedSettings::default(), Some(SettingsProblem::Unparsable));
+    };
+    if let Ok(settings) = table.clone().try_into::<SavedSettings>() {
+        return (settings, None);
+    }
+
+    let (readable, unreadable): (toml::Table, toml::Table) =
+        table.into_iter().partition(|(name, value)| {
+            toml::Table::from_iter([(name.clone(), value.clone())])
+                .try_into::<SavedSettings>()
+                .is_ok()
+        });
+    let settings = readable.try_into().unwrap_or_default();
+    let names = unreadable.keys().cloned().collect();
+    (settings, Some(SettingsProblem::InvalidValues(names)))
+}
+
+struct LoadedSettings {
+    settings: SavedSettings,
+    file_existed: bool,
+    problem: Option<String>,
+    save_repaired_settings: bool,
+}
+
+impl SettingsProblem {
+    fn explanation(&self, kept_copy: Option<&Path>) -> String {
+        let what_happened = match self {
+            Self::Unparsable => {
+                "Quadra couldn't read your settings file, so every setting is back to its default."
+                    .to_owned()
+            }
+            Self::InvalidValues(names) => format!(
+                "Some of your settings had values Quadra doesn't understand, so they're back to their defaults: {}.",
+                names.join(", ")
+            ),
+        };
+        match kept_copy {
+            Some(copy) => format!(
+                "{what_happened} A copy of the old file is at {}.",
+                copy.display()
+            ),
+            None => what_happened,
+        }
+    }
+}
+
+fn keep_copy_of_damaged_settings(path: &Path) -> Option<PathBuf> {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs());
+    let copy = path.with_extension(format!("toml.damaged-{seconds}"));
+    match fs::copy(path, &copy) {
+        Ok(_) => Some(copy),
+        Err(error) => {
+            eprintln!("Couldn't keep a copy of {}: {error}", path.display());
+            None
+        }
+    }
+}
+
+fn read_saved_settings() -> LoadedSettings {
     let path = settings_path();
 
     let contents = match fs::read_to_string(&path) {
         Ok(contents) => contents,
-        Err(error) if error.kind() == ErrorKind::NotFound => return SavedSettings::default(),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return LoadedSettings {
+                settings: SavedSettings::default(),
+                file_existed: false,
+                problem: None,
+                save_repaired_settings: false,
+            };
+        }
         Err(error) => {
-            eprintln!("Failed to read settings from {}: {error}", path.display());
-            return SavedSettings::default();
+            return LoadedSettings {
+                settings: SavedSettings::default(),
+                file_existed: true,
+                problem: Some(format!(
+                    "Quadra couldn't open your settings file at {} ({error}), so it's using the default settings for now.",
+                    path.display()
+                )),
+                save_repaired_settings: false,
+            };
         }
     };
 
-    toml::from_str(&contents).unwrap_or_else(|error| {
-        eprintln!("Ignoring invalid settings in {}: {error}", path.display());
-        SavedSettings::default()
-    })
+    let (settings, problem) = parse_settings(&contents);
+    let kept_copy = problem
+        .as_ref()
+        .and_then(|_| keep_copy_of_damaged_settings(&path));
+    let problem = problem.map(|problem| problem.explanation(kept_copy.as_deref()));
+    LoadedSettings {
+        settings,
+        file_existed: true,
+        problem,
+        save_repaired_settings: kept_copy.is_some(),
+    }
 }
 
 fn write_saved_settings(settings: &SavedSettings) -> Result<(), Box<dyn Error>> {
@@ -625,4 +723,47 @@ fn write_saved_settings(settings: &SavedSettings) -> Result<(), Box<dyn Error>> 
     fs::rename(&unfinished_path, &path)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_a_valid_settings_file() {
+        let (settings, problem) =
+            parse_settings("runner = \"Butter\"\nmangohud = true\nrenderer = \"opengl\"\n");
+        assert!(problem.is_none());
+        assert_eq!(settings.runner.as_deref(), Some("Butter"));
+        assert!(settings.mangohud);
+        assert_eq!(settings.renderer, Some(Renderer::OpenGl));
+    }
+
+    #[test]
+    fn keeps_the_settings_it_understands_when_one_value_is_unknown() {
+        let (settings, problem) =
+            parse_settings("runner = \"Butter\"\nmangohud = true\nrenderer = \"vulkan\"\n");
+        assert_eq!(settings.runner.as_deref(), Some("Butter"));
+        assert!(settings.mangohud);
+        assert_eq!(settings.renderer, None);
+        assert!(
+            matches!(problem, Some(SettingsProblem::InvalidValues(names)) if names == ["renderer"])
+        );
+    }
+
+    #[test]
+    fn falls_back_to_defaults_when_the_file_is_not_toml() {
+        let (settings, problem) = parse_settings("this is = = not toml");
+        assert!(matches!(problem, Some(SettingsProblem::Unparsable)));
+        assert_eq!(settings.runner, None);
+        assert!(!settings.mangohud);
+    }
+
+    #[test]
+    fn ignores_settings_it_does_not_know_about() {
+        let (settings, problem) =
+            parse_settings("mangohud = true\nsetting_from_a_newer_quadra = 1\n");
+        assert!(problem.is_none());
+        assert!(settings.mangohud);
+    }
 }
