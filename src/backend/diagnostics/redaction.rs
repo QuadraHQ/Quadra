@@ -1,10 +1,12 @@
 const SECRET_PLACEHOLDER: &str = "<redacted>";
 
+type EndsSecret = fn(char) -> bool;
+
 fn is_quote_or_space(character: char) -> bool {
     character.is_whitespace() || character == '"' || character == '\''
 }
 
-const RULES: [(&str, fn(char) -> bool); 8] = [
+const RULES: [(&str, EndsSecret); 8] = [
     ("ticket=", |c| is_quote_or_space(c) || c == '&'),
     ("\"ticket\":\"", |c| c == '"'),
     ("\"ticket\": \"", |c| c == '"'),
@@ -25,7 +27,7 @@ pub fn redact(text: &str) -> String {
         })
 }
 
-fn redact_after(text: &str, marker: &str, ends_secret: &fn(char) -> bool) -> String {
+fn redact_after(text: &str, marker: &str, ends_secret: &EndsSecret) -> String {
     let lowercase = text.to_ascii_lowercase();
     let keeps_marker = !marker.starts_with('_');
     let mut redacted = String::with_capacity(text.len());
