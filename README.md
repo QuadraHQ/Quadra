@@ -27,8 +27,8 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 **Prerequisites:**
 
 - Git
-- rustup
-- GTK4 and libadwaita
+- Rust 1.88+
+- GTK4, `gtk4-layer-shell` and libadwaita
 - clang for VR support (optional; without it Quadra builds without VR)
 - flatpak-builder for building Flatpaks
 - curl for building AppImages
