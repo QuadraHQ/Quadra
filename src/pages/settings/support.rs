@@ -27,7 +27,7 @@ pub fn support_group(state: &AppState) -> adw::PreferencesGroup {
     diagnostics_row.add_suffix(&collect_button);
 
     let about_row = adw::ButtonRow::builder().title("About Quadra").build();
-    about_row.connect_activated(|row| show_about(row));
+    about_row.connect_activated(show_about);
 
     let group = adw::PreferencesGroup::builder().title("Support").build();
     group.add(&diagnostics_row);
