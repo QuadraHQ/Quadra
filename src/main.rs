@@ -69,7 +69,8 @@ fn load_style() {
     let provider = gtk::CssProvider::new();
     provider.load_from_string(
         ".app-header { padding-left: 0px; }
-         .app-header .app-icon { margin-left: 8px; }",
+         .app-header .app-icon { margin-left: 8px; }
+         .overlay-backdrop { background-color: rgba(0, 0, 0, 0.5); }",
     );
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().unwrap(),

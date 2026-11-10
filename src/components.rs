@@ -6,6 +6,7 @@ pub mod icon;
 pub mod ignored_flag_icon;
 pub mod launch_window;
 pub mod logs_dialog;
+pub mod overlay;
 pub mod play_action;
 pub mod roblox_status;
 pub mod tray;

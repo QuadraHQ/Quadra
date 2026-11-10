@@ -1,18 +1,23 @@
 use crate::backend::{self, LaunchRequest};
+
 use crate::components::close_roblox_dialog::confirm_closing_roblox;
 use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
+use crate::components::overlay::build_overlay;
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
+
 use crate::pages::home::home_page;
 use crate::pages::servers::servers_page;
 use crate::pages::settings::settings_page;
+
 use crate::state::{AppState, LaunchMode};
 use crate::utils::show_only_while_roblox_is_selected;
+
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
-use gtk::glib;
+use gtk::{gio, glib};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -24,6 +29,8 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
     "hide-launcher-while-playing",
 ];
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
+const TOGGLE_OVERLAY_ACTION: &str = "toggle-overlay";
+const TOGGLE_OVERLAY_SHORTCUT: &str = "<Ctrl><Shift>o";
 
 #[derive(Clone, Copy)]
 enum Page {
@@ -47,6 +54,7 @@ pub struct Quadra {
     state: AppState,
     window: ApplicationWindow,
     launch_window: ApplicationWindow,
+    overlay: gtk::Window,
     pages: ViewStack,
     tray_icon: RefCell<Option<TrayIcon>>,
     launched_directly: Cell<bool>,
@@ -62,6 +70,7 @@ impl Quadra {
             state: state.clone(),
             window,
             launch_window: launch_window(app, state),
+            overlay: build_overlay(app),
             pages,
             tray_icon: RefCell::new(None),
             launched_directly: Cell::new(false),
@@ -106,6 +115,7 @@ impl Quadra {
             );
         }
         quadra.show_tray_icon_when_wanted();
+        quadra.register_toggle_overlay_action();
 
         quadra
     }
@@ -136,6 +146,24 @@ impl Quadra {
         self.launched_directly.set(false);
         self.pages.set_visible_child_name(page.name());
         self.window.present();
+    }
+
+    fn register_toggle_overlay_action(self: &Rc<Self>) {
+        let toggle_overlay = gio::SimpleAction::new(TOGGLE_OVERLAY_ACTION, None);
+        toggle_overlay.connect_activate(glib::clone!(
+            #[weak(rename_to = quadra)]
+            self,
+            move |_, _| quadra.toggle_overlay()
+        ));
+        self.app.add_action(&toggle_overlay);
+        self.app.set_accels_for_action(
+            &format!("app.{TOGGLE_OVERLAY_ACTION}"),
+            &[TOGGLE_OVERLAY_SHORTCUT],
+        );
+    }
+
+    fn toggle_overlay(&self) {
+        self.overlay.set_visible(!self.overlay.is_visible());
     }
 
     fn handle(self: &Rc<Self>, request: TrayRequest) {
