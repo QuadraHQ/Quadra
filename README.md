@@ -20,8 +20,7 @@
 
 This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
 
-- Auto-updater for Flatpak (the AppImage updates itself)
-- Support for the Darling runtime
+- Update checker for Flatpak
 
 ## Build instructions
 
