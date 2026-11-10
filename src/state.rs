@@ -4,6 +4,7 @@ mod environment_variables;
 mod fast_flags;
 mod launch_mode;
 mod mods;
+mod overlay_layout;
 mod regions;
 mod rosemary_options;
 mod server_history;
@@ -14,6 +15,7 @@ pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
 pub use mods::{CursorStyle, DeathSound};
+pub use overlay_layout::{OverlayLayout, PanelId, Placement};
 pub use regions::{Region, Regions, country_and_city_of};
 pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
 pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
@@ -38,7 +40,8 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 37] = [
+pub const DEFAULT_OVERLAY_SHORTCUT: &str = "<Control><Alt>l";
+const SAVED_PROPERTIES: [&str; 39] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -76,6 +79,8 @@ const SAVED_PROPERTIES: [&str; 37] = [
     "notify-server-location",
     "cpu-core-limit",
     "block-telemetry",
+    "overlay-enabled",
+    "overlay-shortcut",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -157,6 +162,10 @@ struct SavedSettings {
     notify_server_location: bool,
     cpu_core_limit: u32,
     block_telemetry: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    overlay_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    overlay_shortcut: Option<String>,
 }
 
 impl SavedSettings {
@@ -267,6 +276,14 @@ mod imp {
         signed_in: Cell<bool>,
         #[property(get, set)]
         block_telemetry: Cell<bool>,
+        #[property(get, set)]
+        overlay_enabled: Cell<bool>,
+        #[property(get, set)]
+        overlay_shortcut: RefCell<String>,
+        #[property(get, set)]
+        in_game: Cell<bool>,
+        #[property(get, set)]
+        session_started_at: Cell<i64>,
         #[property(get, set)]
         available_update: RefCell<String>,
         #[property(get, set)]
@@ -406,6 +423,13 @@ impl AppState {
             .property("notify-server-location", settings.notify_server_location)
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
+            .property("overlay-enabled", settings.overlay_enabled.unwrap_or(true))
+            .property(
+                "overlay-shortcut",
+                settings
+                    .overlay_shortcut
+                    .unwrap_or_else(|| DEFAULT_OVERLAY_SHORTCUT.to_owned()),
+            )
             .property("first-launch", !settings.opened_before)
             .build();
 
@@ -581,6 +605,8 @@ impl AppState {
             notify_server_location: self.notify_server_location(),
             cpu_core_limit: self.cpu_core_limit(),
             block_telemetry: self.block_telemetry(),
+            overlay_enabled: Some(self.overlay_enabled()),
+            overlay_shortcut: Some(self.overlay_shortcut()),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

@@ -1,6 +1,8 @@
 mod account;
 mod background;
+mod compositor_binding;
 mod cpu_limit;
+mod current_game;
 mod desktop_entries;
 mod destination;
 mod diagnostics;
@@ -18,6 +20,7 @@ mod live_log;
 mod mangohud;
 mod mime_defaults;
 mod mods;
+mod overlay_data;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
@@ -30,13 +33,14 @@ mod telemetry;
 mod updater;
 mod vr;
 
+pub use compositor_binding::CompositorBinding;
 pub use desktop_entries::Shortcut;
 pub use handlers::Handler;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
-use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
+use crate::state::{AppState, Client, OverlayLayout, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
 use background::run_task;
 use destination::Destination;
@@ -58,6 +62,7 @@ pub fn initialize(state: &AppState) {
     updater::initialize(state);
     fast_flag_allowlist::initialize();
     discord_presence::initialize(state);
+    current_game::initialize(state);
     server_history::initialize(state);
     server_location::initialize(state);
     refresh(state);
@@ -217,6 +222,34 @@ pub fn load_regions(state: &AppState) {
             Err(_) => {}
         }
     });
+}
+
+pub fn launch_command() -> Vec<String> {
+    updater::launch_command()
+}
+
+pub fn compositor_binding_for(accelerator: &str) -> Option<CompositorBinding> {
+    compositor_binding::for_current_desktop(accelerator, &launch_command())
+}
+
+pub fn game_link(place_id: u64, job_id: &str) -> String {
+    destination::game_uri(place_id, Some(job_id))
+}
+
+pub fn read_overlay_layout() -> OverlayLayout {
+    overlay_data::read_layout()
+}
+
+pub fn write_overlay_layout(layout: &OverlayLayout) {
+    overlay_data::write_layout(layout);
+}
+
+pub fn read_overlay_notes() -> String {
+    overlay_data::read_notes()
+}
+
+pub fn write_overlay_notes(notes: &str) -> bool {
+    overlay_data::write_notes(notes)
 }
 
 pub fn flag_is_ignored(name: &str) -> bool {

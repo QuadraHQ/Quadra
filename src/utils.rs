@@ -2,6 +2,11 @@ use crate::state::{AppState, Client};
 use gtk::prelude::*;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+const MINUTE: i64 = 60;
+const HOUR: i64 = 60 * MINUTE;
+const DAY: i64 = 24 * HOUR;
 
 pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
     let clamp = adw::Clamp::builder().maximum_size(600).child(child).build();
@@ -147,6 +152,31 @@ mod tests {
     }
 }
 
+pub fn write_file_atomically(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
+    create_parent_directory(path)?;
+    let unfinished_path = path.with_extension("partial");
+    std::fs::write(&unfinished_path, contents)?;
+    std::fs::rename(&unfinished_path, path)
+}
+
+pub fn seconds_since_epoch() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|since_epoch| i64::try_from(since_epoch.as_secs()).ok())
+        .unwrap_or_default()
+}
+
+pub fn format_clock(seconds: i64) -> String {
+    let seconds = seconds.max(0);
+    let (hours, minutes, seconds) = (seconds / HOUR, seconds / MINUTE % 60, seconds % 60);
+    if hours > 0 {
+        format!("{hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes}:{seconds:02}")
+    }
+}
+
 pub fn format_playtime(seconds: u64) -> String {
     let minutes = seconds / 60;
     match (minutes / 60, minutes % 60) {
@@ -167,5 +197,38 @@ mod playtime_tests {
         assert_eq!(format_playtime(60 * 45), "45 min");
         assert_eq!(format_playtime(3600 * 2), "2 h");
         assert_eq!(format_playtime(3600 * 2 + 60 * 15), "2 h 15 min");
+    }
+}
+
+pub fn time_since(timestamp: i64) -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|since_epoch| i64::try_from(since_epoch.as_secs()).ok())
+        .unwrap_or(timestamp);
+    let seconds = (now - timestamp).max(0);
+
+    if seconds < HOUR {
+        format!("{} min ago", (seconds / MINUTE).max(1))
+    } else if seconds < DAY {
+        format!("{} h ago", seconds / HOUR)
+    } else {
+        match seconds / DAY {
+            1 => "1 day ago".to_owned(),
+            days => format!("{days} days ago"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod clock_tests {
+    use super::format_clock;
+
+    #[test]
+    fn formats_elapsed_time_like_a_stopwatch() {
+        assert_eq!(format_clock(-5), "0:00");
+        assert_eq!(format_clock(7), "0:07");
+        assert_eq!(format_clock(416), "6:56");
+        assert_eq!(format_clock(3600 + 120 + 3), "1:02:03");
     }
 }

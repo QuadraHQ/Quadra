@@ -100,3 +100,15 @@ pub fn fast_flag_allowlist_file() -> PathBuf {
         .join("quadra")
         .join("fast-flag-allowlist.json")
 }
+
+pub fn overlay_layout_file() -> PathBuf {
+    glib::user_config_dir()
+        .join("quadra")
+        .join("overlay-layout.json")
+}
+
+pub fn overlay_notes_file() -> PathBuf {
+    glib::user_config_dir()
+        .join("quadra")
+        .join("overlay-notes.txt")
+}

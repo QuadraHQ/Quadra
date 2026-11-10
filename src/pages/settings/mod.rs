@@ -9,6 +9,7 @@ mod fast_flags;
 mod integration;
 mod mangohud;
 mod mods;
+mod overlay;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
@@ -24,6 +25,7 @@ use environment::env_section;
 use fast_flags::fast_flags_section;
 use integration::integration_section;
 use mods::mods_section;
+use overlay::overlay_section;
 use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
@@ -54,6 +56,12 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "VR",
         "input-gaming-symbolic",
     );
+    let overlay = stack.add_titled_with_icon(
+        &scrollable(&overlay_section(state)),
+        Some("overlay"),
+        "Overlay",
+        "window-new-symbolic",
+    );
     stack.add_titled_with_icon(
         &scrollable(&integration_section(state)),
         Some("integration"),
@@ -63,6 +71,7 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
     show_only_while_roblox_is_selected(&fast_flags, state);
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
+    show_only_while_roblox_is_selected(&overlay, state);
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)

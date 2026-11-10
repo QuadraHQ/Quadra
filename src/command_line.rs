@@ -7,6 +7,7 @@ const STUDIO_OPTION: &str = "studio";
 const STUDIO_LINK_SCHEME_PREFIX: &str = "roblox-studio";
 const HARDWARE_REPORT_OPTION: &str = "hardware-report";
 const COLLECT_DIAGNOSTICS_OPTION: &str = "collect-diagnostics";
+const TOGGLE_OVERLAY_OPTION: &str = "toggle-overlay";
 
 pub fn add_options(app: &adw::Application) {
     add_flag(
@@ -28,6 +29,11 @@ pub fn add_options(app: &adw::Application) {
         app,
         COLLECT_DIAGNOSTICS_OPTION,
         "Save a diagnostics archive (in the given folder, or Documents), then exit",
+    );
+    add_flag(
+        app,
+        TOGGLE_OVERLAY_OPTION,
+        "Open or close the in-game overlay while Roblox is running",
     );
     app.add_main_option(
         glib::OPTION_REMAINING,
@@ -67,6 +73,26 @@ pub fn run_report_if_requested() -> Option<glib::ExitCode> {
             Some(glib::ExitCode::FAILURE)
         }
     }
+}
+
+pub fn toggle_overlay_requested_by(command_line: &gio::ApplicationCommandLine) -> bool {
+    command_line.options_dict().contains(TOGGLE_OVERLAY_OPTION)
+}
+
+pub fn toggle_overlay_command() -> String {
+    let mut command = backend::launch_command();
+    command.push(format!("--{TOGGLE_OVERLAY_OPTION}"));
+    command
+        .into_iter()
+        .map(|argument| {
+            if argument.contains(char::is_whitespace) {
+                format!("'{argument}'")
+            } else {
+                argument
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 pub fn launch_requested_by(command_line: &gio::ApplicationCommandLine) -> Option<LaunchRequest> {

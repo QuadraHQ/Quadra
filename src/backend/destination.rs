@@ -73,7 +73,7 @@ fn any_server_in(place_id: u64) -> Launch {
     }
 }
 
-fn game_uri(place_id: u64, job_id: Option<&str>) -> String {
+pub(super) fn game_uri(place_id: u64, job_id: Option<&str>) -> String {
     let mut uri = format!("roblox://experiences/start?placeId={place_id}");
     if let Some(job_id) = job_id.filter(|job_id| is_job_id(job_id)) {
         uri.push_str(&format!("&gameInstanceId={job_id}"));

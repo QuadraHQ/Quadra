@@ -45,6 +45,10 @@ fn main() -> glib::ExitCode {
         quadra,
         move |_, command_line| {
             if let Some(quadra) = quadra.get() {
+                if command_line::toggle_overlay_requested_by(command_line) {
+                    quadra.toggle_overlay();
+                    return glib::ExitCode::SUCCESS;
+                }
                 match command_line::launch_requested_by(command_line) {
                     Some(request) => quadra.launch_directly(request),
                     None => quadra.activate(),

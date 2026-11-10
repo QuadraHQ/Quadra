@@ -34,6 +34,10 @@ pub fn initialize(state: &AppState) {
     }
 }
 
+pub fn launch_command() -> Vec<String> {
+    INSTALL_KIND.with(InstallKind::command)
+}
+
 pub fn can_update_itself() -> bool {
     matches!(INSTALL_KIND.with(Clone::clone), InstallKind::AppImage(_))
 }
