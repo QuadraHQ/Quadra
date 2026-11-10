@@ -50,7 +50,7 @@ impl Handler {
         }
     }
 
-    fn entry(self) -> DesktopEntry {
+    pub(super) fn entry(self) -> DesktopEntry {
         match self {
             Self::RobloxLinks => DesktopEntry {
                 file_name: "org.quadrahq.Quadra.RobloxLinks.desktop",

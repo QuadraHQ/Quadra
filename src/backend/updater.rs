@@ -10,7 +10,7 @@ use install_kind::InstallKind;
 use release::AppImageUpdate;
 use std::cell::{Cell, RefCell};
 use std::os::unix::process::CommandExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -36,6 +36,13 @@ pub fn initialize(state: &AppState) {
 
 pub fn can_update_itself() -> bool {
     matches!(INSTALL_KIND.with(Clone::clone), InstallKind::AppImage(_))
+}
+
+pub fn running_appimage() -> Option<PathBuf> {
+    match INSTALL_KIND.with(Clone::clone) {
+        InstallKind::AppImage(appimage) => Some(appimage),
+        InstallKind::Flatpak | InstallKind::Other => None,
+    }
 }
 
 pub fn check(state: &AppState) {

@@ -61,6 +61,7 @@ pub fn initialize(state: &AppState) {
     server_history::initialize(state);
     server_location::initialize(state);
     refresh(state);
+    refresh_desktop_entries();
     if state.first_launch() {
         prefer_an_installed_runner(state);
     }
@@ -422,6 +423,18 @@ fn prefer_an_installed_runner(state: &AppState) {
 
     if quadra_rosemary_is_missing && let Some(runner) = other_installed_runner {
         state.set_runner(runner.name);
+    }
+}
+
+fn refresh_desktop_entries() {
+    let entries = Shortcut::ALL
+        .map(Shortcut::entry)
+        .into_iter()
+        .chain(Handler::ALL.map(Handler::entry));
+    for entry in entries {
+        if let Err(error) = entry.refresh() {
+            eprintln!("Couldn't update {}: {error:#}", entry.file_name);
+        }
     }
 }
 

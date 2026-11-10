@@ -1,4 +1,4 @@
-use super::paths;
+use super::{paths, updater};
 use crate::utils::{APP_ICON_PNG, is_running_in_flatpak};
 use anyhow::Context;
 use std::fs;
@@ -21,6 +21,27 @@ pub struct DesktopEntry {
     pub shown_in_app_menu: bool,
 }
 
+enum Launcher {
+    Flatpak { app_id: String },
+    Executable(PathBuf),
+}
+
+impl Launcher {
+    fn current() -> anyhow::Result<Self> {
+        if is_running_in_flatpak() {
+            let app_id =
+                std::env::var("FLATPAK_ID").context("Couldn't find Quadra's Flatpak ID")?;
+            return Ok(Self::Flatpak { app_id });
+        }
+        match updater::running_appimage() {
+            Some(appimage) => Ok(Self::Executable(appimage)),
+            None => std::env::current_exe()
+                .map(Self::Executable)
+                .context("Couldn't find Quadra's executable"),
+        }
+    }
+}
+
 impl DesktopEntry {
     fn path(&self) -> PathBuf {
         paths::applications_directory().join(self.file_name)
@@ -31,6 +52,23 @@ impl DesktopEntry {
     }
 
     pub fn add(&self) -> anyhow::Result<()> {
+        self.write(&Launcher::current()?)
+    }
+
+    pub fn refresh(&self) -> anyhow::Result<()> {
+        if !self.exists() {
+            return Ok(());
+        }
+        let launcher = Launcher::current()?;
+        let wanted = self.contents(&paths::desktop_entry_icon_file(), &launcher);
+        let is_up_to_date = fs::read_to_string(self.path()).is_ok_and(|written| written == wanted);
+        if is_up_to_date {
+            return Ok(());
+        }
+        self.write(&launcher)
+    }
+
+    fn write(&self, launcher: &Launcher) -> anyhow::Result<()> {
         let icon = paths::desktop_entry_icon_file();
         if let Some(directory) = icon.parent() {
             fs::create_dir_all(directory)?;
@@ -42,7 +80,7 @@ impl DesktopEntry {
         if let Some(directory) = path.parent() {
             fs::create_dir_all(directory)?;
         }
-        fs::write(&path, self.contents(&icon)?)
+        fs::write(&path, self.contents(&icon, launcher))
             .with_context(|| format!("Couldn't add {}", path.display()))
     }
 
@@ -56,7 +94,7 @@ impl DesktopEntry {
         }
     }
 
-    fn contents(&self, icon: &Path) -> anyhow::Result<String> {
+    fn contents(&self, icon: &Path, launcher: &Launcher) -> String {
         let mut contents = format!(
             "[Desktop Entry]\n\
              Type=Application\n\
@@ -69,7 +107,7 @@ impl DesktopEntry {
              StartupNotify=true\n",
             self.name,
             self.description,
-            self.exec()?,
+            self.exec(launcher),
             icon.display()
         );
         if !self.mime_types.is_empty() {
@@ -78,22 +116,16 @@ impl DesktopEntry {
         if !self.shown_in_app_menu {
             contents.push_str("NoDisplay=true\n");
         }
-        Ok(contents)
+        contents
     }
 
-    fn exec(&self) -> anyhow::Result<String> {
-        let mut exec = if is_running_in_flatpak() {
-            let app_id =
-                std::env::var("FLATPAK_ID").context("Couldn't find Quadra's Flatpak ID")?;
-            if self.opens == Opens::File {
+    fn exec(&self, launcher: &Launcher) -> String {
+        let mut exec = match launcher {
+            Launcher::Flatpak { app_id } if self.opens == Opens::File => {
                 format!("flatpak run --file-forwarding {app_id}")
-            } else {
-                format!("flatpak run {app_id}")
             }
-        } else {
-            let executable =
-                std::env::current_exe().context("Couldn't find Quadra's executable")?;
-            quoted_for_exec(&executable.display().to_string())
+            Launcher::Flatpak { app_id } => format!("flatpak run {app_id}"),
+            Launcher::Executable(executable) => quoted_for_exec(&executable.display().to_string()),
         };
 
         if let Some(option) = self.command_line_option {
@@ -101,14 +133,14 @@ impl DesktopEntry {
             exec.push_str(option);
         }
 
-        match self.opens {
-            Opens::Nothing => {}
-            Opens::Link => exec.push_str(" %u"),
-            Opens::File if is_running_in_flatpak() => exec.push_str(" @@ %f @@"),
-            Opens::File => exec.push_str(" %f"),
+        match (self.opens, launcher) {
+            (Opens::Nothing, _) => {}
+            (Opens::Link, _) => exec.push_str(" %u"),
+            (Opens::File, Launcher::Flatpak { .. }) => exec.push_str(" @@ %f @@"),
+            (Opens::File, Launcher::Executable(_)) => exec.push_str(" %f"),
         }
 
-        Ok(exec)
+        exec
     }
 }
 
@@ -173,4 +205,54 @@ fn quoted_for_exec(argument: &str) -> String {
         })
         .collect();
     format!("\"{}\"", escaped.replace('\\', "\\\\"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(opens: Opens, command_line_option: Option<&'static str>) -> DesktopEntry {
+        DesktopEntry {
+            file_name: "test.desktop",
+            name: "Test",
+            description: "Test",
+            command_line_option,
+            opens,
+            mime_types: &[],
+            shown_in_app_menu: false,
+        }
+    }
+
+    #[test]
+    fn appimage_entries_start_the_appimage_itself() {
+        let launcher = Launcher::Executable(PathBuf::from("/home/someone/Apps/Quadra.AppImage"));
+        assert_eq!(
+            entry(Opens::Link, Some("--roblox")).exec(&launcher),
+            "/home/someone/Apps/Quadra.AppImage --roblox %u"
+        );
+    }
+
+    #[test]
+    fn paths_with_spaces_are_quoted() {
+        let launcher = Launcher::Executable(PathBuf::from("/home/someone/My Apps/Quadra.AppImage"));
+        assert_eq!(
+            entry(Opens::File, Some("--studio")).exec(&launcher),
+            "\"/home/someone/My Apps/Quadra.AppImage\" --studio %f"
+        );
+    }
+
+    #[test]
+    fn flatpak_entries_forward_opened_files() {
+        let launcher = Launcher::Flatpak {
+            app_id: "org.quadrahq.Quadra".to_owned(),
+        };
+        assert_eq!(
+            entry(Opens::File, Some("--studio")).exec(&launcher),
+            "flatpak run --file-forwarding org.quadrahq.Quadra --studio @@ %f @@"
+        );
+        assert_eq!(
+            entry(Opens::Nothing, None).exec(&launcher),
+            "flatpak run org.quadrahq.Quadra"
+        );
+    }
 }
