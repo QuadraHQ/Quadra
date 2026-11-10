@@ -8,7 +8,7 @@ jobs:
   version:
     name: Read version
     if: startsWith(github.event.head_commit.message, 'release:')
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       prerelease: ${{ steps.version.outputs.prerelease }}
