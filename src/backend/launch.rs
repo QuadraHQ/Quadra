@@ -11,7 +11,7 @@ use gtk::glib;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{self, Write};
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -92,6 +92,7 @@ fn run(
         .stderr(log)
         .process_group(0);
     cpu_limit::limit(&mut command, state.cpu_core_limit());
+    end_when_quadra_ends(&mut command);
     let started_at = Instant::now();
 
     let mut child = command
@@ -185,6 +186,21 @@ fn is_still_running(process_group: i32) -> bool {
 fn signal_process_group(process_group: i32, signal: libc::c_int) {
     unsafe {
         libc::kill(-process_group, signal);
+    }
+}
+
+fn end_when_quadra_ends(command: &mut Command) {
+    let quadra = std::process::id() as libc::pid_t;
+    unsafe {
+        command.pre_exec(move || {
+            if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM as libc::c_ulong) == -1 {
+                return Err(io::Error::last_os_error());
+            }
+            if libc::getppid() != quadra {
+                libc::raise(libc::SIGTERM);
+            }
+            Ok(())
+        });
     }
 }
 

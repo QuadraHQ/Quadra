@@ -1,4 +1,5 @@
 use crate::backend::{self, LaunchRequest};
+use crate::components::close_roblox_dialog::confirm_closing_roblox;
 use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
@@ -49,6 +50,7 @@ pub struct Quadra {
     pages: ViewStack,
     tray_icon: RefCell<Option<TrayIcon>>,
     launched_directly: Cell<bool>,
+    quits_once_roblox_exits: Cell<bool>,
 }
 
 impl Quadra {
@@ -63,12 +65,20 @@ impl Quadra {
             pages,
             tray_icon: RefCell::new(None),
             launched_directly: Cell::new(false),
+            quits_once_roblox_exits: Cell::new(false),
         });
 
         quadra.window.connect_visible_notify(glib::clone!(
             #[weak]
             quadra,
             move |_| quadra.quit_if_nothing_keeps_it_open()
+        ));
+        quadra.window.connect_close_request(glib::clone!(
+            #[weak]
+            quadra,
+            #[upgrade_or]
+            glib::Propagation::Proceed,
+            move |_| quadra.close_window()
         ));
         state.connect_running_notify(glib::clone!(
             #[weak]
@@ -128,7 +138,7 @@ impl Quadra {
         self.window.present();
     }
 
-    fn handle(&self, request: TrayRequest) {
+    fn handle(self: &Rc<Self>, request: TrayRequest) {
         match request {
             TrayRequest::OpenHome => self.show(Page::Home),
             TrayRequest::OpenSettings => self.show(Page::Settings),
@@ -138,11 +148,47 @@ impl Quadra {
                     action.perform(&self.state);
                 }
             }
-            TrayRequest::Quit => self.app.quit(),
+            TrayRequest::Quit => self.confirm_quit(),
         }
     }
 
+    fn close_window(self: &Rc<Self>) -> glib::Propagation {
+        if self.state.running() && !self.should_keep_running_without_window() {
+            self.confirm_quit();
+            return glib::Propagation::Stop;
+        }
+        glib::Propagation::Proceed
+    }
+
+    fn confirm_quit(self: &Rc<Self>) {
+        if !self.state.running() {
+            self.app.quit();
+            return;
+        }
+        self.window.present();
+        let quadra = Rc::downgrade(self);
+        confirm_closing_roblox(&self.window, move || {
+            if let Some(quadra) = quadra.upgrade() {
+                quadra.quit();
+            }
+        });
+    }
+
+    fn quit(&self) {
+        if !self.state.running() {
+            self.app.quit();
+            return;
+        }
+        self.quits_once_roblox_exits.set(true);
+        self.window.set_visible(false);
+        backend::stop(&self.state);
+    }
+
     fn adjust_window_to_running_roblox(&self) {
+        if self.quits_once_roblox_exits.get() && !self.state.running() {
+            self.app.quit();
+            return;
+        }
         if self.state.running() && self.state.hide_launcher_while_playing() {
             self.window.set_visible(false);
         } else if !self.state.running() && self.state.open_after_exit() {
@@ -162,10 +208,12 @@ impl Quadra {
             launches_without_window && (self.state.busy() || self.state.running());
         let is_hidden_while_playing =
             self.state.hide_launcher_while_playing() && self.state.running();
+        let is_closing_roblox_first = self.quits_once_roblox_exits.get();
 
         (self.state.run_in_background() && can_be_reopened_from_tray)
             || is_launching_right_away
             || is_hidden_while_playing
+            || is_closing_roblox_first
     }
 
     fn quit_if_nothing_keeps_it_open(&self) {

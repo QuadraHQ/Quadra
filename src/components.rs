@@ -1,3 +1,4 @@
+pub mod close_roblox_dialog;
 pub mod error_dialog;
 pub mod file_row;
 pub mod header;
