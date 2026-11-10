@@ -112,7 +112,12 @@ mod tests {
             "1.0.0",
         ];
         for pair in ascending.windows(2) {
-            assert!(version(pair[0]) < version(pair[1]), "{} < {}", pair[0], pair[1]);
+            assert!(
+                version(pair[0]) < version(pair[1]),
+                "{} < {}",
+                pair[0],
+                pair[1]
+            );
         }
     }
 
@@ -125,7 +130,15 @@ mod tests {
 
     #[test]
     fn rejects_text_that_is_not_a_version() {
-        for text in ["", "1.2", "1.2.3.4", "a.b.c", "1.2.3-", "1.2.3-a..b", "latest"] {
+        for text in [
+            "",
+            "1.2",
+            "1.2.3.4",
+            "a.b.c",
+            "1.2.3-",
+            "1.2.3-a..b",
+            "latest",
+        ] {
             assert!(Version::parse(text).is_none(), "{text}");
         }
     }

@@ -36,7 +36,9 @@ pub fn replace(
             progress.step("Checking the download");
             release::download_checksums(checksums_url)
         })
-        .and_then(|checksums| verify_and_install(&staged, running_appimage, &update.file_name, &checksums));
+        .and_then(|checksums| {
+            verify_and_install(&staged, running_appimage, &update.file_name, &checksums)
+        });
 
     if installed.is_err() {
         let _ = fs::remove_file(&staged);
@@ -144,7 +146,9 @@ mod tests {
         fs::write(&staged, "tampered").unwrap();
 
         let wrong = format!("{}  Quadra-v1-x86_64.AppImage\n", checksum_of(b"new"));
-        assert!(verify_and_install(&staged, &running, "Quadra-v1-x86_64.AppImage", &wrong).is_err());
+        assert!(
+            verify_and_install(&staged, &running, "Quadra-v1-x86_64.AppImage", &wrong).is_err()
+        );
         assert!(verify_and_install(&staged, &running, "Quadra-v1-x86_64.AppImage", "").is_err());
         assert_eq!(fs::read(&running).unwrap(), b"old");
     }

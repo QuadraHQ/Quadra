@@ -1,5 +1,5 @@
-use gtk::prelude::*;
 use crate::backend;
+use gtk::prelude::*;
 
 pub fn ignored_flag_icon() -> gtk::Image {
     gtk::Image::builder()

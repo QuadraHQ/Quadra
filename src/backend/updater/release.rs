@@ -2,7 +2,8 @@ use super::version::Version;
 use anyhow::Context;
 use serde::Deserialize;
 
-const RELEASES_URL: &str = "https://api.github.com/repos/QuadraHQ/quadra-rewrite/releases?per_page=30";
+const RELEASES_URL: &str =
+    "https://api.github.com/repos/QuadraHQ/quadra-rewrite/releases?per_page=30";
 const USER_AGENT: &str = "Quadra";
 const APPIMAGE_SUFFIX: &str = "-x86_64.AppImage";
 const CHECKSUMS_NAME: &str = "SHA256SUMS";

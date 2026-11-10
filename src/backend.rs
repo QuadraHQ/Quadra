@@ -261,11 +261,8 @@ pub fn collect_diagnostics_in_background(state: &AppState) {
             diagnostics::collect(&summary, &directory)
         },
         |_, archive| {
-            gtk::FileLauncher::new(Some(&gtk::gio::File::for_path(archive))).open_containing_folder(
-                gtk::Window::NONE,
-                gtk::gio::Cancellable::NONE,
-                |_| {},
-            );
+            gtk::FileLauncher::new(Some(&gtk::gio::File::for_path(archive)))
+                .open_containing_folder(gtk::Window::NONE, gtk::gio::Cancellable::NONE, |_| {});
         },
     );
 }

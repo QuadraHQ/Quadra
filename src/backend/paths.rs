@@ -92,7 +92,9 @@ pub fn mods_backup_directory() -> PathBuf {
 }
 
 pub fn mod_guard_file() -> PathBuf {
-    glib::user_config_dir().join("quadra").join("mod-guard.json")
+    glib::user_config_dir()
+        .join("quadra")
+        .join("mod-guard.json")
 }
 
 pub fn fast_flag_allowlist_file() -> PathBuf {

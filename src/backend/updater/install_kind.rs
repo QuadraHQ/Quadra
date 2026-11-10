@@ -40,7 +40,10 @@ mod tests {
             InstallKind::from_environment(Some(existing.into_os_string()), true),
             InstallKind::Flatpak
         );
-        assert_eq!(InstallKind::from_environment(None, false), InstallKind::Other);
+        assert_eq!(
+            InstallKind::from_environment(None, false),
+            InstallKind::Other
+        );
         assert_eq!(
             InstallKind::from_environment(Some("/nowhere/Quadra.AppImage".into()), false),
             InstallKind::Other

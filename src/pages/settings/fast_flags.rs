@@ -185,7 +185,11 @@ fn show_number_from_state(entry: &gtk::Entry, flag: &AllowlistedFlag, state: &Ap
         _ => None,
     };
     if typed_number != saved_number {
-        entry.set_text(&saved_number.map(|number| number.to_string()).unwrap_or_default());
+        entry.set_text(
+            &saved_number
+                .map(|number| number.to_string())
+                .unwrap_or_default(),
+        );
     }
 }
 

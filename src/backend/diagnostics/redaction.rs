@@ -12,7 +12,9 @@ const RULES: [(&str, fn(char) -> bool); 8] = [
     (".roblosecurity=", |c| is_quote_or_space(c) || c == ';'),
     (".roblosecurity:", |c| is_quote_or_space(c) || c == ';'),
     ("roblosecurity=", |c| is_quote_or_space(c) || c == ';'),
-    ("_|warning:-do-not-share-this", |c| is_quote_or_space(c) || c == ';'),
+    ("_|warning:-do-not-share-this", |c| {
+        is_quote_or_space(c) || c == ';'
+    }),
 ];
 
 pub fn redact(text: &str) -> String {
@@ -36,7 +38,11 @@ fn redact_after(text: &str, marker: &str, ends_secret: &fn(char) -> bool) -> Str
             .find(ends_secret)
             .map_or(text.len(), |length| marker_end + length);
 
-        let kept_until = if keeps_marker { marker_end } else { marker_start };
+        let kept_until = if keeps_marker {
+            marker_end
+        } else {
+            marker_start
+        };
         redacted.push_str(&text[copied_up_to..kept_until]);
         redacted.push_str(SECRET_PLACEHOLDER);
         copied_up_to = secret_end;

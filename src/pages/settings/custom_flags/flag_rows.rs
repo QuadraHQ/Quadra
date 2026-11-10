@@ -40,7 +40,10 @@ fn add_row(
         .valign(gtk::Align::Center)
         .build();
 
-    let row = adw::EntryRow::builder().title("NAME=value").text(text).build();
+    let row = adw::EntryRow::builder()
+        .title("NAME=value")
+        .text(text)
+        .build();
     row.add_prefix(&ignored_icon);
     row.add_suffix(&remove_button);
     group.add(&row);

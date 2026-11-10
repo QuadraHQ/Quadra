@@ -63,7 +63,8 @@ impl FastFlags {
     }
 
     pub fn merged_with_json(mut self, json: &str) -> Result<(Self, usize), String> {
-        let Value::Object(imported) = serde_json::from_str(json).map_err(|error| error.to_string())?
+        let Value::Object(imported) =
+            serde_json::from_str(json).map_err(|error| error.to_string())?
         else {
             return Err("The text isn't a JSON object of flags.".to_owned());
         };

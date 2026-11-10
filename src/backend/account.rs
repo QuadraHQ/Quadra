@@ -17,9 +17,7 @@ pub fn refresh(state: &AppState) {
 
 pub fn sign_out(state: &AppState) {
     if state.running() {
-        state.report_error(
-            "Close Roblox before signing out, or it would save the session again.",
-        );
+        state.report_error("Close Roblox before signing out, or it would save the session again.");
         return;
     }
     let Some(prefix_directory) = prefix::directory_for(&state.prefix()) else {
@@ -84,9 +82,16 @@ mod tests {
         let root = std::env::temp_dir().join(format!("quadra-account-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         for user in ["a", "b"] {
-            let cookies = root.join(USERS_INSIDE_PREFIX).join(user).join(COOKIES_INSIDE_USER);
+            let cookies = root
+                .join(USERS_INSIDE_PREFIX)
+                .join(user)
+                .join(COOKIES_INSIDE_USER);
             fs::create_dir_all(&cookies).unwrap();
-            fs::write(cookies.join("com.roblox.RobloxPlayer.cookies.tsv"), "x ROBLOSECURITY y").unwrap();
+            fs::write(
+                cookies.join("com.roblox.RobloxPlayer.cookies.tsv"),
+                "x ROBLOSECURITY y",
+            )
+            .unwrap();
             fs::write(cookies.join("other.cookies.tsv"), "").unwrap();
         }
 

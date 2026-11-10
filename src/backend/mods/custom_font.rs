@@ -25,7 +25,10 @@ pub fn apply(files: &mut ContentFiles, font: &Path) -> io::Result<()> {
 
     let asset_uri = format!("rbxasset://fonts/{name}");
     for family in files.list(Path::new(FAMILIES_DIRECTORY)) {
-        if family.extension().is_some_and(|extension| extension == "json") {
+        if family
+            .extension()
+            .is_some_and(|extension| extension == "json")
+        {
             use_font_in_family(files, &family, &asset_uri)?;
         }
     }

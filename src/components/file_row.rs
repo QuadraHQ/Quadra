@@ -77,11 +77,10 @@ fn pick_button(state: &AppState, property: &'static str, pick: Pick) -> gtk::But
                 Pick::File(extensions) => {
                     dialog_for(extensions).open(window.as_ref(), gio::Cancellable::NONE, on_chosen)
                 }
-                Pick::Folder => gtk::FileDialog::builder().modal(true).build().select_folder(
-                    window.as_ref(),
-                    gio::Cancellable::NONE,
-                    on_chosen,
-                ),
+                Pick::Folder => gtk::FileDialog::builder()
+                    .modal(true)
+                    .build()
+                    .select_folder(window.as_ref(), gio::Cancellable::NONE, on_chosen),
             }
         }
     ));

@@ -12,8 +12,8 @@ pub struct Archive {
 
 impl Archive {
     pub fn create(path: &Path) -> anyhow::Result<Self> {
-        let file = File::create(path)
-            .with_context(|| format!("Couldn't create {}", path.display()))?;
+        let file =
+            File::create(path).with_context(|| format!("Couldn't create {}", path.display()))?;
         Ok(Self {
             builder: Builder::new(GzEncoder::new(file, Compression::default())),
         })

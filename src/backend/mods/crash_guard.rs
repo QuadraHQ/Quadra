@@ -57,7 +57,11 @@ pub fn end_session(mods_directory: &Path, crashed: bool) -> Vec<String> {
     let mut set_aside = Vec::new();
     match (&guard.last_good, crashed_early) {
         (Some(last_good), true) => {
-            for unit in session.units.iter().filter(|unit| !last_good.contains(unit)) {
+            for unit in session
+                .units
+                .iter()
+                .filter(|unit| !last_good.contains(unit))
+            {
                 if disable(mods_directory, unit).is_ok() {
                     set_aside.push(unit.clone());
                 }

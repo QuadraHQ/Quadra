@@ -1,9 +1,9 @@
+use super::account::account_group;
 use super::bound_rows::{choice_row, switch_row};
 use super::environment_variables::environment_variables_group;
+use super::privacy::privacy_group;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
-use super::account::account_group;
-use super::privacy::privacy_group;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;

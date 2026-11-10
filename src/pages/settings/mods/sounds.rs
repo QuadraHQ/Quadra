@@ -15,9 +15,12 @@ pub fn sounds_group(state: &AppState) -> adw::PreferencesGroup {
         "Custom death sound",
         &[Pick::File(&AUDIO_EXTENSIONS)],
     );
-    show_when(&custom_death_sound_row, state, "death-sound", |sound: DeathSound| {
-        sound == DeathSound::Custom
-    });
+    show_when(
+        &custom_death_sound_row,
+        state,
+        "death-sound",
+        |sound: DeathSound| sound == DeathSound::Custom,
+    );
 
     let group = adw::PreferencesGroup::builder().title("Sounds").build();
     group.add(&death_sound_row);
