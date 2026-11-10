@@ -76,3 +76,7 @@ The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 ## License
 
 GPL-3.0-only.
+
+## Credits
+
+- [Fishstrap](https://github.com/fishstrap/fishstrap) (MIT, by returnrqt) for the overlay's design, and [Bloxstrap](https://github.com/bloxstraplabs/bloxstrap) (MIT, by pizzaboxer) which Fishstrap is built on. Their license texts are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
