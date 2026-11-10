@@ -18,7 +18,7 @@ jobs:
   appimage:
     name: Build AppImage
     if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: debian:trixie
     env:
