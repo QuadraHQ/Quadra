@@ -81,7 +81,9 @@ jobs:
           mkdir release-files
           cp "$(find artifacts -type f -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
           cp "$(find artifacts -type f -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
+          (cd release-files && sha256sum Quadra-* > SHA256SUMS)
           ls -la release-files
+          cat release-files/SHA256SUMS
 
       - name: Create tag and release
         env:

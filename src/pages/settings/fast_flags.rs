@@ -1,3 +1,4 @@
+use super::custom_flags::custom_flags_group;
 use super::fast_flag_allowlist::{
     ALLOWLIST, ALLOWLIST_SOURCE, AllowlistedFlag, FlagCategory, FlagKind,
 };
@@ -64,6 +65,7 @@ pub fn fast_flags_section(state: &AppState) -> gtk::Box {
     for category in ALLOWLIST {
         section.append(&category_group(state, category));
     }
+    section.append(&custom_flags_group(state));
 
     section
 }
@@ -102,6 +104,19 @@ fn toggle_row(state: &AppState, flag: &'static AllowlistedFlag) -> adw::ComboRow
             set_flag(&state, flag.name, setting.value());
         }
     ));
+    state.connect_notify_local(
+        Some("fast-flags"),
+        glib::clone!(
+            #[weak]
+            row,
+            move |state, _| {
+                let setting = ToggleSetting::of(state.fast_flags().get(flag.name));
+                if row.selected() != setting.position() {
+                    row.set_selected(setting.position());
+                }
+            }
+        ),
+    );
 
     row
 }
@@ -145,8 +160,33 @@ fn number_row(state: &AppState, flag: &'static AllowlistedFlag) -> adw::ActionRo
             }
         }
     ));
+    state.connect_notify_local(
+        Some("fast-flags"),
+        glib::clone!(
+            #[weak]
+            entry,
+            move |state, _| show_number_from_state(&entry, flag, state)
+        ),
+    );
 
     row
+}
+
+fn show_number_from_state(entry: &gtk::Entry, flag: &AllowlistedFlag, state: &AppState) {
+    let typed = entry.text();
+    let typed = typed.trim();
+    let typed_number = typed.parse::<i64>().ok();
+    if !typed.is_empty() && typed_number.is_none() {
+        return;
+    }
+
+    let saved_number = match state.fast_flags().get(flag.name) {
+        Some(FastFlagValue::Number(number)) => Some(number),
+        _ => None,
+    };
+    if typed_number != saved_number {
+        entry.set_text(&saved_number.map(|number| number.to_string()).unwrap_or_default());
+    }
 }
 
 fn show_number_is_valid(entry: &gtk::Entry, is_valid: bool) {

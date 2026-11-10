@@ -70,6 +70,16 @@ impl ServerHistory {
         Self(games)
     }
 
+    pub fn with_location(&self, job_id: &str, location: &str) -> Self {
+        let mut games = self.0.clone();
+        let servers = games.iter_mut().flat_map(|game| game.servers.iter_mut());
+        for server in servers.filter(|server| server.job_id == job_id && server.location.is_none())
+        {
+            server.location = Some(location.to_owned());
+        }
+        Self(games)
+    }
+
     pub fn has_name_for(&self, place_id: u64) -> bool {
         self.0
             .iter()

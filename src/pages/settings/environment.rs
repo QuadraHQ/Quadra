@@ -2,27 +2,16 @@ use super::bound_rows::{choice_row, switch_row};
 use super::environment_variables::environment_variables_group;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
+use super::account::account_group;
+use super::privacy::privacy_group;
+use super::session::session_group;
+use super::support::support_group;
+use super::updates::launcher_version_row;
 use crate::state::{AppState, LaunchMode, Runtime};
 use adw::prelude::*;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
 pub fn env_section(state: &AppState) -> gtk::Box {
     // Quadra group
-    let check_update_btn = gtk::Button::builder()
-        .label("Check for updates")
-        .valign(gtk::Align::Center)
-        .build();
-    check_update_btn.connect_clicked(|_| println!("install clicked"));
-
-    let launcher_info = adw::ActionRow::builder()
-        .title("Launcher version")
-        .subtitle(format!("v{}", VERSION))
-        .build();
-    launcher_info.add_suffix(&check_update_btn);
-
-    let force_update_btn = adw::ButtonRow::builder().title("Force update").build();
-
     let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
     launch_mode_row.set_subtitle("Settings stay available from the system tray");
 
@@ -30,10 +19,9 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     run_in_background_row.set_subtitle("Keep Quadra in the system tray after its window closes");
 
     let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
-    quadra_group.add(&launcher_info);
+    quadra_group.add(&launcher_version_row(state));
     quadra_group.add(&launch_mode_row);
     quadra_group.add(&run_in_background_row);
-    quadra_group.add(&force_update_btn);
 
     let discord_rich_presence_row =
         switch_row(state, "discord-rich-presence", "Show what you're playing");
@@ -55,11 +43,15 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&quadra_group);
     section.append(&discord_group);
+    section.append(&session_group(state));
+    section.append(&privacy_group(state));
     section.append(&runtime_group);
     section.append(&rosemary_runtime_group(state));
     section.append(&graphics_group(state));
     section.append(&input_group(state));
     section.append(&environment_variables_group(state));
+    section.append(&account_group(state));
+    section.append(&support_group(state));
 
     section
 }

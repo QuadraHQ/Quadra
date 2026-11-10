@@ -88,3 +88,10 @@ pub const ALLOWLIST: &[FlagCategory] = &[
         )],
     },
 ];
+
+pub fn is_listed(name: &str) -> bool {
+    ALLOWLIST
+        .iter()
+        .flat_map(|category| category.flags)
+        .any(|flag| flag.name == name)
+}

@@ -1,6 +1,7 @@
 const JOINING_GAME: &str = "! Joining game '";
 const PLACE_AFTER_JOB_ID: &str = "' place ";
 const WORD_BEFORE_SERVER_ADDRESS: &str = "at";
+const CONNECTION_ACCEPTED: &str = "Connection accepted from ";
 const LEFT_GAME_MARKERS: [&str; 2] = [
     "[FLog::Network] Time to disconnect replication data:",
     "[FLog::SingleSurfaceApp] leaveUGCGameInternal",
@@ -12,6 +13,9 @@ pub enum GameEvent {
         place_id: u64,
         job_id: String,
         server_address: Option<String>,
+    },
+    Connected {
+        server_ip: String,
     },
     Left,
 }
@@ -36,8 +40,44 @@ fn event_in_line(line: &str) -> Option<GameEvent> {
         });
     }
 
+    if let Some((_, address)) = line.split_once(CONNECTION_ACCEPTED) {
+        let server_ip = address.split(['|', ' ', ':']).next()?;
+        return Some(GameEvent::Connected {
+            server_ip: server_ip.to_owned(),
+        });
+    }
+
     LEFT_GAME_MARKERS
         .iter()
         .any(|marker| line.contains(marker))
         .then_some(GameEvent::Left)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_the_public_server_ip_from_the_connection_line() {
+        let line = "2026-10-06T00:06:41.779Z,10.779502,9d4bb000,6,Info [DFLog::NetworkClient] Connection accepted from 128.116.48.33|51019";
+        assert_eq!(
+            events_in(line).collect::<Vec<_>>(),
+            [GameEvent::Connected {
+                server_ip: "128.116.48.33".to_owned()
+            }]
+        );
+    }
+
+    #[test]
+    fn reads_the_join_line() {
+        let line = "[FLog::Output] ! Joining game 'abc-1' place 123 at 10.17.3.215";
+        assert_eq!(
+            events_in(line).collect::<Vec<_>>(),
+            [GameEvent::Joining {
+                place_id: 123,
+                job_id: "abc-1".to_owned(),
+                server_address: Some("10.17.3.215".to_owned()),
+            }]
+        );
+    }
 }

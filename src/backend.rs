@@ -1,9 +1,13 @@
+mod account;
 mod background;
+mod cpu_limit;
 mod desktop_entries;
 mod destination;
+mod diagnostics;
 mod discord_ipc;
 mod discord_presence;
 mod download;
+mod fast_flag_allowlist;
 mod fast_flags;
 mod game_activity;
 mod game_details;
@@ -13,6 +17,7 @@ mod launch_request;
 mod live_log;
 mod mangohud;
 mod mime_defaults;
+mod mods;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
@@ -20,11 +25,15 @@ mod regions;
 mod roblox;
 mod runners;
 mod server_history;
+mod server_location;
+mod telemetry;
+mod updater;
 mod vr;
 
 pub use desktop_entries::Shortcut;
 pub use handlers::Handler;
 pub use launch_request::{LaunchRequest, StudioTarget};
+pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
@@ -45,8 +54,12 @@ pub fn initialize(state: &AppState) {
         });
     }
 
+    state.connect_notify_local(Some("prefix"), |state, _| account::refresh(state));
+    updater::initialize(state);
+    fast_flag_allowlist::initialize();
     discord_presence::initialize(state);
     server_history::initialize(state);
+    server_location::initialize(state);
     refresh(state);
     if state.first_launch() {
         prefer_an_installed_runner(state);
@@ -80,6 +93,7 @@ pub fn refresh(state: &AppState) {
     );
 
     state.set_darwin_base_installed(prefix::has_darwin_base(&paths::quadra_prefix_directory()));
+    account::refresh(state);
 }
 
 pub fn install(state: &AppState, client: Client) {
@@ -205,6 +219,62 @@ pub fn load_regions(state: &AppState) {
     });
 }
 
+pub fn flag_is_ignored(name: &str) -> bool {
+    fast_flag_allowlist::is_ignored(name)
+}
+
+pub fn check_for_updates(state: &AppState) {
+    updater::check(state);
+}
+
+pub fn install_update(state: &AppState) {
+    updater::install(state);
+}
+
+pub fn can_update_itself() -> bool {
+    updater::can_update_itself()
+}
+
+pub fn hardware_report() -> String {
+    diagnostics::hardware_report()
+}
+
+pub fn sign_out(state: &AppState) {
+    account::sign_out(state);
+}
+
+pub fn diagnostics_directory() -> std::path::PathBuf {
+    glib::user_special_dir(glib::UserDirectory::Documents).unwrap_or_else(glib::home_dir)
+}
+
+pub fn collect_diagnostics_in_background(state: &AppState) {
+    if state.busy() {
+        return;
+    }
+    let summary = diagnostics::quadra_summary(state);
+    let directory = diagnostics_directory();
+
+    run_task(
+        state,
+        move |progress| {
+            progress.step("Collecting diagnostics");
+            diagnostics::collect(&summary, &directory)
+        },
+        |_, archive| {
+            gtk::FileLauncher::new(Some(&gtk::gio::File::for_path(archive))).open_containing_folder(
+                gtk::Window::NONE,
+                gtk::gio::Cancellable::NONE,
+                |_| {},
+            );
+        },
+    );
+}
+
+pub fn collect_diagnostics(directory: &Path) -> anyhow::Result<std::path::PathBuf> {
+    let state = AppState::load();
+    diagnostics::collect(&diagnostics::quadra_summary(&state), directory)
+}
+
 pub fn forget_server_history(state: &AppState) {
     server_history::forget_all(state);
 }
@@ -220,6 +290,7 @@ fn start_playing(state: &AppState, destination: Destination) {
     let should_install_quadra_rosemary = runner.is_quadra() && !runner.is_installed();
     let installed = roblox::installed_release(Client::Player);
     let vr_settings = vr::VrSettings::wanted_by(state);
+    let mod_settings = mods::ModSettings::of(state);
     let rosemary = runner.executable.clone();
 
     run_task(
@@ -230,6 +301,8 @@ fn start_playing(state: &AppState, destination: Destination) {
             }
 
             roblox::install_or_update(Client::Player, installed.as_ref(), progress)?;
+            progress.step("Applying mods");
+            mods::prepare(&mod_settings)?;
             let vr_session = vr_settings.map(|settings| vr::prepare(settings, &rosemary));
             Ok((destination.resolve(progress), vr_session))
         },

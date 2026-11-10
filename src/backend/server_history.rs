@@ -38,6 +38,10 @@ pub fn expect_join_to(picked_server: PickedServer) {
     }
 }
 
+pub fn remember_location(state: &AppState, job_id: &str, location: &str) {
+    save(state, state.server_history().with_location(job_id, location));
+}
+
 pub fn forget_all(state: &AppState) {
     save(state, ServerHistory::default());
 }

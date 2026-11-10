@@ -36,6 +36,19 @@ pub fn switch_row(state: &AppState, property: &str, title: &str) -> adw::SwitchR
     row
 }
 
+pub fn show_when<T: glib::value::ValueType>(
+    widget: &impl IsA<gtk::Widget>,
+    state: &AppState,
+    property: &str,
+    is_shown: impl Fn(T) -> bool + Send + Sync + 'static,
+) {
+    state
+        .bind_property(property, widget, "visible")
+        .transform_to(move |_, value: T| Some(is_shown(value)))
+        .sync_create()
+        .build();
+}
+
 const NOTHING_CHOSEN_LABEL: &str = "None";
 
 pub struct ChoiceAction {

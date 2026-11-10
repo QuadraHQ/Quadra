@@ -1,12 +1,20 @@
+mod about;
+mod account;
 mod bound_rows;
+mod custom_flags;
 mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
 mod integration;
 mod mangohud;
+mod mods;
+mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
+mod session;
+mod support;
+mod updates;
 mod vr;
 
 use crate::state::AppState;
@@ -15,6 +23,7 @@ use adw::prelude::*;
 use environment::env_section;
 use fast_flags::fast_flags_section;
 use integration::integration_section;
+use mods::mods_section;
 use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
@@ -33,6 +42,12 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "FastFlags",
         "emoji-flags-symbolic",
     );
+    let mods = stack.add_titled_with_icon(
+        &scrollable(&mods_section(state)),
+        Some("mods"),
+        "Mods",
+        "application-x-addon-symbolic",
+    );
     let vr = stack.add_titled_with_icon(
         &scrollable(&vr_section(state)),
         Some("vr"),
@@ -46,6 +61,7 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "view-app-grid-symbolic",
     );
     show_only_while_roblox_is_selected(&fast_flags, state);
+    show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
 
     let switcher = adw::ViewSwitcher::builder()

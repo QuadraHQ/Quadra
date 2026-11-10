@@ -1,6 +1,7 @@
 mod client_page;
 mod logs_button;
 mod play_button;
+mod playtime_label;
 mod status_label;
 
 use crate::state::{AppState, Client};

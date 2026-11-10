@@ -1,7 +1,7 @@
 use super::launch_request::StudioTarget;
 use super::runners::Runner;
 use super::vr::{self, VrSession};
-use super::{fast_flags, live_log, paths, prefix, roblox};
+use super::{cpu_limit, fast_flags, live_log, mods, paths, prefix, roblox, telemetry};
 use crate::state::{
     AppState, Client, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const LOG_FILE: &str = "roblox.log";
 const FORCE_STOP_DELAY: Duration = Duration::from_secs(10);
@@ -91,6 +91,8 @@ fn run(
         .stdout(log.try_clone()?)
         .stderr(log)
         .process_group(0);
+    cpu_limit::limit(&mut command, state.cpu_core_limit());
+    let started_at = Instant::now();
 
     let mut child = command
         .spawn()
@@ -109,15 +111,20 @@ fn run(
 
     let (exit_sender, exit_receiver) = async_channel::bounded(1);
     std::thread::spawn(move || {
-        let _ = child.wait();
+        let exited_cleanly = child.wait().is_ok_and(|status| status.success());
         roblox_exited.store(true, Ordering::Release);
-        let _ = exit_sender.send_blocking(());
+        let _ = exit_sender.send_blocking(exited_cleanly);
     });
 
     let state = state.clone();
     glib::spawn_future_local(async move {
-        let _ = exit_receiver.recv().await;
+        let exited_cleanly = exit_receiver.recv().await.unwrap_or(true);
         RUNNING_ROBLOX.replace(None);
+        let crashed = !exited_cleanly && !state.stopping();
+        if client == Client::Player {
+            state.set_playtime_seconds(state.playtime_seconds() + started_at.elapsed().as_secs());
+            report_mods_set_aside(&state, crashed);
+        }
         state.set_stopping(false);
         state.set_running(false);
         state.set_roblox_graphics_started(false);
@@ -125,6 +132,17 @@ fn run(
     });
 
     Ok(())
+}
+
+fn report_mods_set_aside(state: &AppState, crashed: bool) {
+    let set_aside = mods::finish_session(crashed);
+    if !set_aside.is_empty() {
+        state.report_error(&format!(
+            "Roblox crashed soon after starting with new mods, so Quadra set them aside: {}. \
+             You can turn them back on in Settings.",
+            set_aside.join(", ")
+        ));
+    }
 }
 
 pub fn stop_roblox() {
@@ -199,6 +217,10 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
             "ROSEMARY_SCREEN_REFRESH_RATE",
             state.refresh_rate().to_string(),
         ));
+    }
+
+    if state.block_telemetry() {
+        environment.push((telemetry::BLOCK_HOST_VARIABLE, telemetry::blocked_hosts()));
     }
 
     environment.push((

@@ -82,3 +82,21 @@ pub fn regions_cache_file() -> PathBuf {
 pub fn vr_directory() -> PathBuf {
     glib::user_cache_dir().join("quadra").join("vr")
 }
+
+pub fn mods_directory() -> PathBuf {
+    quadra_data_directory().join("modifications")
+}
+
+pub fn mods_backup_directory() -> PathBuf {
+    quadra_data_directory().join("mods-backup")
+}
+
+pub fn mod_guard_file() -> PathBuf {
+    glib::user_config_dir().join("quadra").join("mod-guard.json")
+}
+
+pub fn fast_flag_allowlist_file() -> PathBuf {
+    glib::user_cache_dir()
+        .join("quadra")
+        .join("fast-flag-allowlist.json")
+}

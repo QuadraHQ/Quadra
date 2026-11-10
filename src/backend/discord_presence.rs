@@ -44,6 +44,7 @@ pub fn initialize(state: &AppState) {
             for event in game_activity::events_in(output) {
                 match event {
                     GameEvent::Joining { place_id, .. } => join_game(state, &presence, place_id),
+                    GameEvent::Connected { .. } => {}
                     GameEvent::Left => leave_game(&presence),
                 }
             }

@@ -16,6 +16,10 @@ use std::rc::Rc;
 const APP_ID: &str = "org.quadrahq.Quadra";
 
 fn main() -> glib::ExitCode {
+    if let Some(exit_code) = command_line::run_report_if_requested() {
+        return exit_code;
+    }
+
     let app = Application::builder()
         .application_id(APP_ID)
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)

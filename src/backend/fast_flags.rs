@@ -11,7 +11,7 @@ pub fn write_client_settings(flags: &FastFlags) -> anyhow::Result<()> {
     let client_settings: BTreeMap<&str, String> = flags
         .0
         .iter()
-        .map(|(name, &value)| (name.as_str(), client_setting_value(value)))
+        .map(|(name, value)| (name.as_str(), client_setting_value(value)))
         .collect();
 
     if let Some(directory) = path.parent() {
@@ -21,10 +21,11 @@ pub fn write_client_settings(flags: &FastFlags) -> anyhow::Result<()> {
         .with_context(|| format!("Couldn't write the FastFlags to {}", path.display()))
 }
 
-fn client_setting_value(value: FastFlagValue) -> String {
+fn client_setting_value(value: &FastFlagValue) -> String {
     match value {
         FastFlagValue::Toggle(true) => "True".to_owned(),
         FastFlagValue::Toggle(false) => "False".to_owned(),
         FastFlagValue::Number(number) => number.to_string(),
+        FastFlagValue::Text(text) => text.clone(),
     }
 }

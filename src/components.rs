@@ -1,8 +1,11 @@
 pub mod error_dialog;
+pub mod file_row;
 pub mod header;
 pub mod icon;
+pub mod ignored_flag_icon;
 pub mod launch_window;
 pub mod logs_dialog;
 pub mod play_action;
 pub mod roblox_status;
 pub mod tray;
+pub mod update_banner;

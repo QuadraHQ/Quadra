@@ -3,6 +3,7 @@ mod client;
 mod environment_variables;
 mod fast_flags;
 mod launch_mode;
+mod mods;
 mod regions;
 mod rosemary_options;
 mod server_history;
@@ -12,6 +13,7 @@ pub use client::Client;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
+pub use mods::{CursorStyle, DeathSound};
 pub use regions::{Region, Regions, country_and_city_of};
 pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
 pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
@@ -36,7 +38,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 23] = [
+const SAVED_PROPERTIES: [&str; 37] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -60,6 +62,20 @@ const SAVED_PROPERTIES: [&str; 23] = [
     "vr-mirror",
     "vr-render-scale",
     "vr-zink",
+    "death-sound",
+    "custom-death-sound",
+    "old-character-sounds",
+    "cursor-style",
+    "custom-cursor",
+    "custom-font",
+    "custom-mods",
+    "hide-launcher-while-playing",
+    "open-after-exit",
+    "show-playtime",
+    "playtime-seconds",
+    "notify-server-location",
+    "cpu-core-limit",
+    "block-telemetry",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -122,6 +138,25 @@ struct SavedSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     vr_render_scale: Option<u32>,
     vr_zink: bool,
+    death_sound: DeathSound,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    custom_death_sound: String,
+    old_character_sounds: bool,
+    cursor_style: CursorStyle,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    custom_cursor: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    custom_font: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    custom_mods: Option<bool>,
+    hide_launcher_while_playing: bool,
+    open_after_exit: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    show_playtime: Option<bool>,
+    playtime_seconds: u64,
+    notify_server_location: bool,
+    cpu_core_limit: u32,
+    block_telemetry: bool,
 }
 
 impl SavedSettings {
@@ -202,6 +237,40 @@ mod imp {
         vr_render_scale: Cell<u32>,
         #[property(get, set)]
         vr_zink: Cell<bool>,
+        #[property(get, set, builder(DeathSound::default()))]
+        death_sound: Cell<DeathSound>,
+        #[property(get, set)]
+        custom_death_sound: RefCell<String>,
+        #[property(get, set)]
+        old_character_sounds: Cell<bool>,
+        #[property(get, set, builder(CursorStyle::default()))]
+        cursor_style: Cell<CursorStyle>,
+        #[property(get, set)]
+        custom_cursor: RefCell<String>,
+        #[property(get, set)]
+        custom_font: RefCell<String>,
+        #[property(get, set)]
+        custom_mods: Cell<bool>,
+        #[property(get, set)]
+        hide_launcher_while_playing: Cell<bool>,
+        #[property(get, set)]
+        open_after_exit: Cell<bool>,
+        #[property(get, set)]
+        show_playtime: Cell<bool>,
+        #[property(get, set)]
+        playtime_seconds: Cell<u64>,
+        #[property(get, set)]
+        notify_server_location: Cell<bool>,
+        #[property(get, set)]
+        cpu_core_limit: Cell<u32>,
+        #[property(get, set)]
+        signed_in: Cell<bool>,
+        #[property(get, set)]
+        block_telemetry: Cell<bool>,
+        #[property(get, set)]
+        available_update: RefCell<String>,
+        #[property(get, set)]
+        update_status: RefCell<String>,
         #[property(get, set)]
         vr_status: RefCell<String>,
         #[property(get, set)]
@@ -320,6 +389,23 @@ impl AppState {
                     .clamp(*VR_RENDER_SCALE_RANGE.start(), *VR_RENDER_SCALE_RANGE.end()),
             )
             .property("vr-zink", settings.vr_zink)
+            .property("death-sound", settings.death_sound)
+            .property("custom-death-sound", settings.custom_death_sound)
+            .property("old-character-sounds", settings.old_character_sounds)
+            .property("cursor-style", settings.cursor_style)
+            .property("custom-cursor", settings.custom_cursor)
+            .property("custom-font", settings.custom_font)
+            .property("custom-mods", settings.custom_mods.unwrap_or(true))
+            .property(
+                "hide-launcher-while-playing",
+                settings.hide_launcher_while_playing,
+            )
+            .property("open-after-exit", settings.open_after_exit)
+            .property("show-playtime", settings.show_playtime.unwrap_or(true))
+            .property("playtime-seconds", settings.playtime_seconds)
+            .property("notify-server-location", settings.notify_server_location)
+            .property("cpu-core-limit", settings.cpu_core_limit)
+            .property("block-telemetry", settings.block_telemetry)
             .property("first-launch", !settings.opened_before)
             .build();
 
@@ -481,6 +567,20 @@ impl AppState {
             vr_mirror: Some(self.vr_mirror()),
             vr_render_scale: Some(self.vr_render_scale()),
             vr_zink: self.vr_zink(),
+            death_sound: self.death_sound(),
+            custom_death_sound: self.custom_death_sound(),
+            old_character_sounds: self.old_character_sounds(),
+            cursor_style: self.cursor_style(),
+            custom_cursor: self.custom_cursor(),
+            custom_font: self.custom_font(),
+            custom_mods: Some(self.custom_mods()),
+            hide_launcher_while_playing: self.hide_launcher_while_playing(),
+            open_after_exit: self.open_after_exit(),
+            show_playtime: Some(self.show_playtime()),
+            playtime_seconds: self.playtime_seconds(),
+            notify_server_location: self.notify_server_location(),
+            cpu_core_limit: self.cpu_core_limit(),
+            block_telemetry: self.block_telemetry(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
@@ -492,7 +592,7 @@ impl AppState {
     }
 }
 
-fn settings_path() -> PathBuf {
+pub fn settings_path() -> PathBuf {
     glib::user_config_dir().join("quadra").join("config.toml")
 }
 

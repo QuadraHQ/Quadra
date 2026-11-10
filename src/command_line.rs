@@ -1,10 +1,12 @@
-use crate::backend::{LaunchRequest, StudioTarget};
+use crate::backend::{self, LaunchRequest, StudioTarget};
 use adw::prelude::*;
 use gtk::{gio, glib};
 
 const ROBLOX_OPTION: &str = "roblox";
 const STUDIO_OPTION: &str = "studio";
 const STUDIO_LINK_SCHEME_PREFIX: &str = "roblox-studio";
+const HARDWARE_REPORT_OPTION: &str = "hardware-report";
+const COLLECT_DIAGNOSTICS_OPTION: &str = "collect-diagnostics";
 
 pub fn add_options(app: &adw::Application) {
     add_flag(
@@ -17,6 +19,16 @@ pub fn add_options(app: &adw::Application) {
         STUDIO_OPTION,
         "Start Roblox Studio without opening Quadra, following a link or opening a place file if given",
     );
+    add_flag(
+        app,
+        HARDWARE_REPORT_OPTION,
+        "Print the hardware and driver details useful for bug reports, then exit",
+    );
+    add_flag(
+        app,
+        COLLECT_DIAGNOSTICS_OPTION,
+        "Save a diagnostics archive (in the given folder, or Documents), then exit",
+    );
     app.add_main_option(
         glib::OPTION_REMAINING,
         glib::Char(0),
@@ -25,6 +37,36 @@ pub fn add_options(app: &adw::Application) {
         "",
         Some("[LINK|PLACE FILE]"),
     );
+}
+
+pub fn run_report_if_requested() -> Option<glib::ExitCode> {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    let is_requested = |option: &str| {
+        arguments
+            .iter()
+            .position(|argument| *argument == format!("--{option}"))
+    };
+
+    if is_requested(HARDWARE_REPORT_OPTION).is_some() {
+        print!("{}", backend::hardware_report());
+        return Some(glib::ExitCode::SUCCESS);
+    }
+
+    let position = is_requested(COLLECT_DIAGNOSTICS_OPTION)?;
+    let directory = arguments
+        .get(position + 1)
+        .filter(|argument| !argument.starts_with('-'))
+        .map_or_else(backend::diagnostics_directory, std::path::PathBuf::from);
+    match backend::collect_diagnostics(&directory) {
+        Ok(archive) => {
+            println!("{}", archive.display());
+            Some(glib::ExitCode::SUCCESS)
+        }
+        Err(error) => {
+            eprintln!("Couldn't collect the diagnostics: {error:#}");
+            Some(glib::ExitCode::FAILURE)
+        }
+    }
 }
 
 pub fn launch_requested_by(command_line: &gio::ApplicationCommandLine) -> Option<LaunchRequest> {

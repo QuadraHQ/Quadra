@@ -3,6 +3,7 @@ use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
 use crate::components::play_action::PlayAction;
+use crate::components::update_banner::update_banner;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::pages::home::home_page;
 use crate::pages::servers::servers_page;
@@ -14,8 +15,13 @@ use gtk::glib;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 4] =
-    ["busy", "running", "run-in-background", "launch-mode"];
+const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
+    "busy",
+    "running",
+    "run-in-background",
+    "launch-mode",
+    "hide-launcher-while-playing",
+];
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
 
 #[derive(Clone, Copy)]
@@ -63,6 +69,11 @@ impl Quadra {
             #[weak]
             quadra,
             move |_| quadra.quit_if_nothing_keeps_it_open()
+        ));
+        state.connect_running_notify(glib::clone!(
+            #[weak]
+            quadra,
+            move |_| quadra.adjust_window_to_running_roblox()
         ));
         for property in PROPERTIES_THAT_DECIDE_STAYING_OPEN {
             state.connect_notify_local(
@@ -131,6 +142,14 @@ impl Quadra {
         }
     }
 
+    fn adjust_window_to_running_roblox(&self) {
+        if self.state.running() && self.state.hide_launcher_while_playing() {
+            self.window.set_visible(false);
+        } else if !self.state.running() && self.state.open_after_exit() {
+            self.show(Page::Home);
+        }
+    }
+
     fn wants_tray_icon(&self) -> bool {
         self.state.run_in_background() || self.state.launch_mode() == LaunchMode::LaunchRoblox
     }
@@ -141,8 +160,12 @@ impl Quadra {
             self.state.launch_mode() == LaunchMode::LaunchRoblox || self.launched_directly.get();
         let is_launching_right_away =
             launches_without_window && (self.state.busy() || self.state.running());
+        let is_hidden_while_playing =
+            self.state.hide_launcher_while_playing() && self.state.running();
 
-        (self.state.run_in_background() && can_be_reopened_from_tray) || is_launching_right_away
+        (self.state.run_in_background() && can_be_reopened_from_tray)
+            || is_launching_right_away
+            || is_hidden_while_playing
     }
 
     fn quit_if_nothing_keeps_it_open(&self) {
@@ -201,6 +224,7 @@ fn pages(state: &AppState) -> ViewStack {
 fn window(app: &Application, state: &AppState, pages: &ViewStack) -> ApplicationWindow {
     let toolbar_view = ToolbarView::new();
     toolbar_view.add_top_bar(&bar(pages));
+    toolbar_view.add_top_bar(&update_banner(state));
     toolbar_view.set_content(Some(pages));
 
     let window = ApplicationWindow::builder()

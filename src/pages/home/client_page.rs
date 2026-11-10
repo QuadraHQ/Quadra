@@ -1,5 +1,6 @@
 use super::logs_button::logs_button;
 use super::play_button::play_button;
+use super::playtime_label::playtime_label;
 use super::status_label::status_label;
 use crate::components::icon::app_icon;
 use crate::state::{AppState, Client};
@@ -29,6 +30,9 @@ pub fn client_page(state: &AppState, client: Client) -> gtk::Widget {
     content.append(&logo);
     content.append(&title);
     content.append(&subtitle);
+    if client == Client::Player {
+        content.append(&playtime_label(state));
+    }
     content.append(&logs_button);
     content.append(&play_button);
 

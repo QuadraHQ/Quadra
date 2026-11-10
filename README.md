@@ -20,7 +20,7 @@
 
 This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
 
-- Auto-updater
+- Auto-updater for Flatpak (the AppImage updates itself)
 - Support for the Darling runtime
 
 ## Build instructions
@@ -67,6 +67,8 @@ The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 - `~/.local/share/quadra/rosemary/<version>`: Installed Rosemary versions
 - `~/.local/share/quadra/roblox`: The Roblox Player installation
 - `~/.local/share/quadra/logs`: Quadra and Roblox logs
+- `~/.local/share/quadra/modifications`: Your own files that Quadra overlays onto the Roblox client (see the Mods settings)
+- `~/.local/share/quadra/mods-backup`: The original Roblox files that mods replaced, so they can be put back
 - `~/.cache/quadra/downloads`: Downloaded files, such as Rosemary and Roblox packages
 - `~/.cache/quadra/vr`: The VR library Rosemary loads into Roblox
 - `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
