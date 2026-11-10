@@ -29,7 +29,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential ca-certificates clang curl file git lld pkg-config \
-            libadwaita-1-dev libgtk-4-dev librsvg2-common
+            libadwaita-1-dev libgtk-4-dev libgtk4-layer-shell-dev librsvg2-common
 
       - uses: actions/checkout@v7
 
