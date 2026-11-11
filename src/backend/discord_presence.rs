@@ -1,3 +1,4 @@
+use super::background::run_quietly;
 use super::discord_ipc::{DiscordClient, Image, Link, RichPresence};
 use super::game_activity::{self, GameEvent};
 use super::game_details::{self, GameDetails};
@@ -136,40 +137,37 @@ fn fetch_details(state: &AppState, presence: &SharedPresence, place_id: u64) {
         return;
     }
 
-    let (details_sender, details_receiver) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = details_sender.send_blocking(game_details::fetch(place_id));
-    });
-
     let state = state.clone();
     let presence = presence.clone();
-    glib::spawn_future_local(async move {
-        let fetched = match details_receiver.recv().await {
-            Ok(Ok(details)) => details,
-            Ok(Err(error)) => {
-                eprintln!("Couldn't get the details of place {place_id}: {error:#}");
-                return;
-            }
-            Err(_) => return,
-        };
+    run_quietly(
+        move || game_details::fetch(place_id),
+        move |details| {
+            let fetched = match details {
+                Ok(details) => details,
+                Err(error) => {
+                    eprintln!("Couldn't get the details of place {place_id}: {error:#}");
+                    return;
+                }
+            };
 
-        if let Some(game) = presence
-            .borrow_mut()
-            .game
-            .as_mut()
-            .filter(|game| game.place_id == place_id)
-        {
-            let previous_icon_url = game
-                .details
-                .take()
-                .and_then(|previous_details| previous_details.icon_url);
-            game.details = Some(GameDetails {
-                icon_url: fetched.icon_url.or(previous_icon_url),
-                ..fetched
-            });
-        }
-        show(&state, &presence);
-    });
+            if let Some(game) = presence
+                .borrow_mut()
+                .game
+                .as_mut()
+                .filter(|game| game.place_id == place_id)
+            {
+                let previous_icon_url = game
+                    .details
+                    .take()
+                    .and_then(|previous_details| previous_details.icon_url);
+                game.details = Some(GameDetails {
+                    icon_url: fetched.icon_url.or(previous_icon_url),
+                    ..fetched
+                });
+            }
+            show(&state, &presence);
+        },
+    );
 }
 
 fn show(state: &AppState, presence: &SharedPresence) {

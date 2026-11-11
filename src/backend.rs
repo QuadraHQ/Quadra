@@ -38,7 +38,7 @@ pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
-use background::run_task;
+use background::{run_quietly, run_task};
 use destination::Destination;
 use gtk::glib;
 use gtk::prelude::*;
@@ -205,18 +205,10 @@ pub fn load_regions(state: &AppState) {
         return;
     }
 
-    let (regions_sender, regions_receiver) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = regions_sender.send_blocking(regions::available());
-    });
-
     let state = state.clone();
-    glib::spawn_future_local(async move {
-        match regions_receiver.recv().await {
-            Ok(Ok(regions)) => state.set_regions(Regions(regions)),
-            Ok(Err(error)) => eprintln!("Couldn't get the list of regions: {error:#}"),
-            Err(_) => {}
-        }
+    run_quietly(regions::available, move |regions| match regions {
+        Ok(regions) => state.set_regions(Regions(regions)),
+        Err(error) => eprintln!("Couldn't get the list of regions: {error:#}"),
     });
 }
 

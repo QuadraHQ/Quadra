@@ -1,9 +1,10 @@
+use super::background::run_quietly;
 use super::game_activity::{self, GameEvent};
 use super::server_history;
 use crate::state::AppState;
 use anyhow::Context;
+use gtk::gio;
 use gtk::gio::prelude::*;
-use gtk::{gio, glib};
 use serde_json::Value;
 use std::cell::RefCell;
 use std::net::Ipv4Addr;
@@ -38,24 +39,19 @@ fn look_up(state: &AppState, server_ip: &str) {
     };
     let job_id = CURRENT_JOB_ID.with_borrow(Clone::clone);
 
-    let (location_sender, location_receiver) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = location_sender.send_blocking(fetch_location(address));
-    });
-
     let state = state.clone();
-    glib::spawn_future_local(async move {
-        match location_receiver.recv().await {
-            Ok(Ok(location)) => {
+    run_quietly(
+        move || fetch_location(address),
+        move |location| match location {
+            Ok(location) => {
                 notify(&location);
                 if let Some(job_id) = job_id {
                     server_history::remember_location(&state, &job_id, &location);
                 }
             }
-            Ok(Err(error)) => eprintln!("Couldn't find where the server is: {error:#}"),
-            Err(_) => {}
-        }
-    });
+            Err(error) => eprintln!("Couldn't find where the server is: {error:#}"),
+        },
+    );
 }
 
 fn fetch_location(address: Ipv4Addr) -> anyhow::Result<String> {

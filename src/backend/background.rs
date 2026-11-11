@@ -3,6 +3,8 @@ use anyhow::anyhow;
 use gtk::glib;
 use std::cell::Cell;
 
+const TASK_STOPPED_UNEXPECTEDLY: &str = "The background task stopped unexpectedly.";
+
 enum ProgressUpdate {
     Step(String),
     Fraction(f64),
@@ -64,7 +66,7 @@ pub fn run_task<T: Send + 'static>(
         let result = result_receiver
             .recv()
             .await
-            .unwrap_or_else(|_| Err(anyhow!("The background task stopped unexpectedly.")));
+            .unwrap_or_else(|_| Err(anyhow!(TASK_STOPPED_UNEXPECTEDLY)));
 
         state.set_task_description("");
         state.set_task_progress(0.0);
@@ -75,5 +77,23 @@ pub fn run_task<T: Send + 'static>(
         }
 
         state.set_busy(false);
+    });
+}
+
+pub fn run_quietly<T: Send + 'static>(
+    work: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
+    when_finished: impl FnOnce(anyhow::Result<T>) + 'static,
+) {
+    let (result_sender, result_receiver) = async_channel::bounded(1);
+    std::thread::spawn(move || {
+        let _ = result_sender.send_blocking(work());
+    });
+
+    glib::spawn_future_local(async move {
+        let result = result_receiver
+            .recv()
+            .await
+            .unwrap_or_else(|_| Err(anyhow!(TASK_STOPPED_UNEXPECTEDLY)));
+        when_finished(result);
     });
 }

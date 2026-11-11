@@ -1,9 +1,9 @@
+use super::background::run_quietly;
 use super::game_activity::{self, GameEvent};
 use super::game_details;
 use super::paths;
 use super::regions::PickedServer;
 use crate::state::{AppState, JoinedServer, ServerHistory};
-use gtk::glib;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
@@ -69,24 +69,19 @@ fn remember_join(state: &AppState, place_id: u64, job_id: String, server_address
 }
 
 fn fetch_game_name(state: &AppState, place_id: u64) {
-    let (name_sender, name_receiver) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = name_sender.send_blocking(game_details::fetch(place_id));
-    });
-
     let state = state.clone();
-    glib::spawn_future_local(async move {
-        match name_receiver.recv().await {
-            Ok(Ok(details)) => save(
+    run_quietly(
+        move || game_details::fetch(place_id),
+        move |details| match details {
+            Ok(details) => save(
                 &state,
                 state
                     .server_history()
                     .with_game_name(place_id, &details.name),
             ),
-            Ok(Err(error)) => eprintln!("Couldn't get the name of place {place_id}: {error:#}"),
-            Err(_) => {}
-        }
-    });
+            Err(error) => eprintln!("Couldn't get the name of place {place_id}: {error:#}"),
+        },
+    );
 }
 
 fn save(state: &AppState, history: ServerHistory) {

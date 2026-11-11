@@ -3,9 +3,8 @@ mod install_kind;
 mod release;
 mod version;
 
-use super::background::run_task;
+use super::background::{run_quietly, run_task};
 use crate::state::AppState;
-use gtk::glib;
 use install_kind::InstallKind;
 use release::AppImageUpdate;
 use std::cell::{Cell, RefCell};
@@ -51,32 +50,29 @@ pub fn check(state: &AppState) {
     }
     state.set_update_status("Checking for updates…");
 
-    let (result_sender, result_receiver) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = result_sender.send_blocking(release::newest_after(CURRENT_VERSION));
-    });
-
     let state = state.clone();
-    glib::spawn_future_local(async move {
-        match result_receiver.recv().await {
-            Ok(Ok(Some(update))) => {
-                state.set_update_status(format!("Version {} is available", update.version));
-                state.set_available_update(update.version.clone());
-                AVAILABLE_UPDATE.replace(Some(update));
+    run_quietly(
+        || release::newest_after(CURRENT_VERSION),
+        move |newest| {
+            match newest {
+                Ok(Some(update)) => {
+                    state.set_update_status(format!("Version {} is available", update.version));
+                    state.set_available_update(update.version.clone());
+                    AVAILABLE_UPDATE.replace(Some(update));
+                }
+                Ok(None) => {
+                    state.set_update_status("Quadra is up to date");
+                    state.set_available_update("");
+                    AVAILABLE_UPDATE.replace(None);
+                }
+                Err(error) => {
+                    eprintln!("{error:#}");
+                    state.set_update_status("Couldn't check for updates");
+                }
             }
-            Ok(Ok(None)) => {
-                state.set_update_status("Quadra is up to date");
-                state.set_available_update("");
-                AVAILABLE_UPDATE.replace(None);
-            }
-            Ok(Err(error)) => {
-                eprintln!("{error:#}");
-                state.set_update_status("Couldn't check for updates");
-            }
-            Err(_) => {}
-        }
-        CHECKING.set(false);
-    });
+            CHECKING.set(false);
+        },
+    );
 }
 
 pub fn install(state: &AppState) {
