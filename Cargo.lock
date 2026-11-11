@@ -24,6 +24,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ashpd"
+version = "0.13.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb8421aaa9644a5faf26735f258b669b15f063313ef8f8e2bdb28912a1a6f111"
+dependencies = [
+ "enumflags2",
+ "futures-channel",
+ "futures-util",
+ "gdk4-wayland",
+ "getrandom 0.4.3",
+ "glib",
+ "gtk4",
+ "serde",
+ "zbus",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -589,8 +606,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
  "futures-core",
+ "futures-io",
  "futures-macro",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "slab",
 ]
@@ -650,6 +669,30 @@ dependencies = [
  "libc",
  "pango-sys",
  "pkg-config",
+ "system-deps 9.0.1",
+]
+
+[[package]]
+name = "gdk4-wayland"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99cc5266dc4e8745a4c4683b26a0c54977a452809d572c940e39c6844663c0ec"
+dependencies = [
+ "gdk4",
+ "gdk4-wayland-sys",
+ "gio",
+ "glib",
+ "libc",
+]
+
+[[package]]
+name = "gdk4-wayland-sys"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb55bc5225519d34fdf1412db3755af88d1388a1c2a053d92e6751db13d96e68"
+dependencies = [
+ "glib-sys",
+ "libc",
  "system-deps 9.0.1",
 ]
 
@@ -1354,9 +1397,11 @@ name = "quadra-rewrite"
 version = "0.50.0-alpha.2"
 dependencies = [
  "anyhow",
+ "ashpd",
  "async-channel",
  "discord-rich-presence",
  "flate2",
+ "futures-util",
  "gtk4",
  "gtk4-layer-shell",
  "ksni",

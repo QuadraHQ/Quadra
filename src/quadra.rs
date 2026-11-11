@@ -4,7 +4,7 @@ use crate::components::close_roblox_dialog::confirm_closing_roblox;
 use crate::components::error_dialog::show_errors_from;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
-use crate::components::overlay::build_overlay;
+use crate::components::overlay::{build_overlay, listen_for_toggle_overlay_shortcut};
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
@@ -17,7 +17,7 @@ use crate::state::{AppState, LaunchMode};
 use crate::utils::show_only_while_roblox_is_selected;
 
 use adw::{Application, ApplicationWindow, ToolbarView, ViewStack, prelude::*};
-use gtk::{gio, glib};
+use gtk::glib;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -29,8 +29,6 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
     "hide-launcher-while-playing",
 ];
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
-const TOGGLE_OVERLAY_ACTION: &str = "toggle-overlay";
-const TOGGLE_OVERLAY_SHORTCUT: &str = "<Ctrl><Shift>o";
 
 #[derive(Clone, Copy)]
 enum Page {
@@ -115,7 +113,7 @@ impl Quadra {
             );
         }
         quadra.show_tray_icon_when_wanted();
-        quadra.register_toggle_overlay_action();
+        quadra.listen_for_toggle_overlay_shortcut();
 
         quadra
     }
@@ -148,18 +146,13 @@ impl Quadra {
         self.window.present();
     }
 
-    fn register_toggle_overlay_action(self: &Rc<Self>) {
-        let toggle_overlay = gio::SimpleAction::new(TOGGLE_OVERLAY_ACTION, None);
-        toggle_overlay.connect_activate(glib::clone!(
-            #[weak(rename_to = quadra)]
-            self,
-            move |_, _| quadra.toggle_overlay()
-        ));
-        self.app.add_action(&toggle_overlay);
-        self.app.set_accels_for_action(
-            &format!("app.{TOGGLE_OVERLAY_ACTION}"),
-            &[TOGGLE_OVERLAY_SHORTCUT],
-        );
+    fn listen_for_toggle_overlay_shortcut(self: &Rc<Self>) {
+        let quadra = Rc::downgrade(self);
+        listen_for_toggle_overlay_shortcut(&self.window, move || {
+            if let Some(quadra) = quadra.upgrade() {
+                quadra.toggle_overlay();
+            }
+        });
     }
 
     fn toggle_overlay(&self) {

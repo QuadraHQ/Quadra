@@ -1,3 +1,7 @@
+mod shortcut;
+
+pub use shortcut::listen_for_toggle_overlay_shortcut;
+
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 const OVERLAY_BACKDROP_STYLE: &str = "overlay-backdrop";
