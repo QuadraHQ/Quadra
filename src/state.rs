@@ -102,25 +102,23 @@ impl Choice for Runtime {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(default)]
 struct SavedSettings {
     launch_mode: LaunchMode,
     run_in_background: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    discord_rich_presence: Option<bool>,
+    discord_rich_presence: bool,
     runtime: Runtime,
-    runner: Option<String>,
+    runner: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_runner_path: String,
-    prefix: Option<String>,
+    prefix: String,
     #[serde(rename = "force_opengl", skip_serializing)]
     legacy_force_opengl: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     renderer: Option<Renderer>,
     mangohud: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    refresh_rate: Option<u32>,
+    refresh_rate: u32,
     presentation_mode: PresentationMode,
     opengl_swap_interval: SwapInterval,
     title_bar: TitleBar,
@@ -133,10 +131,8 @@ struct SavedSettings {
     #[serde(skip_serializing_if = "String::is_empty")]
     preferred_region: String,
     vr: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    vr_mirror: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    vr_render_scale: Option<u32>,
+    vr_mirror: bool,
+    vr_render_scale: u32,
     vr_zink: bool,
     death_sound: DeathSound,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -147,16 +143,60 @@ struct SavedSettings {
     custom_cursor: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_font: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    custom_mods: Option<bool>,
+    custom_mods: bool,
     hide_launcher_while_playing: bool,
     open_after_exit: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    show_playtime: Option<bool>,
+    show_playtime: bool,
     playtime_seconds: u64,
     notify_server_location: bool,
     cpu_core_limit: u32,
     block_telemetry: bool,
+}
+
+impl Default for SavedSettings {
+    fn default() -> Self {
+        Self {
+            launch_mode: LaunchMode::default(),
+            run_in_background: false,
+            discord_rich_presence: true,
+            runtime: Runtime::default(),
+            runner: QUADRA_RUNNER.to_owned(),
+            custom_runner_path: String::new(),
+            prefix: QUADRA_PREFIX.to_owned(),
+            legacy_force_opengl: false,
+            renderer: None,
+            mangohud: false,
+            refresh_rate: USE_MONITOR_REFRESH_RATE,
+            presentation_mode: PresentationMode::default(),
+            opengl_swap_interval: SwapInterval::default(),
+            title_bar: TitleBar::default(),
+            command_key: CommandKey::default(),
+            ctrl_for_edit_shortcuts: false,
+            plain_ctrl_click: false,
+            opened_before: false,
+            environment_variables: EnvironmentVariables::default(),
+            fast_flags: FastFlags::default(),
+            preferred_region: String::new(),
+            vr: false,
+            vr_mirror: true,
+            vr_render_scale: DEFAULT_VR_RENDER_SCALE,
+            vr_zink: false,
+            death_sound: DeathSound::default(),
+            custom_death_sound: String::new(),
+            old_character_sounds: false,
+            cursor_style: CursorStyle::default(),
+            custom_cursor: String::new(),
+            custom_font: String::new(),
+            custom_mods: true,
+            hide_launcher_while_playing: false,
+            open_after_exit: false,
+            show_playtime: true,
+            playtime_seconds: 0,
+            notify_server_location: false,
+            cpu_core_limit: 0,
+            block_telemetry: false,
+        }
+    }
 }
 
 impl SavedSettings {
@@ -352,26 +392,17 @@ impl AppState {
             .property("run-in-background", settings.run_in_background)
             .property("discord-rich-presence", settings.discord_rich_presence)
             .property("runtime", settings.runtime)
-            .property(
-                "runner",
-                settings.runner.unwrap_or_else(|| QUADRA_RUNNER.to_owned()),
-            )
+            .property("runner", settings.runner)
             .property("custom-runner-path", settings.custom_runner_path)
             .property("available-runners", vec![QUADRA_RUNNER.to_owned()])
-            .property(
-                "prefix",
-                settings.prefix.unwrap_or_else(|| QUADRA_PREFIX.to_owned()),
-            )
+            .property("prefix", settings.prefix)
             .property(
                 "available-prefixes",
                 vec![QUADRA_PREFIX.to_owned(), ROSEMARY_DEFAULT_PREFIX.to_owned()],
             )
             .property("renderer", renderer)
             .property("mangohud", settings.mangohud)
-            .property(
-                "refresh-rate",
-                settings.refresh_rate.unwrap_or(USE_MONITOR_REFRESH_RATE),
-            )
+            .property("refresh-rate", settings.refresh_rate)
             .property("presentation-mode", settings.presentation_mode)
             .property("opengl-swap-interval", settings.opengl_swap_interval)
             .property("title-bar", settings.title_bar)
@@ -382,12 +413,11 @@ impl AppState {
             .property("fast-flags", settings.fast_flags)
             .property("preferred-region", settings.preferred_region)
             .property("vr", settings.vr)
-            .property("vr-mirror", settings.vr_mirror.unwrap_or(true))
+            .property("vr-mirror", settings.vr_mirror)
             .property(
                 "vr-render-scale",
                 settings
                     .vr_render_scale
-                    .unwrap_or(DEFAULT_VR_RENDER_SCALE)
                     .clamp(*VR_RENDER_SCALE_RANGE.start(), *VR_RENDER_SCALE_RANGE.end()),
             )
             .property("vr-zink", settings.vr_zink)
@@ -397,13 +427,13 @@ impl AppState {
             .property("cursor-style", settings.cursor_style)
             .property("custom-cursor", settings.custom_cursor)
             .property("custom-font", settings.custom_font)
-            .property("custom-mods", settings.custom_mods.unwrap_or(true))
+            .property("custom-mods", settings.custom_mods)
             .property(
                 "hide-launcher-while-playing",
                 settings.hide_launcher_while_playing,
             )
             .property("open-after-exit", settings.open_after_exit)
-            .property("show-playtime", settings.show_playtime.unwrap_or(true))
+            .property("show-playtime", settings.show_playtime)
             .property("playtime-seconds", settings.playtime_seconds)
             .property("notify-server-location", settings.notify_server_location)
             .property("cpu-core-limit", settings.cpu_core_limit)
@@ -550,16 +580,15 @@ impl AppState {
         let settings = SavedSettings {
             launch_mode: self.launch_mode(),
             run_in_background: self.run_in_background(),
-            discord_rich_presence: Some(self.discord_rich_presence()),
+            discord_rich_presence: self.discord_rich_presence(),
             runtime: self.runtime(),
-            runner: Some(self.runner()),
+            runner: self.runner(),
             custom_runner_path: self.custom_runner_path(),
-            prefix: Some(self.prefix()),
+            prefix: self.prefix(),
             legacy_force_opengl: false,
             renderer: Some(self.renderer()),
             mangohud: self.mangohud(),
-            refresh_rate: Some(self.refresh_rate())
-                .filter(|&rate| rate != USE_MONITOR_REFRESH_RATE),
+            refresh_rate: self.refresh_rate(),
             presentation_mode: self.presentation_mode(),
             opengl_swap_interval: self.opengl_swap_interval(),
             title_bar: self.title_bar(),
@@ -571,8 +600,8 @@ impl AppState {
             fast_flags: self.fast_flags(),
             preferred_region: self.preferred_region(),
             vr: self.vr(),
-            vr_mirror: Some(self.vr_mirror()),
-            vr_render_scale: Some(self.vr_render_scale()),
+            vr_mirror: self.vr_mirror(),
+            vr_render_scale: self.vr_render_scale(),
             vr_zink: self.vr_zink(),
             death_sound: self.death_sound(),
             custom_death_sound: self.custom_death_sound(),
@@ -580,10 +609,10 @@ impl AppState {
             cursor_style: self.cursor_style(),
             custom_cursor: self.custom_cursor(),
             custom_font: self.custom_font(),
-            custom_mods: Some(self.custom_mods()),
+            custom_mods: self.custom_mods(),
             hide_launcher_while_playing: self.hide_launcher_while_playing(),
             open_after_exit: self.open_after_exit(),
-            show_playtime: Some(self.show_playtime()),
+            show_playtime: self.show_playtime(),
             playtime_seconds: self.playtime_seconds(),
             notify_server_location: self.notify_server_location(),
             cpu_core_limit: self.cpu_core_limit(),
@@ -731,16 +760,29 @@ mod tests {
         let (settings, problem) =
             parse_settings("runner = \"Butter\"\nmangohud = true\nrenderer = \"opengl\"\n");
         assert!(problem.is_none());
-        assert_eq!(settings.runner.as_deref(), Some("Butter"));
+        assert_eq!(settings.runner, "Butter");
         assert!(settings.mangohud);
         assert_eq!(settings.renderer, Some(Renderer::OpenGl));
+    }
+
+    #[test]
+    fn missing_settings_get_their_defaults() {
+        let (settings, problem) = parse_settings("mangohud = true\n");
+        assert!(problem.is_none());
+        assert_eq!(settings.runner, QUADRA_RUNNER);
+        assert_eq!(settings.prefix, QUADRA_PREFIX);
+        assert!(settings.discord_rich_presence);
+        assert!(settings.vr_mirror);
+        assert_eq!(settings.vr_render_scale, DEFAULT_VR_RENDER_SCALE);
+        assert!(settings.custom_mods);
+        assert!(settings.show_playtime);
     }
 
     #[test]
     fn keeps_the_settings_it_understands_when_one_value_is_unknown() {
         let (settings, problem) =
             parse_settings("runner = \"Butter\"\nmangohud = true\nrenderer = \"vulkan\"\n");
-        assert_eq!(settings.runner.as_deref(), Some("Butter"));
+        assert_eq!(settings.runner, "Butter");
         assert!(settings.mangohud);
         assert_eq!(settings.renderer, None);
         assert!(
@@ -752,7 +794,7 @@ mod tests {
     fn falls_back_to_defaults_when_the_file_is_not_toml() {
         let (settings, problem) = parse_settings("this is = = not toml");
         assert!(matches!(problem, Some(SettingsProblem::Unparsable)));
-        assert_eq!(settings.runner, None);
+        assert_eq!(settings.runner, QUADRA_RUNNER);
         assert!(!settings.mangohud);
     }
 
