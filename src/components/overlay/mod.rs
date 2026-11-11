@@ -19,6 +19,7 @@ pub fn build_overlay(app: &adw::Application) -> gtk::Window {
     for edge in EDGES_THAT_FILL_THE_SCREEN {
         overlay.set_anchor(edge, true);
     }
+    overlay.set_exclusive_zone(-1);
 
     overlay
 }
