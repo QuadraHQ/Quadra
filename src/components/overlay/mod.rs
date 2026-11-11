@@ -19,7 +19,7 @@ pub fn build_overlay(app: &adw::Application) -> gtk::Window {
     overlay.init_layer_shell();
     overlay.set_namespace(Some(NAMESPACE_COMPOSITORS_TREAT_AS_ON_SCREEN_DISPLAY));
     overlay.set_layer(Layer::Overlay);
-    overlay.set_keyboard_mode(KeyboardMode::OnDemand);
+    overlay.set_keyboard_mode(KeyboardMode::None);
     for edge in EDGES_THAT_FILL_THE_SCREEN {
         overlay.set_anchor(edge, true);
     }
