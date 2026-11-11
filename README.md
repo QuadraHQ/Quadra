@@ -59,6 +59,33 @@ cd flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub -
 
 The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 
+**Nix:**
+
+Try it without installing:
+
+```sh
+nix run github:QuadraHQ/quadra-rewrite
+```
+
+Flake input:
+
+```Nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    quadra-rewrite.url = "github:QuadraHQ/quadra-rewrite";
+  };
+}
+```
+
+```Nix
+{
+  environment.systemPackages = with pkgs; [
+    inputs.quadra-rewrite.packages.${pkgs.stdenv.hostPlatform.system}.quadra-rewrite
+  ];
+}
+```
+
 ## Relevant directories
 
 - `~/.local/share/quadra`: Where Quadra stores its data
