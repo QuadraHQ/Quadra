@@ -1,7 +1,10 @@
 use crate::state::{AppState, Client};
 use gtk::prelude::*;
+use serde::de::DeserializeOwned;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+
+const USER_AGENT: &str = "Quadra";
 
 pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
     let clamp = adw::Clamp::builder().maximum_size(600).child(child).build();
@@ -132,6 +135,14 @@ pub fn decode_base64(text: &str) -> Option<Vec<u8>> {
         }
     }
     Some(decoded)
+}
+
+pub fn get_json<T: DeserializeOwned>(url: &str) -> anyhow::Result<T> {
+    ureq::get(url)
+        .header("User-Agent", USER_AGENT)
+        .call()
+        .and_then(|mut response| response.body_mut().read_json())
+        .with_context(|| format!("Couldn't get {url}"))
 }
 
 #[cfg(test)]

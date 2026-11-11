@@ -1,6 +1,6 @@
+use crate::utils::get_json;
 use anyhow::Context;
 use serde::Deserialize;
-use serde::de::DeserializeOwned;
 
 const ICON_IS_READY: &str = "Completed";
 
@@ -77,11 +77,4 @@ fn icon_url(universe_id: u64) -> anyhow::Result<Option<String>> {
         .find(|icon| icon.state == ICON_IS_READY)
         .and_then(|icon| icon.image_url)
         .filter(|url| !url.is_empty()))
-}
-
-fn get_json<T: DeserializeOwned>(url: &str) -> anyhow::Result<T> {
-    ureq::get(url)
-        .call()
-        .and_then(|mut response| response.body_mut().read_json())
-        .with_context(|| format!("Couldn't get {url}"))
 }

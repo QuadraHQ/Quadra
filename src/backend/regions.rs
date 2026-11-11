@@ -1,14 +1,13 @@
 use super::paths;
 use crate::state::{Region, country_and_city_of};
+use crate::utils::get_json;
 use anyhow::Context;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const ROVALRA_API: &str = "https://apis.rovalra.com";
-const USER_AGENT: &str = "Quadra";
 const KEEP_REGIONS_FOR: Duration = Duration::from_secs(24 * 60 * 60);
 
 pub struct PickedServer {
@@ -205,12 +204,4 @@ fn seconds_since_epoch() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|since_epoch| since_epoch.as_secs())
         .unwrap_or_default()
-}
-
-fn get_json<T: DeserializeOwned>(url: &str) -> anyhow::Result<T> {
-    ureq::get(url)
-        .header("User-Agent", USER_AGENT)
-        .call()
-        .and_then(|mut response| response.body_mut().read_json())
-        .with_context(|| format!("Couldn't get {url}"))
 }
