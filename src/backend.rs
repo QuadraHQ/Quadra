@@ -49,12 +49,10 @@ use std::path::Path;
 const PROPERTIES_THAT_DECIDE_SELECTED_RUNNER: [&str; 2] = ["runner", "custom-runner-path"];
 
 pub fn initialize(state: &AppState) {
-    for property in PROPERTIES_THAT_DECIDE_SELECTED_RUNNER {
-        state.connect_notify_local(Some(property), |state, _| {
-            refresh_selected_runner_status(state)
-        });
-    }
-
+    state.connect_properties_notify(
+        &PROPERTIES_THAT_DECIDE_SELECTED_RUNNER,
+        refresh_selected_runner_status,
+    );
     state.connect_notify_local(Some("prefix"), |state, _| account::refresh(state));
     updater::initialize(state);
     fast_flag_allowlist::initialize();

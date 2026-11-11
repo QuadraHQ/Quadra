@@ -25,8 +25,6 @@ pub fn preferred_region_row(state: &AppState) -> adw::ComboRow {
         .build();
     let shown = ShownChoices::default();
 
-    show_choices(&row, &options, &shown, state);
-
     row.connect_selected_notify(glib::clone!(
         #[weak]
         state,
@@ -47,20 +45,18 @@ pub fn preferred_region_row(state: &AppState) -> adw::ComboRow {
         }
     ));
 
-    for property in ["regions", "preferred-region"] {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                row,
-                #[weak]
-                options,
-                #[strong]
-                shown,
-                move |state, _| show_choices(&row, &options, &shown, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &["regions", "preferred-region"],
+        glib::clone!(
+            #[weak]
+            row,
+            #[weak]
+            options,
+            #[strong]
+            shown,
+            move |state| show_choices(&row, &options, &shown, state)
+        ),
+    );
 
     row
 }

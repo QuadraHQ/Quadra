@@ -21,19 +21,16 @@ pub fn account_group(state: &AppState) -> adw::PreferencesGroup {
 
     let row = adw::ActionRow::builder().title("Roblox account").build();
     row.add_suffix(&sign_out_button);
-    show_account(&row, &sign_out_button, state);
-    for property in PROPERTIES_THAT_DECIDE_SIGN_OUT {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                row,
-                #[weak]
-                sign_out_button,
-                move |state, _| show_account(&row, &sign_out_button, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_SIGN_OUT,
+        glib::clone!(
+            #[weak]
+            row,
+            #[weak]
+            sign_out_button,
+            move |state| show_account(&row, &sign_out_button, state)
+        ),
+    );
 
     let group = adw::PreferencesGroup::builder().title("Account").build();
     group.add(&row);

@@ -26,17 +26,14 @@ pub fn rosemary_runtime_group(state: &AppState) -> adw::PreferencesGroup {
         "Runner",
         Some(choose_custom_runner),
     );
-    runner_row.set_subtitle(&runner_description(state));
-    for property in PROPERTIES_THAT_DECIDE_RUNNER_DESCRIPTION {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                runner_row,
-                move |state, _| runner_row.set_subtitle(&runner_description(state))
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_RUNNER_DESCRIPTION,
+        glib::clone!(
+            #[weak]
+            runner_row,
+            move |state| runner_row.set_subtitle(&runner_description(state))
+        ),
+    );
 
     let prefix_row = named_choice_row(state, "prefix", "available-prefixes", "Prefix", None);
     prefix_row.set_subtitle("The Darwin filesystem Roblox runs in.");
@@ -93,21 +90,18 @@ fn prefix_status_row(state: &AppState) -> adw::ActionRow {
         }
     ));
 
-    show_prefix_status(&row, &status_icon, &action_button, state);
-    for property in PROPERTIES_THAT_DECIDE_PREFIX_STATUS {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                row,
-                #[weak]
-                status_icon,
-                #[weak]
-                action_button,
-                move |state, _| show_prefix_status(&row, &status_icon, &action_button, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_PREFIX_STATUS,
+        glib::clone!(
+            #[weak]
+            row,
+            #[weak]
+            status_icon,
+            #[weak]
+            action_button,
+            move |state| show_prefix_status(&row, &status_icon, &action_button, state)
+        ),
+    );
 
     state
         .bind_property("prefix", &row, "sensitive")
@@ -160,19 +154,16 @@ fn rosemary_install_row(state: &AppState) -> adw::ActionRow {
         .build();
     row.add_suffix(&install_button);
 
-    show_rosemary_install_row(&row, &install_button, state);
-    for property in PROPERTIES_THAT_DECIDE_ROSEMARY_INSTALL_ROW {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                row,
-                #[weak]
-                install_button,
-                move |state, _| show_rosemary_install_row(&row, &install_button, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_ROSEMARY_INSTALL_ROW,
+        glib::clone!(
+            #[weak]
+            row,
+            #[weak]
+            install_button,
+            move |state| show_rosemary_install_row(&row, &install_button, state)
+        ),
+    );
 
     row
 }

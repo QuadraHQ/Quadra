@@ -8,17 +8,14 @@ const PROPERTIES_THAT_DECIDE_PLAYTIME: [&str; 2] = ["show-playtime", "playtime-s
 pub fn playtime_label(state: &AppState) -> gtk::Label {
     let label = gtk::Label::builder().css_classes(["dimmed"]).build();
 
-    show_playtime(&label, state);
-    for property in PROPERTIES_THAT_DECIDE_PLAYTIME {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                label,
-                move |state, _| show_playtime(&label, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_PLAYTIME,
+        glib::clone!(
+            #[weak]
+            label,
+            move |state| show_playtime(&label, state)
+        ),
+    );
 
     label
 }

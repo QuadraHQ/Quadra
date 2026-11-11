@@ -4,7 +4,6 @@ use super::game_activity::{self, GameEvent};
 use super::game_details::{self, GameDetails};
 use crate::state::AppState;
 use gtk::glib;
-use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -53,19 +52,10 @@ pub fn initialize(state: &AppState) {
         }
     ));
 
-    for property in PROPERTIES_THAT_DECIDE_PRESENCE {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[strong]
-                presence,
-                move |state, _| {
-                    follow_roblox(state, &presence);
-                    show(state, &presence);
-                }
-            ),
-        );
-    }
+    state.connect_properties_notify(&PROPERTIES_THAT_DECIDE_PRESENCE, move |state| {
+        follow_roblox(state, &presence);
+        show(state, &presence);
+    });
 }
 
 fn follow_roblox(state: &AppState, presence: &SharedPresence) {

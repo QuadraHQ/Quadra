@@ -117,37 +117,31 @@ pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::Applicati
         .content(&toolbar_view)
         .build();
 
-    progress.show(state);
-    for property in PROPERTIES_THAT_DECIDE_STATUS {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[strong]
-                progress,
-                #[weak]
-                window,
-                move |state, _| {
-                    progress.show(state);
-                    window.set_title(Some(&starting_text(state)));
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_STATUS,
+        glib::clone!(
+            #[strong]
+            progress,
+            #[weak]
+            window,
+            move |state| {
+                progress.show(state);
+                window.set_title(Some(&starting_text(state)));
+            }
+        ),
+    );
+    state.connect_properties_notify(
+        &PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED,
+        glib::clone!(
+            #[weak]
+            window,
+            move |state| {
+                if launch_finished(state) {
+                    window.set_visible(false);
                 }
-            ),
-        );
-    }
-
-    for property in PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                window,
-                move |state, _| {
-                    if launch_finished(state) {
-                        window.set_visible(false);
-                    }
-                }
-            ),
-        );
-    }
+            }
+        ),
+    );
 
     window
 }

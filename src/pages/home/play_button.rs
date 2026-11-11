@@ -28,19 +28,16 @@ pub fn play_button(state: &AppState, client: Client) -> gtk::Button {
         move |_| PlayAction::for_client(&state, client).perform(&state)
     ));
 
-    show_action(&button, &content, state, client);
-    for property in PROPERTIES_THAT_DECIDE_PLAY_ACTION {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                button,
-                #[weak]
-                content,
-                move |state, _| show_action(&button, &content, state, client)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_PLAY_ACTION,
+        glib::clone!(
+            #[weak]
+            button,
+            #[weak]
+            content,
+            move |state| show_action(&button, &content, state, client)
+        ),
+    );
 
     button
 }

@@ -85,27 +85,22 @@ impl Quadra {
             quadra,
             move |_| quadra.adjust_window_to_running_roblox()
         ));
-        for property in PROPERTIES_THAT_DECIDE_STAYING_OPEN {
-            state.connect_notify_local(
-                Some(property),
-                glib::clone!(
-                    #[weak]
-                    quadra,
-                    move |_, _| quadra.quit_if_nothing_keeps_it_open()
-                ),
-            );
-        }
-        for property in PROPERTIES_THAT_DECIDE_TRAY_ICON {
-            state.connect_notify_local(
-                Some(property),
-                glib::clone!(
-                    #[weak]
-                    quadra,
-                    move |_, _| quadra.show_tray_icon_when_wanted()
-                ),
-            );
-        }
-        quadra.show_tray_icon_when_wanted();
+        state.connect_properties_notify(
+            &PROPERTIES_THAT_DECIDE_STAYING_OPEN,
+            glib::clone!(
+                #[weak]
+                quadra,
+                move |_| quadra.quit_if_nothing_keeps_it_open()
+            ),
+        );
+        state.follow_properties(
+            &PROPERTIES_THAT_DECIDE_TRAY_ICON,
+            glib::clone!(
+                #[weak]
+                quadra,
+                move |_| quadra.show_tray_icon_when_wanted()
+            ),
+        );
 
         quadra
     }

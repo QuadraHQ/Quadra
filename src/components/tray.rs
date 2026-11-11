@@ -153,16 +153,16 @@ fn keep_status_shown(state: &AppState, handle: Handle<QuadraTray>) -> Vec<glib::
         }
     });
 
-    PROPERTIES_THAT_DECIDE_PLAY_ACTION
+    let mut properties: Vec<&str> = PROPERTIES_THAT_DECIDE_PLAY_ACTION
         .into_iter()
         .chain(PROPERTIES_THAT_DECIDE_STATUS)
-        .map(|property| {
-            let status_changes = status_changes.clone();
-            state.connect_notify_local(Some(property), move |state, _| {
-                status_changes.try_send(TrayStatus::of(state)).ok();
-            })
-        })
-        .collect()
+        .collect();
+    properties.sort_unstable();
+    properties.dedup();
+
+    state.connect_properties_notify(&properties, move |state| {
+        status_changes.try_send(TrayStatus::of(state)).ok();
+    })
 }
 
 fn app_icon_pixmap() -> Vec<ksni::Icon> {

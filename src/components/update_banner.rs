@@ -11,17 +11,14 @@ pub fn update_banner(state: &AppState) -> adw::Banner {
         move |_| backend::install_update(&state)
     ));
 
-    show_update(&banner, state);
-    for property in ["available-update", "busy"] {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                banner,
-                move |state, _| show_update(&banner, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &["available-update", "busy"],
+        glib::clone!(
+            #[weak]
+            banner,
+            move |state| show_update(&banner, state)
+        ),
+    );
 
     banner
 }

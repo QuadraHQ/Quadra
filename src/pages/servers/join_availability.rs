@@ -19,14 +19,11 @@ impl JoinAvailability {
         };
 
         let followed_widgets: Weak<_> = Rc::downgrade(&availability.join_widgets);
-        for property in PROPERTIES_THAT_DECIDE_PLAY_ACTION {
-            let followed_widgets = followed_widgets.clone();
-            state.connect_notify_local(Some(property), move |state, _| {
-                if let Some(join_widgets) = followed_widgets.upgrade() {
-                    show_availability(state, &join_widgets.borrow());
-                }
-            });
-        }
+        state.connect_properties_notify(&PROPERTIES_THAT_DECIDE_PLAY_ACTION, move |state| {
+            if let Some(join_widgets) = followed_widgets.upgrade() {
+                show_availability(state, &join_widgets.borrow());
+            }
+        });
 
         availability
     }

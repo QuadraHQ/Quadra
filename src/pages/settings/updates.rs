@@ -32,21 +32,18 @@ pub fn launcher_version_row(state: &AppState) -> adw::ActionRow {
     row.add_suffix(&check_button);
     row.add_suffix(&update_button);
 
-    show_update_row(&row, &check_button, &update_button, state);
-    for property in PROPERTIES_THAT_DECIDE_UPDATE_ROW {
-        state.connect_notify_local(
-            Some(property),
-            glib::clone!(
-                #[weak]
-                row,
-                #[weak]
-                check_button,
-                #[weak]
-                update_button,
-                move |state, _| show_update_row(&row, &check_button, &update_button, state)
-            ),
-        );
-    }
+    state.follow_properties(
+        &PROPERTIES_THAT_DECIDE_UPDATE_ROW,
+        glib::clone!(
+            #[weak]
+            row,
+            #[weak]
+            check_button,
+            #[weak]
+            update_button,
+            move |state| show_update_row(&row, &check_button, &update_button, state)
+        ),
+    );
 
     row
 }

@@ -23,6 +23,7 @@ use std::fs;
 use std::io::ErrorKind;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gtk::glib;
@@ -441,14 +442,8 @@ impl AppState {
             .property("first-launch", !file_existed && !settings.opened_before)
             .build();
 
-        for property in SAVED_PROPERTIES {
-            state.connect_notify_local(Some(property), |state, _| state.schedule_save());
-        }
-
-        for property in PROPERTIES_THAT_DECIDE_CAN_PLAY {
-            state.connect_notify_local(Some(property), |state, _| state.update_can_play());
-        }
-        state.update_can_play();
+        state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
+        state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
 
         if state.first_launch() || save_repaired_settings {
             state.schedule_save();
@@ -460,6 +455,26 @@ impl AppState {
         }
 
         state
+    }
+
+    pub fn connect_properties_notify(
+        &self,
+        properties: &[&str],
+        handler: impl Fn(&Self) + 'static,
+    ) -> Vec<glib::SignalHandlerId> {
+        let handler = Rc::new(handler);
+        properties
+            .iter()
+            .map(|property| {
+                let handler = handler.clone();
+                self.connect_notify_local(Some(property), move |state, _| handler(state))
+            })
+            .collect()
+    }
+
+    pub fn follow_properties(&self, properties: &[&str], handler: impl Fn(&Self) + 'static) {
+        handler(self);
+        self.connect_properties_notify(properties, handler);
     }
 
     pub fn report_error(&self, message: &str) {
