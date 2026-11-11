@@ -28,6 +28,8 @@
           nativeBuildInputs = with pkgs; [
             pkg-config
             wrapGAppsHook4
+            lld
+            clang
           ];
           buildInputs = with pkgs; [
             gtk4
