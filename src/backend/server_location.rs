@@ -1,5 +1,6 @@
 use super::background::run_quietly;
 use super::game_activity::{self, GameEvent};
+use super::req_agent::api_agent;
 use super::server_history;
 use crate::state::AppState;
 use anyhow::Context;
@@ -55,7 +56,8 @@ fn look_up(state: &AppState, server_ip: &str) {
 }
 
 fn fetch_location(address: Ipv4Addr) -> anyhow::Result<String> {
-    let response: Value = ureq::get(GEOLOCATION_URL)
+    let response: Value = api_agent()
+        .get(GEOLOCATION_URL)
         .query("ip", address.to_string())
         .call()
         .and_then(|mut response| response.body_mut().read_json())

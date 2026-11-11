@@ -1,4 +1,5 @@
 use super::background::Progress;
+use super::req_agent::download_agent;
 use anyhow::Context;
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
@@ -13,7 +14,8 @@ pub fn download_file(url: &str, destination: &Path, progress: &Progress) -> anyh
         fs::create_dir_all(directory)?;
     }
 
-    let mut response = ureq::get(url)
+    let mut response = download_agent()
+        .get(url)
         .call()
         .with_context(|| format!("Couldn't download {url}"))?;
     let total_size = response

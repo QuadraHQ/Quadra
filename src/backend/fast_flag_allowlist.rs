@@ -1,4 +1,5 @@
 use super::paths;
+use super::req_agent::api_agent;
 use crate::utils::{create_parent_directory, decode_base64};
 use anyhow::{Context, anyhow};
 use serde_json::{Value, json};
@@ -40,7 +41,8 @@ fn remember(allowed: HashSet<String>) {
 }
 
 fn fetch() -> anyhow::Result<HashSet<String>> {
-    let settings: Value = ureq::get(SETTINGS_URL)
+    let settings: Value = api_agent()
+        .get(SETTINGS_URL)
         .call()
         .and_then(|mut response| response.body_mut().read_json())
         .context("Couldn't download Roblox's FastFlag allowlist")?;

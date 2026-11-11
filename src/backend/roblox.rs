@@ -3,6 +3,7 @@ use super::download::{
     download_file, remove_directory_if_present, replace_directory, stop_others_from_writing,
 };
 use super::paths;
+use super::req_agent::api_agent;
 use crate::state::Client;
 use anyhow::{Context, ensure};
 use serde::{Deserialize, Serialize};
@@ -66,7 +67,8 @@ pub fn latest_release(client: Client) -> anyhow::Result<RobloxRelease> {
         "{LATEST_RELEASE_BASE_URL}/{}",
         files_of(client).release_channel
     );
-    ureq::get(&url)
+    api_agent()
+        .get(&url)
         .call()
         .and_then(|mut response| response.body_mut().read_json())
         .with_context(|| format!("Couldn't check for the latest {} version", client.name()))

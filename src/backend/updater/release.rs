@@ -1,10 +1,10 @@
 use super::version::Version;
+use crate::backend::req_agent::api_agent;
 use anyhow::Context;
 use serde::Deserialize;
 
 const RELEASES_URL: &str =
     "https://api.github.com/repos/QuadraHQ/quadra-rewrite/releases?per_page=30";
-const USER_AGENT: &str = "Quadra";
 const APPIMAGE_SUFFIX: &str = "-x86_64.AppImage";
 const CHECKSUMS_NAME: &str = "SHA256SUMS";
 
@@ -34,8 +34,8 @@ pub struct AppImageUpdate {
 }
 
 pub fn newest_after(current: &str) -> anyhow::Result<Option<AppImageUpdate>> {
-    let releases: Vec<GithubRelease> = ureq::get(RELEASES_URL)
-        .header("User-Agent", USER_AGENT)
+    let releases: Vec<GithubRelease> = api_agent()
+        .get(RELEASES_URL)
         .call()
         .and_then(|mut response| response.body_mut().read_json())
         .context("Couldn't check GitHub for new Quadra releases")?;
@@ -43,8 +43,8 @@ pub fn newest_after(current: &str) -> anyhow::Result<Option<AppImageUpdate>> {
 }
 
 pub fn download_checksums(url: &str) -> anyhow::Result<String> {
-    ureq::get(url)
-        .header("User-Agent", USER_AGENT)
+    api_agent()
+        .get(url)
         .call()
         .and_then(|mut response| response.body_mut().read_to_string())
         .context("Couldn't download the release's checksums")

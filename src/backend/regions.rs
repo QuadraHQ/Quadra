@@ -1,6 +1,6 @@
 use super::paths;
+use super::req_agent::{api_agent, get_json};
 use crate::state::{Region, country_and_city_of};
-use crate::utils::get_json;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -78,8 +78,8 @@ pub fn pick_server(
     avoided_job_ids: &[String],
 ) -> anyhow::Result<Option<PickedServer>> {
     let (country, city) = country_and_city_of(region_key);
-    let mut request = ureq::get(format!("{ROVALRA_API}/v1/servers/region"))
-        .header("User-Agent", USER_AGENT)
+    let mut request = api_agent()
+        .get(format!("{ROVALRA_API}/v1/servers/region"))
         .query("place_id", place_id.to_string())
         .query("country", country)
         .query("cursor", "0");

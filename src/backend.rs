@@ -22,6 +22,7 @@ mod paths;
 mod prefix;
 mod quadra_rosemary;
 mod regions;
+mod req_agent;
 mod roblox;
 mod runners;
 mod server_history;
