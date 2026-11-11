@@ -25,17 +25,20 @@ fn main() -> glib::ExitCode {
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
     command_line::add_options(&app);
-    let state = AppState::load();
-    backend::initialize(&state);
     let quadra: Rc<OnceCell<Rc<Quadra>>> = Rc::default();
 
     app.connect_startup(glib::clone!(
         #[strong]
-        state,
-        #[strong]
         quadra,
         move |app| {
             load_style();
+            let state = AppState::load();
+            backend::initialize(&state);
+            app.connect_shutdown(glib::clone!(
+                #[strong]
+                state,
+                move |_| state.save_pending_changes()
+            ));
             quadra.get_or_init(|| Quadra::start(app, &state));
         }
     ));
@@ -59,8 +62,6 @@ fn main() -> glib::ExitCode {
             quadra.activate();
         }
     });
-
-    app.connect_shutdown(move |_| state.save_pending_changes());
 
     app.run()
 }
