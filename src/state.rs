@@ -350,10 +350,7 @@ impl AppState {
         let state: Self = glib::Object::builder()
             .property("launch-mode", settings.launch_mode)
             .property("run-in-background", settings.run_in_background)
-            .property(
-                "discord-rich-presence",
-                settings.discord_rich_presence.unwrap_or(true),
-            )
+            .property("discord-rich-presence", settings.discord_rich_presence)
             .property("runtime", settings.runtime)
             .property(
                 "runner",
