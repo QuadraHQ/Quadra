@@ -1,0 +1,41 @@
+{
+  description = "Nix flake for Quadra-rewrite";
+
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
+      in
+      {
+        packages.quadra-rewrite = pkgs.rustPlatform.buildRustPackage {
+          pname = "quadra-rewrite";
+          version = cargoToml.package.version;
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            wrapGAppsHook4
+          ];
+          buildInputs = with pkgs; [
+            gtk4
+            gtk4-layer-shell
+            libadwaita
+          ];
+        };
+        packages.default = self.packages.${system}.quadra-rewrite;
+      }
+    );
+}
