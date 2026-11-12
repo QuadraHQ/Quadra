@@ -4,6 +4,7 @@ use crate::components::error_dialog::show_errors_from;
 use crate::components::grid_backdrop::grid_backdrop;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
+use crate::components::line_field_backdrop::line_field_backdrop;
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
@@ -272,6 +273,7 @@ fn window(app: &Application, state: &AppState, pages: &ViewStack) -> Application
     toolbar_view.set_content(Some(pages));
 
     let backdrop = gtk::Overlay::builder().child(&grid_backdrop(state)).build();
+    backdrop.add_overlay(&line_field_backdrop(state));
     backdrop.add_overlay(&toolbar_view);
     backdrop.set_measure_overlay(&toolbar_view, true);
 

@@ -94,6 +94,10 @@ fn follow_theme(state: &AppState) {
 fn apply_theme(provider: &gtk::CssProvider, theme: Theme) {
     let (color_scheme, stylesheet) = match theme {
         Theme::Grid => (adw::ColorScheme::ForceDark, include_str!("styles/grid.css")),
+        Theme::Monochrome => (
+            adw::ColorScheme::ForceDark,
+            include_str!("styles/monochrome.css"),
+        ),
         Theme::Adwaita => (adw::ColorScheme::Default, ""),
     };
     adw::StyleManager::default().set_color_scheme(color_scheme);

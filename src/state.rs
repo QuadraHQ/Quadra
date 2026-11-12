@@ -111,15 +111,17 @@ pub enum Theme {
     #[default]
     Adwaita,
     Grid,
+    Monochrome,
 }
 
 impl Choice for Theme {
-    const ALL: &'static [Self] = &[Self::Adwaita, Self::Grid];
+    const ALL: &'static [Self] = &[Self::Adwaita, Self::Grid, Self::Monochrome];
 
     fn label(self) -> &'static str {
         match self {
             Self::Adwaita => "Adwaita",
             Self::Grid => "Grid",
+            Self::Monochrome => "Monochrome",
         }
     }
 }
