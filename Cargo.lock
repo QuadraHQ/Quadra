@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "quadra-rewrite"
-version = "0.50.0-alpha.2"
+version = "0.50.0-alpha.3"
 dependencies = [
  "anyhow",
  "async-channel",
