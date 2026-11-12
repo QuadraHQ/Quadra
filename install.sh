@@ -251,7 +251,7 @@ uninstall() {
 
 mention_old_quadra() {
     if [ -f "$DATA_HOME/QuadraHQ/launcher/quadrahq-launcher" ]; then
-        say "The old Quadra is still installed. The new one offers to delete it after its first install."
+        say "The old Quadra is still installed. Once the new one works, you can delete it to free space: rm -rf $DATA_HOME/QuadraHQ"
     fi
 }
 
