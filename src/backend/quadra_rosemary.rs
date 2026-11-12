@@ -8,12 +8,12 @@ use flate2::read::GzDecoder;
 use std::fs::{self, File};
 use std::path::PathBuf;
 
-pub const VERSION: &str = "v0.5.0-quadra.1";
+pub const VERSION: &str = "v0.5.0-quadra.2";
 
 const SUPPORTED_ARCHITECTURE: &str = "x86_64";
-const ARCHIVE_NAME: &str = "rosemary-steam-tool-0.5.0-quadra.1-x86_64.tar.gz";
-const ARCHIVE_URL: &str = "https://github.com/QuadraHQ/rosemary-fork/releases/download/v0.5.0-quadra.1/rosemary-steam-tool-0.5.0-quadra.1-x86_64.tar.gz";
-const ARCHIVE_SHA256: &str = "51aa929793a486015c180babe91092f5ce170ae404f68bf583c7c7455f61afd3";
+const ARCHIVE_NAME: &str = "rosemary-steam-tool-0.5.0-quadra.2-x86_64.tar.gz";
+const ARCHIVE_URL: &str = "https://github.com/QuadraHQ/rosemary-fork/releases/download/v0.5.0-quadra.2/rosemary-steam-tool-0.5.0-quadra.2-x86_64.tar.gz";
+const ARCHIVE_SHA256: &str = "cacf13c3d14835078c00e43f754e1c85bd01ec5466fcb0b56db11e790e859676";
 const EXECUTABLE_INSIDE_ARCHIVE: &str = "Rosemary/bin/rosemary";
 
 pub fn executable() -> PathBuf {
