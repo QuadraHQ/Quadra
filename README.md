@@ -22,6 +22,22 @@ This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, an
 
 - Update checker for Flatpak
 
+## Install
+
+```
+curl -fsSL https://quadrahq.org/install.sh | bash
+```
+
+This installs the newest Quadra as an AppImage in `~/.local/bin` and adds it to the app menu. Run it again to update.
+Options go after `bash -s --`, for example `curl -fsSL https://quadrahq.org/install.sh | bash -s -- --flatpak`:
+
+- `--flatpak`: install the Flatpak bundle instead
+- `--native`: build Quadra on this computer instead
+- `--version TAG`: install a specific release, such as `v0.50.0-alpha.3`
+- `--uninstall`: remove Quadra but keep its data and your Roblox sign-in; add `--purge` to delete those too
+
+The installer checks every download against the release's `SHA256SUMS` before installing it.
+
 ## Build instructions
 
 **Prerequisites:**
