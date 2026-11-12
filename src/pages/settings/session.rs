@@ -20,6 +20,12 @@ pub fn session_group(state: &AppState) -> adw::PreferencesGroup {
          Only the server's address is sent",
     );
 
+    let raknet_row = switch_row(state, "force-raknet", "Force RakNet");
+    raknet_row.set_subtitle(
+        "Experimental. Patches Roblox to connect to servers over RakNet instead of RbxTransport. \
+         Only works on Roblox versions Quadra knows. Applies the next time Roblox starts",
+    );
+
     let group = adw::PreferencesGroup::builder()
         .title("While playing")
         .build();
@@ -27,6 +33,7 @@ pub fn session_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&reopen_row);
     group.add(&playtime_row);
     group.add(&location_row);
+    group.add(&raknet_row);
     group.add(&cpu_core_limit_row(state));
     group
 }

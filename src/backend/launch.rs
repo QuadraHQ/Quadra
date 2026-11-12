@@ -1,7 +1,9 @@
 use super::launch_request::StudioTarget;
 use super::runners::Runner;
 use super::vr::{self, VrSession};
-use super::{cpu_limit, fast_flags, live_log, mods, paths, prefix, roblox, telemetry};
+use super::{
+    cpu_limit, fast_flags, live_log, mods, paths, prefix, roblox, telemetry, transport_patch,
+};
 use crate::state::{
     AppState, Client, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
@@ -46,6 +48,7 @@ pub fn start_roblox(
         None => state.fast_flags(),
     };
     fast_flags::write_client_settings(&fast_flags)?;
+    transport_patch::prepare(state.force_raknet());
 
     let mut command = Command::new(&runner.executable);
     command.arg(roblox::app_path(Client::Player));

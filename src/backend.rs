@@ -28,6 +28,7 @@ mod runners;
 mod server_history;
 mod server_location;
 mod telemetry;
+mod transport_patch;
 mod updater;
 mod vr;
 

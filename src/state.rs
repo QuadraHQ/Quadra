@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 38] = [
+const SAVED_PROPERTIES: [&str; 39] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -77,6 +77,7 @@ const SAVED_PROPERTIES: [&str; 38] = [
     "notify-server-location",
     "cpu-core-limit",
     "block-telemetry",
+    "force-raknet",
     "theme",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
@@ -175,6 +176,7 @@ struct SavedSettings {
     notify_server_location: bool,
     cpu_core_limit: u32,
     block_telemetry: bool,
+    force_raknet: bool,
     theme: Theme,
 }
 
@@ -220,6 +222,7 @@ impl Default for SavedSettings {
             notify_server_location: false,
             cpu_core_limit: 0,
             block_telemetry: false,
+            force_raknet: false,
             theme: Theme::default(),
         }
     }
@@ -333,6 +336,8 @@ mod imp {
         signed_in: Cell<bool>,
         #[property(get, set)]
         block_telemetry: Cell<bool>,
+        #[property(get, set)]
+        force_raknet: Cell<bool>,
         #[property(get, set)]
         available_update: RefCell<String>,
         #[property(get, set)]
@@ -466,6 +471,7 @@ impl AppState {
             .property("notify-server-location", settings.notify_server_location)
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
+            .property("force-raknet", settings.force_raknet)
             .property("first-launch", !file_existed && !settings.opened_before)
             .property("theme", settings.theme)
             .build();
@@ -660,6 +666,7 @@ impl AppState {
             notify_server_location: self.notify_server_location(),
             cpu_core_limit: self.cpu_core_limit(),
             block_telemetry: self.block_telemetry(),
+            force_raknet: self.force_raknet(),
             theme: self.theme(),
         };
 
