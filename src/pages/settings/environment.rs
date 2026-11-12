@@ -7,7 +7,7 @@ use super::rosemary_runtime::rosemary_runtime_group;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
-use crate::state::{AppState, LaunchMode, Runtime};
+use crate::state::{AppState, LaunchMode, Runtime, Theme};
 use adw::prelude::*;
 
 pub fn env_section(state: &AppState) -> gtk::Box {
@@ -18,10 +18,14 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     let run_in_background_row = switch_row(state, "run-in-background", "Run in the background");
     run_in_background_row.set_subtitle("Keep Quadra in the system tray after its window closes");
 
+    let theme_row = choice_row::<Theme>(state, "theme", "The app theme.");
+    theme_row.set_subtitle("Change the theme to what you like.");
+
     let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
     quadra_group.add(&launcher_version_row(state));
     quadra_group.add(&launch_mode_row);
     quadra_group.add(&run_in_background_row);
+    quadra_group.add(&theme_row);
 
     let discord_rich_presence_row =
         switch_row(state, "discord-rich-presence", "Show what you're playing");

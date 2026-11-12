@@ -15,6 +15,38 @@ pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
 
 pub const APP_ICON_PNG: &[u8] = include_bytes!("../data/icons/org.quadrahq.Quadra.png");
 
+const BUNDLED_FONTS: [(&str, &[u8]); 2] = [
+    ("Archivo.ttf", include_bytes!("../assets/fonts/Archivo.ttf")),
+    (
+        "JetBrainsMono.ttf",
+        include_bytes!("../assets/fonts/JetBrainsMono.ttf"),
+    ),
+];
+
+pub fn register_bundled_fonts() {
+    let font_map = pangocairo::FontMap::default();
+    let fonts_directory = gtk::glib::user_cache_dir().join("quadra").join("fonts");
+    for (name, contents) in BUNDLED_FONTS {
+        let file = fonts_directory.join(name);
+        if let Err(error) = register_font(&font_map, &file, contents) {
+            eprintln!("Failed to load the {name} font: {error}");
+        }
+    }
+}
+
+fn register_font(
+    font_map: &pango::FontMap,
+    file: &std::path::Path,
+    contents: &[u8],
+) -> anyhow::Result<()> {
+    if std::fs::read(file).ok().as_deref() != Some(contents) {
+        create_parent_directory(file)?;
+        std::fs::write(file, contents)?;
+    }
+    font_map.add_font_file(file)?;
+    Ok(())
+}
+
 pub fn show_only_while_roblox_is_selected(page: &adw::ViewStackPage, state: &AppState) {
     state
         .bind_property("selected-client", page, "visible")

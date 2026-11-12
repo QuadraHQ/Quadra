@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 37] = [
+const SAVED_PROPERTIES: [&str; 38] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -77,6 +77,7 @@ const SAVED_PROPERTIES: [&str; 37] = [
     "notify-server-location",
     "cpu-core-limit",
     "block-telemetry",
+    "theme",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -99,6 +100,26 @@ impl Choice for Runtime {
     fn label(self) -> &'static str {
         match self {
             Self::Rosemary => "Rosemary",
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
+#[enum_type(name = "QuadraTheme")]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    #[default]
+    Adwaita,
+    Grid,
+}
+
+impl Choice for Theme {
+    const ALL: &'static [Self] = &[Self::Adwaita, Self::Grid];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Adwaita => "Adwaita",
+            Self::Grid => "Grid",
         }
     }
 }
@@ -152,6 +173,7 @@ struct SavedSettings {
     notify_server_location: bool,
     cpu_core_limit: u32,
     block_telemetry: bool,
+    theme: Theme,
 }
 
 impl Default for SavedSettings {
@@ -196,6 +218,7 @@ impl Default for SavedSettings {
             notify_server_location: false,
             cpu_core_limit: 0,
             block_telemetry: false,
+            theme: Theme::default(),
         }
     }
 }
@@ -350,6 +373,8 @@ mod imp {
         pub can_open_studio: Cell<bool>,
         pub pending_save: RefCell<Option<glib::SourceId>>,
         pub log: RefCell<String>,
+        #[property(get, set, builder(Theme::default()))]
+        theme: Cell<Theme>,
     }
 
     #[glib::object_subclass]
@@ -440,6 +465,7 @@ impl AppState {
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
             .property("first-launch", !file_existed && !settings.opened_before)
+            .property("theme", settings.theme)
             .build();
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
@@ -632,6 +658,7 @@ impl AppState {
             notify_server_location: self.notify_server_location(),
             cpu_core_limit: self.cpu_core_limit(),
             block_telemetry: self.block_telemetry(),
+            theme: self.theme(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

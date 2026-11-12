@@ -9,7 +9,7 @@ mod utils;
 use adw::{Application, prelude::*};
 use gtk::{gio, glib};
 use quadra::Quadra;
-use state::AppState;
+use state::{AppState, Theme};
 use std::cell::OnceCell;
 use std::rc::Rc;
 
@@ -31,9 +31,9 @@ fn main() -> glib::ExitCode {
         #[strong]
         quadra,
         move |app| {
-            load_style();
             let state = AppState::load();
             backend::initialize(&state);
+            follow_theme(&state);
             app.connect_shutdown(glib::clone!(
                 #[strong]
                 state,
@@ -66,15 +66,36 @@ fn main() -> glib::ExitCode {
     app.run()
 }
 
-fn load_style() {
-    let provider = gtk::CssProvider::new();
-    provider.load_from_string(
+fn follow_theme(state: &AppState) {
+    utils::register_bundled_fonts();
+
+    let display = gtk::gdk::Display::default().unwrap();
+    let theme = gtk::CssProvider::new();
+    gtk::style_context_add_provider_for_display(
+        &display,
+        &theme,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
+    let header = gtk::CssProvider::new();
+    header.load_from_string(
         ".app-header { padding-left: 0px; }
          .app-header .app-icon { margin-left: 8px; }",
     );
     gtk::style_context_add_provider_for_display(
-        &gtk::gdk::Display::default().unwrap(),
-        &provider,
+        &display,
+        &header,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+
+    state.follow_properties(&["theme"], move |state| apply_theme(&theme, state.theme()));
+}
+
+fn apply_theme(provider: &gtk::CssProvider, theme: Theme) {
+    let (color_scheme, stylesheet) = match theme {
+        Theme::Grid => (adw::ColorScheme::ForceDark, include_str!("styles/grid.css")),
+        Theme::Adwaita => (adw::ColorScheme::Default, ""),
+    };
+    adw::StyleManager::default().set_color_scheme(color_scheme);
+    provider.load_from_string(stylesheet);
 }

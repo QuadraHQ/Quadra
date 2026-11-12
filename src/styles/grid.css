@@ -1,0 +1,575 @@
+@define-color window_bg_color #10141b;
+@define-color window_fg_color #edf2f8;
+@define-color view_bg_color #121820;
+@define-color view_fg_color #edf2f8;
+@define-color headerbar_bg_color #121820;
+@define-color headerbar_fg_color #edf2f8;
+@define-color headerbar_border_color #1e1e1e;
+@define-color headerbar_backdrop_color #121820;
+@define-color headerbar_shade_color rgba(0, 0, 0, 0);
+@define-color headerbar_darker_shade_color rgba(0, 0, 0, 0);
+@define-color sidebar_bg_color #121820;
+@define-color sidebar_fg_color #edf2f8;
+@define-color sidebar_backdrop_color #121820;
+@define-color sidebar_shade_color rgba(0, 0, 0, 0);
+@define-color sidebar_border_color #263343;
+@define-color secondary_sidebar_bg_color #121820;
+@define-color secondary_sidebar_fg_color #edf2f8;
+@define-color card_bg_color rgba(24, 33, 44, 0.94);
+@define-color card_fg_color #edf2f8;
+@define-color card_shade_color #263343;
+@define-color popover_bg_color #121820;
+@define-color popover_fg_color #edf2f8;
+@define-color popover_shade_color rgba(0, 0, 0, 0);
+@define-color dialog_bg_color #18212c;
+@define-color dialog_fg_color #edf2f8;
+@define-color thumbnail_bg_color #1c1c1c;
+@define-color thumbnail_fg_color #e8e8e8;
+@define-color accent_bg_color #9cc3ff;
+@define-color accent_fg_color #0c1829;
+@define-color accent_color #a6c8ff;
+@define-color destructive_bg_color #1c1c1c;
+@define-color destructive_fg_color #e8e8e8;
+@define-color destructive_color #e8e8e8;
+@define-color success_bg_color #f0f0f0;
+@define-color success_fg_color #000000;
+@define-color success_color #f0f0f0;
+@define-color warning_bg_color #bdbdbd;
+@define-color warning_fg_color #000000;
+@define-color warning_color #bdbdbd;
+@define-color error_bg_color #1c1c1c;
+@define-color error_fg_color #e8e8e8;
+@define-color error_color #e8e8e8;
+@define-color shade_color rgba(0, 0, 0, 0.5);
+@define-color scrollbar_outline_color rgba(0, 0, 0, 0);
+
+* { border-radius: 0; }
+
+window, popover, tooltip {
+  font-family: "Archivo", "Adwaita Sans", "Inter", "Cantarell", sans-serif;
+  font-size: 13.5px;
+  color: #edf2f8;
+}
+window.background, window.csd { background-color: #10141b; }
+window.csd, window.csd.maximized { box-shadow: 0 0 0 1px #344458; }
+
+selection { background-color: rgba(240, 240, 240, 0.26); color: #ffffff; }
+
+*:focus-visible { outline: 2px solid #a6c8ff; outline-offset: 2px; }
+
+.topbar {
+  min-height: 30px;
+  padding: 0 4px 0 10px;
+  background-color: rgba(10, 10, 10, 0.86);
+  border-bottom: 1px solid #263343;
+  font-size: 12px;
+}
+.bar-host {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: #a6c8ff;
+  padding: 3px 8px;
+}
+.bar-item { color: #acb9ca; padding: 3px 8px; }
+.bar-mono {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 11.5px;
+  font-feature-settings: "tnum";
+  color: #8493a7;
+  padding: 3px 8px;
+}
+.bar-mono.bright { color: #edf2f8; }
+
+.topbar windowcontrols { margin-left: 4px; }
+.topbar windowcontrols > button {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0 1px;
+  border: none;
+  background: none;
+  color: #8493a7;
+}
+.topbar windowcontrols > button > image { background: none; padding: 2px; }
+.topbar windowcontrols > button:hover { background-color: #202b38; color: #edf2f8; }
+.topbar windowcontrols > button.close:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+.dot {
+  min-width: 5px;
+  min-height: 5px;
+  border: 1px solid #8493a7;
+  background-color: transparent;
+}
+.dot.on {
+  background-color: #a6c8ff;
+  border-color: #a6c8ff;
+  box-shadow: 0 0 6px rgba(240, 240, 240, 0.8);
+}
+.dot.busy { background-color: #b0c3de; border-color: #b0c3de; }
+.dot.missing { background-color: transparent; border-color: #edf2f8; }
+
+.win {
+  background-color: rgba(18, 18, 18, 0.82);
+  border: 1px solid #344458;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.win:hover, .win:focus-within {
+  border-color: #7199ce;
+  box-shadow: 0 0 0 1px rgba(240, 240, 240, 0.16), 0 16px 48px rgba(0, 0, 0, 0.62);
+}
+.win-bar {
+  min-height: 30px;
+  padding: 0 6px 0 11px;
+  background-color: rgba(10, 10, 10, 0.72);
+  border-bottom: 1px solid #263343;
+}
+.win-title {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: #8493a7;
+  transition: color 160ms ease;
+}
+.win:hover .win-title, .win:focus-within .win-title { color: #a6c8ff; }
+.win-note { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10.5px; color: #8493a7; padding-right: 5px; }
+.win-body.padded { padding: 14px 15px; }
+
+.pfp { border: 1px solid #344458; background-color: #202b38; }
+.about-name { font-size: 19px; font-weight: 600; letter-spacing: -0.015em; color: #ffffff; }
+.about-version { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 11.5px; color: #c1d8fa; }
+.about-live { font-size: 11.5px; color: #8493a7; }
+
+.fact { padding: 5px 0; }
+.fact-name { font-size: 12.5px; color: #edf2f8; }
+.fact-note {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 10.5px;
+  font-feature-settings: "tnum";
+  color: #8493a7;
+}
+.rule { min-height: 1px; background-color: #263343; margin: 12px 0; }
+
+.sect {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #8493a7;
+  margin: 12px 0 5px;
+}
+button.link {
+  min-height: 0;
+  padding: 5px 8px;
+  margin: 0 -8px 1px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: #edf2f8;
+  font-size: 13px;
+  font-weight: 400;
+  transition: background-color 120ms, color 120ms;
+}
+button.link:hover { background-color: #202b38; color: #a6c8ff; }
+button.link:disabled { opacity: 0.45; filter: none; }
+button.link.current { background-color: rgba(200, 200, 200, 0.1); }
+button.link.current .link-title { color: #c1d8fa; }
+.link-note { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10.5px; color: #8493a7; }
+button.link:hover .link-note { color: #acb9ca; }
+
+.console { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 12.5px; padding: 18px 18px 14px; }
+.console label { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 12.5px; }
+.console .st { color: #8493a7; }
+.console .st.ok { color: #a6c8ff; }
+.console .st.wait { color: #b0c3de; }
+.console .st.failed { color: #edf2f8; }
+.console .msg { color: #c2c2c2; }
+.console .plain .msg { color: #7a7a7a; }
+.console .prompt { color: #a6c8ff; margin-top: 14px; }
+
+button {
+  padding: 5px 13px;
+  border: 1px solid #344458;
+  background-color: #202b38;
+  background-image: none;
+  box-shadow: none;
+  color: #edf2f8;
+  font-size: 12.5px;
+  font-weight: 400;
+  transition: border-color 140ms, color 140ms, background-color 140ms;
+}
+button:hover { border-color: #a6c8ff; color: #a6c8ff; background-color: #202b38; }
+button:active, button:checked { background-color: rgba(240, 240, 240, 0.12); color: #a6c8ff; }
+button:disabled { opacity: 0.45; filter: none; }
+button.suggested-action {
+  background-color: rgba(240, 240, 240, 0.14);
+  border-color: rgba(240, 240, 240, 0.4);
+  color: #a6c8ff;
+}
+button.suggested-action:hover { background-color: rgba(240, 240, 240, 0.22); }
+button.suggested-action:disabled { opacity: 1; filter: none; background-color: transparent; border-color: #263343; color: #8493a7; }
+button.destructive-action { background-color: transparent; border-color: #edf2f8; color: #edf2f8; }
+button.destructive-action:hover { background-color: rgba(240, 240, 240, 0.12); }
+button.flat, button.image-button.flat, menubutton.flat > button {
+  background-color: transparent;
+  border-color: transparent;
+  color: #acb9ca;
+}
+button.flat:hover, menubutton.flat > button:hover { background-color: #202b38; border-color: transparent; color: #edf2f8; }
+button.flat:checked { background-color: rgba(240, 240, 240, 0.12); color: #a6c8ff; }
+button.image-button { padding: 5px 7px; }
+button.flat.image-button, button.flat.toggle.image-button { min-width: 18px; min-height: 18px; padding: 4px 6px; }
+button.big { padding: 9px 13px; font-size: 13.5px; font-weight: 500; }
+
+button.tab {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  margin-right: 5px;
+  background-color: #202b38;
+  border: 1px solid #263343;
+  color: #acb9ca;
+}
+button.tab:hover { border-color: #7199ce; color: #edf2f8; }
+button.tab:checked {
+  background-color: rgba(240, 240, 240, 0.14);
+  border-color: rgba(240, 240, 240, 0.4);
+  color: #a6c8ff;
+}
+.tabs { padding: 12px 15px 2px; }
+
+preferencespage, preferencespage > scrolledwindow, preferencespage viewport,
+toolbarview, toolbarview > .top-bar, toolbarview > .bottom-bar, stack, viewport, scrolledwindow,
+statuspage, toastoverlay, clamp {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+preferencespage > scrolledwindow > viewport > clamp > box { margin: 14px 15px; border-spacing: 16px; }
+
+preferencesgroup > box > box.header { margin-bottom: 7px; }
+preferencesgroup > box > box.header label.title,
+preferencesgroup > box > box.header label.heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #8493a7;
+}
+preferencesgroup > box > box.header > box.labels > label.body,
+preferencesgroup > box > box.header label.description,
+preferencespage > scrolledwindow > viewport > clamp > box > label.description {
+  font-size: 12px;
+  color: #acb9ca;
+  opacity: 1;
+}
+
+list.boxed-list, list.boxed-list-separate > row, .card {
+  background-color: rgba(30, 30, 30, 0.4);
+  border: 1px solid #263343;
+  box-shadow: none;
+  color: #edf2f8;
+}
+list.boxed-list > row {
+  background-color: transparent;
+  border-bottom: 1px solid #263343;
+  outline-offset: -2px;
+}
+list.boxed-list > row:last-child { border-bottom: none; }
+list.boxed-list > row.activatable:hover { background-color: #202b38; }
+list.boxed-list > row.activatable:active { background-color: rgba(240, 240, 240, 0.08); }
+row .title { font-size: 13px; font-weight: 400; color: #edf2f8; }
+row .subtitle { font-size: 11.5px; color: #acb9ca; opacity: 1; }
+row.mono-subtitle .subtitle { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10.5px; }
+row.error .title { color: #ffffff; font-weight: 600; }
+row.expander > box > list > row { background-color: transparent; }
+row > box.header { min-height: 44px; }
+.dim-label, .dimmed { color: #acb9ca; opacity: 1; }
+.caption { font-size: 11.5px; }
+.heading { font-weight: 600; }
+.numeric { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 11.5px; font-feature-settings: "tnum"; }
+
+switch {
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+  background-color: transparent;
+  background-image: none;
+  border: 1px solid #8493a7;
+  box-shadow: none;
+}
+switch > slider {
+  min-width: 13px;
+  min-height: 9px;
+  margin: 0;
+  background-color: #8493a7;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+switch > image { -gtk-icon-size: 9px; min-width: 0; min-height: 0; margin: 0; padding: 0; opacity: 0; }
+switch:hover { border-color: #acb9ca; }
+switch:checked { background-color: rgba(240, 240, 240, 0.14); border-color: #a6c8ff; }
+switch:checked > slider { background-color: #a6c8ff; }
+switch:disabled { opacity: 0.45; filter: none; }
+
+entry, spinbutton, searchbar entry, text.search, row.entry text {
+  background-color: rgba(0, 0, 0, 0.45);
+  background-image: none;
+  border: 1px solid #263343;
+  box-shadow: none;
+  color: #edf2f8;
+  caret-color: #a6c8ff;
+  outline-offset: 2px;
+}
+entry:focus-within, spinbutton:focus-within { border-color: #7199ce; }
+entry > text > placeholder { color: #8493a7; }
+spinbutton { min-height: 26px; }
+spinbutton > text {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 11.5px;
+  font-feature-settings: "tnum";
+  background: none;
+  border: none;
+  min-width: 46px;
+}
+spinbutton > button, row.spin spinbutton > button {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  margin: 1px;
+  border: none;
+  background-color: transparent;
+  color: #acb9ca;
+}
+spinbutton > button:hover { background-color: #202b38; color: #edf2f8; }
+row.spin spinbutton { background-color: transparent; border: none; }
+row.spin spinbutton > button { border: 1px solid #263343; background-color: #202b38; margin-left: 5px; }
+row.entry { background-color: transparent; }
+row.entry text { border: none; background: none; }
+
+dropdown > button, row.combo dropdown > button { padding: 4px 9px; }
+row.combo dropdown > button { background: none; border-color: transparent; color: #edf2f8; }
+checkbutton > check, checkbutton > radio {
+  min-width: 13px;
+  min-height: 13px;
+  background-color: transparent;
+  background-image: none;
+  border: 1px solid #8493a7;
+  box-shadow: none;
+  color: #10141b;
+}
+checkbutton > check:checked, checkbutton > radio:checked { background-color: #a6c8ff; border-color: #a6c8ff; }
+
+scale > trough { min-height: 3px; background-color: #263343; border: none; }
+scale > trough > highlight { background-color: #acb9ca; min-height: 3px; }
+scale > trough > slider {
+  min-width: 11px;
+  min-height: 11px;
+  margin: -4px;
+  background-color: #a6c8ff;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+progressbar > trough { min-height: 2px; background-color: #263343; border: none; }
+progressbar > trough > progress { min-height: 2px; background-color: #a6c8ff; background-image: none; border: none; }
+progressbar > text { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10.5px; color: #8493a7; }
+
+scrollbar { background-color: transparent; border: none; }
+scrollbar > range > trough { background-color: transparent; }
+scrollbar > range > trough > slider {
+  min-width: 5px;
+  min-height: 5px;
+  margin: 2px;
+  background-color: #263343;
+  border: none;
+}
+scrollbar > range > trough > slider:hover { background-color: #344458; }
+undershoot.top, undershoot.bottom, overshoot.top, overshoot.bottom { background: none; box-shadow: none; }
+
+separator { background-color: #263343; min-height: 1px; min-width: 1px; }
+
+avatar, avatar > image, avatar > label { border-radius: 0; }
+avatar { border: 1px solid #344458; background-color: #202b38; background-image: none; color: #acb9ca; }
+
+textview { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 12px; background-color: transparent; color: #d4d4d4; }
+textview > text { background-color: transparent; color: #d4d4d4; }
+.log-tools { padding: 8px 10px; border-bottom: 1px solid #263343; }
+
+popover > contents, popover.menu > contents {
+  padding: 5px;
+  background-color: rgba(10, 10, 10, 0.96);
+  border: 1px solid #344458;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  color: #acb9ca;
+}
+popover > arrow { background-color: rgba(10, 10, 10, 0.96); border: 1px solid #344458; }
+popover modelbutton, popover listview > row, popover list > row {
+  padding: 6px 10px;
+  min-height: 0;
+  color: #acb9ca;
+  font-size: 12.5px;
+}
+popover modelbutton:hover, popover listview > row:hover, popover list > row:hover,
+popover listview > row:selected {
+  background-color: #202b38;
+  color: #edf2f8;
+}
+
+toast {
+  background-color: rgba(10, 10, 10, 0.96);
+  border: 1px solid #344458;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  color: #edf2f8;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+toast label, toast .heading { font-weight: 400; }
+toast button { border: none; background: none; }
+
+tooltip, tooltip.background {
+  background-color: rgba(10, 10, 10, 0.96);
+  border: 1px solid #344458;
+  box-shadow: none;
+  color: #acb9ca;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+dialog.alert sheet, dialog sheet, window.dialog, window.messagedialog, .dialog-contents {
+  background-color: #18212c;
+  border: 1px solid #344458;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.62);
+  color: #edf2f8;
+}
+dialog.alert .heading, .alert .title-2, .title-2 { font-size: 15px; font-weight: 600; color: #ffffff; }
+dialog.alert .body { font-size: 13px; color: #acb9ca; }
+dialog.alert .response-area { border-top: 1px solid #263343; padding: 10px; border-spacing: 6px; }
+dialog.alert .response-area > button { border: 1px solid #344458; margin: 0; }
+dialog.alert .response-area > button.suggested { background-color: rgba(240, 240, 240, 0.14); border-color: rgba(240, 240, 240, 0.4); color: #a6c8ff; }
+dialog.alert .response-area > button.destructive { background-color: transparent; border-color: #edf2f8; color: #edf2f8; }
+dimming { background-color: rgba(0, 0, 0, 0.7); }
+
+headerbar {
+  min-height: 30px;
+  background-color: #121820;
+  background-image: none;
+  border-bottom: 1px solid #263343;
+  box-shadow: none;
+  color: #edf2f8;
+}
+headerbar .title, headerbar windowtitle .title {
+  font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace;
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #a6c8ff;
+}
+headerbar windowcontrols > button > image { background: none; }
+headerbar button { border-color: transparent; background: none; color: #acb9ca; }
+headerbar button:hover { background-color: #202b38; color: #edf2f8; }
+
+banner > revealer > widget { background-color: #202b38; border-bottom: 1px solid #344458; color: #edf2f8; }
+
+.launcher-sidebar { background-color: #121820; border-right: 1px solid #263343; }
+.launcher-sidebar .navigation-sidebar { padding: 12px 10px; background: none; }
+.launcher-sidebar .navigation-sidebar row { margin-bottom: 4px; min-height: 40px; border: 1px solid transparent; }
+.launcher-sidebar .navigation-sidebar row:selected { background-color: #202b38; border-color: #344458; }
+.launcher-brand { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 15px; font-weight: 600; letter-spacing: 1px; }
+.launcher-section-title { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 11px; letter-spacing: 1px; color: #acb9ca; }
+.launcher-header { border-bottom: 1px solid #263343; }
+.launcher-header windowtitle .subtitle { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10px; color: #acb9ca; }
+.play-dashboard { padding: 28px; }
+.play-title { font-size: 34px; font-weight: 600; letter-spacing: -1px; color: #edf2f8; }
+.play-hero { background-color: alpha(#18212c, 0.94); border: 1px solid #344458; }
+.play-hero-head { padding: 24px 22px 18px; }
+.play-badge { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10.5px; color: #a6c8ff; padding: 5px 8px; border: 1px solid #344458; }
+.play-facts { background-color: alpha(#18212c, 0.94); border: 1px solid #263343; }
+.play-fact { padding: 13px 16px; }
+.play-fact + .play-fact { border-top: 1px solid #263343; }
+.play-fact-title { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10px; letter-spacing: 0.4px; color: #acb9ca; }
+.play-fact-value { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 11px; color: #edf2f8; }
+.play-quick-action { padding: 13px 16px; background-color: alpha(#18212c, 0.94); border-color: #263343; }
+.play-quick-action label { font-size: 12px; }
+.play-quick-action:hover { border-color: #a6c8ff; }
+.boot-splash { background: linear-gradient(160deg, alpha(#a6c8ff, 0.22), #10141b 72%); border: 1px solid #263343; }
+.boot-status { font-size: 15px; font-weight: 600; }
+.boot-splash progressbar trough { min-height: 6px; }
+.boot-splash progressbar progress { min-height: 6px; }
+.home-title { font-size: 26px; font-weight: 700; }
+.target-toggle button { padding: 6px 18px; }
+.status-card { padding: 12px 16px; background-color: alpha(#18212c, 0.94); border: 1px solid #263343; }
+.status-card-title { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10px; letter-spacing: 0.4px; color: #acb9ca; }
+.status-card-value { font-size: 13px; font-weight: 600; }
+.game-tile { padding: 10px; background-color: alpha(#18212c, 0.94); border: 1px solid #263343; }
+.game-tile:hover { border-color: #a6c8ff; }
+.game-tile-name { font-size: 12px; font-weight: 600; }
+.game-tile-sub { font-size: 10px; color: #acb9ca; }
+.sidebar-section { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10px; letter-spacing: 1px; color: #acb9ca; margin: 14px 12px 4px 12px; }
+.play-hero actionbar { background: none; }
+.play-hero actionbar > revealer > box { padding: 14px 18px; border-top: 1px solid #263343; background: none; box-shadow: none; }
+.play-hero actionbar button { min-height: 32px; min-width: 0; padding-left: 16px; padding-right: 16px; }
+.play-hero actionbar .dim-label { font-family: "JetBrains Mono", "Adwaita Mono", "Source Code Pro", monospace; font-size: 10px; }
+.play-footer { color: #acb9ca; font-size: 11px; }
+window.launcher-custom .setup-wizard { background-image: none; }
+window.launcher-custom .setup-wizard .setup-step,
+window.launcher-custom .setup-wizard .setup-note,
+window.launcher-custom .setup-wizard .setup-number { border-radius: 0; }
+window.launcher-custom .setup-wizard .setup-progress { min-height: 2px; }
+
+.play-hero { border-top: 2px solid #9cc3ff; }
+button.suggested-action { background-color: #9cc3ff; border-color: #9cc3ff; color: #0c1829; font-weight: 600; }
+button.suggested-action:hover { background-color: #b7d4ff; border-color: #b7d4ff; color: #0c1829; }
+button.suggested-action:disabled { background-color: transparent; border-color: #263343; color: #8493a7; font-weight: 400; }
+.launcher-sidebar .navigation-sidebar row:selected { background-color: rgba(156, 195, 255, 0.10); border-color: #344458; }
+.launcher-sidebar .navigation-sidebar row:selected label,
+.launcher-sidebar .navigation-sidebar row:selected image { color: #b7d4ff; }
+.dot.on { background-color: #a6c8ff; border-color: #a6c8ff; box-shadow: none; }
+.play-hero-head image { color: #a6c8ff; }
+:root {
+  --window-bg-color: #10141b;
+  --window-fg-color: #edf2f8;
+  --view-bg-color: #121820;
+  --view-fg-color: #edf2f8;
+  --headerbar-bg-color: #121820;
+  --headerbar-fg-color: #edf2f8;
+  --headerbar-border-color: #1e1e1e;
+  --headerbar-backdrop-color: #121820;
+  --headerbar-shade-color: rgba(0, 0, 0, 0);
+  --headerbar-darker-shade-color: rgba(0, 0, 0, 0);
+  --sidebar-bg-color: #121820;
+  --sidebar-fg-color: #edf2f8;
+  --sidebar-backdrop-color: #121820;
+  --sidebar-shade-color: rgba(0, 0, 0, 0);
+  --sidebar-border-color: #263343;
+  --secondary-sidebar-bg-color: #121820;
+  --secondary-sidebar-fg-color: #edf2f8;
+  --card-bg-color: rgba(24, 33, 44, 0.94);
+  --card-fg-color: #edf2f8;
+  --card-shade-color: #263343;
+  --popover-bg-color: #121820;
+  --popover-fg-color: #edf2f8;
+  --popover-shade-color: rgba(0, 0, 0, 0);
+  --dialog-bg-color: #18212c;
+  --dialog-fg-color: #edf2f8;
+  --thumbnail-bg-color: #1c1c1c;
+  --thumbnail-fg-color: #e8e8e8;
+  --accent-bg-color: #9cc3ff;
+  --accent-fg-color: #0c1829;
+  --accent-color: #a6c8ff;
+  --destructive-bg-color: #1c1c1c;
+  --destructive-fg-color: #e8e8e8;
+  --destructive-color: #e8e8e8;
+  --success-bg-color: #f0f0f0;
+  --success-fg-color: #000000;
+  --success-color: #f0f0f0;
+  --warning-bg-color: #bdbdbd;
+  --warning-fg-color: #000000;
+  --warning-color: #bdbdbd;
+  --error-bg-color: #1c1c1c;
+  --error-fg-color: #e8e8e8;
+  --error-color: #e8e8e8;
+  --shade-color: rgba(0, 0, 0, 0.5);
+  --scrollbar-outline-color: rgba(0, 0, 0, 0);
+}
