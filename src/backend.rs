@@ -14,6 +14,7 @@ mod game_details;
 mod handlers;
 mod launch;
 mod launch_request;
+mod legacy_quadra;
 mod live_log;
 mod mangohud;
 mod mime_defaults;
@@ -135,7 +136,10 @@ pub fn install(state: &AppState, client: Client) {
 
             Ok(())
         },
-        |state, ()| refresh(state),
+        |state, ()| {
+            refresh(state);
+            legacy_quadra::look_for(state);
+        },
     );
 }
 
@@ -225,6 +229,10 @@ pub fn install_update(state: &AppState) {
 
 pub fn can_update_itself() -> bool {
     updater::can_update_itself()
+}
+
+pub fn delete_old_quadra(state: &AppState) {
+    legacy_quadra::delete(state);
 }
 
 pub fn hardware_report() -> String {

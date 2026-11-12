@@ -6,6 +6,7 @@ pub mod header;
 pub mod icon;
 pub mod ignored_flag_icon;
 pub mod launch_window;
+pub mod legacy_cleanup_dialog;
 pub mod line_field_backdrop;
 pub mod logs_dialog;
 pub mod play_action;

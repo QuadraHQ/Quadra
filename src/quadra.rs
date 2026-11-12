@@ -4,6 +4,7 @@ use crate::components::error_dialog::show_errors_from;
 use crate::components::grid_backdrop::grid_backdrop;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
+use crate::components::legacy_cleanup_dialog::show_legacy_cleanup_offers_from;
 use crate::components::line_field_backdrop::line_field_backdrop;
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
@@ -292,6 +293,7 @@ fn window(app: &Application, state: &AppState, pages: &ViewStack) -> Application
         move |_| window.present()
     ));
     show_errors_from(state, &window);
+    show_legacy_cleanup_offers_from(state, &window);
 
     window
 }

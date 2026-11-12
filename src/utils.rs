@@ -201,3 +201,26 @@ mod playtime_tests {
         assert_eq!(format_playtime(3600 * 2 + 60 * 15), "2 h 15 min");
     }
 }
+
+pub fn format_size(bytes: u64) -> String {
+    const MEBIBYTE: u64 = 1 << 20;
+    const GIBIBYTE: u64 = 1 << 30;
+    if bytes >= GIBIBYTE {
+        format!("{:.1} GB", bytes as f64 / GIBIBYTE as f64)
+    } else {
+        format!("{} MB", bytes.div_ceil(MEBIBYTE).max(1))
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::format_size;
+
+    #[test]
+    fn formats_sizes_for_people() {
+        assert_eq!(format_size(0), "1 MB");
+        assert_eq!(format_size(5 * (1 << 20)), "5 MB");
+        assert_eq!(format_size((1 << 20) + 1), "2 MB");
+        assert_eq!(format_size(3 * (1 << 30) + (1 << 29)), "3.5 GB");
+    }
+}

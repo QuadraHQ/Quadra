@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 38] = [
+const SAVED_PROPERTIES: [&str; 39] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -78,6 +78,7 @@ const SAVED_PROPERTIES: [&str; 38] = [
     "cpu-core-limit",
     "block-telemetry",
     "theme",
+    "legacy-cleanup-dismissed",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -176,6 +177,7 @@ struct SavedSettings {
     cpu_core_limit: u32,
     block_telemetry: bool,
     theme: Theme,
+    legacy_cleanup_dismissed: bool,
 }
 
 impl Default for SavedSettings {
@@ -221,6 +223,7 @@ impl Default for SavedSettings {
             cpu_core_limit: 0,
             block_telemetry: false,
             theme: Theme::default(),
+            legacy_cleanup_dismissed: false,
         }
     }
 }
@@ -333,6 +336,10 @@ mod imp {
         signed_in: Cell<bool>,
         #[property(get, set)]
         block_telemetry: Cell<bool>,
+        #[property(get, set)]
+        legacy_cleanup_dismissed: Cell<bool>,
+        #[property(get, set)]
+        legacy_cleanup_bytes: Cell<u64>,
         #[property(get, set)]
         available_update: RefCell<String>,
         #[property(get, set)]
@@ -468,6 +475,10 @@ impl AppState {
             .property("block-telemetry", settings.block_telemetry)
             .property("first-launch", !file_existed && !settings.opened_before)
             .property("theme", settings.theme)
+            .property(
+                "legacy-cleanup-dismissed",
+                settings.legacy_cleanup_dismissed,
+            )
             .build();
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
@@ -661,6 +672,7 @@ impl AppState {
             cpu_core_limit: self.cpu_core_limit(),
             block_telemetry: self.block_telemetry(),
             theme: self.theme(),
+            legacy_cleanup_dismissed: self.legacy_cleanup_dismissed(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
