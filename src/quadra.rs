@@ -1,6 +1,7 @@
 use crate::backend::{self, LaunchRequest};
 use crate::components::close_roblox_dialog::confirm_closing_roblox;
 use crate::components::error_dialog::show_errors_from;
+use crate::components::grid_backdrop::grid_backdrop;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
 use crate::components::play_action::PlayAction;
@@ -270,13 +271,17 @@ fn window(app: &Application, state: &AppState, pages: &ViewStack) -> Application
     toolbar_view.add_top_bar(&update_banner(state));
     toolbar_view.set_content(Some(pages));
 
+    let backdrop = gtk::Overlay::builder().child(&grid_backdrop(state)).build();
+    backdrop.add_overlay(&toolbar_view);
+    backdrop.set_measure_overlay(&toolbar_view, true);
+
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Quadra")
         .default_width(800)
         .default_height(600)
         .hide_on_close(true)
-        .content(&toolbar_view)
+        .content(&backdrop)
         .build();
 
     state.connect_error_message_notify(glib::clone!(

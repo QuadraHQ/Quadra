@@ -1,6 +1,7 @@
 pub mod close_roblox_dialog;
 pub mod error_dialog;
 pub mod file_row;
+pub mod grid_backdrop;
 pub mod header;
 pub mod icon;
 pub mod ignored_flag_icon;
