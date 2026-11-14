@@ -20,7 +20,7 @@ jobs:
     if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
     runs-on: self-hosted
     container:
-      image: debian:trixie
+      image: debian:forky
     env:
       APPIMAGE_EXTRACT_AND_RUN: 1
     steps:
