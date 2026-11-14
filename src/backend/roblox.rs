@@ -2,8 +2,8 @@ use super::background::Progress;
 use super::download::{
     download_file, remove_directory_if_present, replace_directory, stop_others_from_writing,
 };
-use super::paths;
 use super::req_agent::api_agent;
+use super::{fast_flags, paths};
 use crate::state::Client;
 use anyhow::{Context, ensure};
 use serde::{Deserialize, Serialize};
@@ -107,6 +107,9 @@ pub fn install(client: Client, release: &RobloxRelease, progress: &Progress) -> 
     );
     replace_directory(&unpacked_app, &app_path(client))?;
     remove_directory_if_present(&unpacking)?;
+    if client == Client::Player {
+        fast_flags::reapply_remembered()?;
+    }
     fs::write(
         files.directory.join(INSTALLED_RELEASE_FILE),
         toml::to_string(release)?,

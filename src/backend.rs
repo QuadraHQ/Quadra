@@ -59,6 +59,7 @@ pub fn initialize(state: &AppState) {
     updater::initialize(state);
     quadra_rosemary::look_for_update(state);
     fast_flag_allowlist::initialize();
+    fast_flags::initialize(state);
     discord_presence::initialize(state);
     server_history::initialize(state);
     server_location::initialize(state);

@@ -56,6 +56,12 @@ pub fn desktop_entry_icon_file() -> PathBuf {
         .join("org.quadrahq.Quadra.png")
 }
 
+pub fn fast_flags_file() -> PathBuf {
+    quadra_data_directory()
+        .join("ClientSettings")
+        .join("ClientAppSettings.json")
+}
+
 pub fn logs_directory() -> PathBuf {
     quadra_data_directory().join("logs")
 }
