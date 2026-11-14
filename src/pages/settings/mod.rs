@@ -2,6 +2,7 @@ mod about;
 mod account;
 mod bound_rows;
 mod custom_flags;
+mod discord_access;
 mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;

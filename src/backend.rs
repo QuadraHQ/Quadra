@@ -4,6 +4,7 @@ mod cpu_limit;
 mod desktop_entries;
 mod destination;
 mod diagnostics;
+mod discord_access;
 mod discord_ipc;
 mod discord_presence;
 mod download;
@@ -34,6 +35,7 @@ mod updater;
 mod vr;
 
 pub use desktop_entries::Shortcut;
+pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
 pub use handlers::Handler;
 pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};

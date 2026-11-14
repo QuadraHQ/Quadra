@@ -1,5 +1,6 @@
 use super::account::account_group;
 use super::bound_rows::{choice_row, switch_row};
+use super::discord_access::ask_for_discord_access_when_turned_on;
 use super::environment_variables::environment_variables_group;
 use super::launch_wrapper::launch_wrapper_group;
 use super::privacy::privacy_group;
@@ -32,6 +33,7 @@ pub fn env_section(state: &AppState) -> gtk::Box {
         switch_row(state, "discord-rich-presence", "Show what you're playing");
     discord_rich_presence_row
         .set_subtitle("Show the Roblox game you're in on your Discord profile");
+    ask_for_discord_access_when_turned_on(&discord_rich_presence_row);
 
     let discord_group = adw::PreferencesGroup::builder().title("Discord").build();
     discord_group.add(&discord_rich_presence_row);

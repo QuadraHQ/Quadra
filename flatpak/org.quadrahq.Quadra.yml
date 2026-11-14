@@ -14,11 +14,6 @@ finish-args:
   - --socket=pulseaudio
   - --device=dri
   - --talk-name=org.kde.StatusNotifierWatcher
-  - --filesystem=xdg-run/discord-ipc-0
-  - --filesystem=xdg-run/app/com.discordapp.Discord:create
-  - --filesystem=xdg-run/app/dev.vencord.Vesktop:create
-  - --filesystem=xdg-run/.flatpak/dev.vencord.Vesktop:create
-  - --filesystem=xdg-run/snap.discord:create
   - --filesystem=xdg-data/butter/runners:ro
   - --filesystem=~/.var/app/io.github.microlift.butter/data/butter/runners:ro
 

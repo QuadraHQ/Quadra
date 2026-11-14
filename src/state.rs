@@ -188,7 +188,7 @@ impl Default for SavedSettings {
         Self {
             launch_mode: LaunchMode::default(),
             run_in_background: false,
-            discord_rich_presence: true,
+            discord_rich_presence: false,
             runtime: Runtime::default(),
             runner: QUADRA_RUNNER.to_owned(),
             custom_runner_path: String::new(),
@@ -834,7 +834,7 @@ mod tests {
         assert!(problem.is_none());
         assert_eq!(settings.runner, QUADRA_RUNNER);
         assert_eq!(settings.prefix, QUADRA_PREFIX);
-        assert!(settings.discord_rich_presence);
+        assert!(!settings.discord_rich_presence);
         assert!(settings.vr_mirror);
         assert_eq!(settings.vr_render_scale, DEFAULT_VR_RENDER_SCALE);
         assert!(settings.custom_mods);
