@@ -91,15 +91,17 @@ pub enum TitleBar {
     #[default]
     MacStyle,
     System,
+    Hidden,
 }
 
 impl Choice for TitleBar {
-    const ALL: &'static [Self] = &[Self::MacStyle, Self::System];
+    const ALL: &'static [Self] = &[Self::MacStyle, Self::System, Self::Hidden];
 
     fn label(self) -> &'static str {
         match self {
             Self::MacStyle => "Mac-style",
             Self::System => "System",
+            Self::Hidden => "Hidden",
         }
     }
 }

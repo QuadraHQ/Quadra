@@ -36,6 +36,87 @@ pub const ALLOWLIST_SOURCE: &str =
 
 pub const ALLOWLIST: &[FlagCategory] = &[
     FlagCategory {
+        title: "Performance",
+        flags: &[
+            toggle(
+                "FFlagDebugDisablePostFx",
+                "Disable post-processing effects (bloom, blur, etc.)",
+            ),
+            toggle(
+                "FFlagDebugDisableClusterCulling",
+                "Disable cluster culling (may increase draw calls)",
+            ),
+            toggle(
+                "FFlagDebugGraphicsDisableComputeShaders",
+                "Disable compute shaders",
+            ),
+            toggle(
+                "FFlagTaskSchedulerLimitFrequency",
+                "Limit task scheduler frequency (ON = 60Hz cap)",
+            ),
+            number(
+                "DFIntTaskSchedulerTargetFps",
+                "Task scheduler target FPS (999 = unlimited)",
+            ),
+            number(
+                "FIntRenderMaxDrawCallsPerFrame",
+                "Max draw calls per frame (lower = more FPS, less detail)",
+            ),
+            number(
+                "FFlagRenderFontResolution",
+                "Font render resolution (1 = lowest, saves GPU)",
+            ),
+            toggle(
+                "FFlagDebugGraphicsPreferOpenGL",
+                "Prefer OpenGL over Metal (via Vulkan translation)",
+            ),
+            toggle(
+                "FFlagDebugGraphicsPreferVulkan",
+                "Prefer Vulkan over Metal",
+            ),
+            number(
+                "DFIntGCJobFrequencyMs",
+                "Garbage collector frequency (higher = less frequent, 250 = recommended)",
+            ),
+            number(
+                "DFIntPhysicsStepsPerFrame",
+                "Physics steps per frame (1 = less CPU, more interpolation)",
+            ),
+            toggle(
+                "FFlagLuaAppEnableLowMemoryMode",
+                "Low memory mode (reduces RAM usage, may lower quality)",
+            ),
+            toggle(
+                "FFlagDisablePostFx",
+                "Disable all post-effects (legacy)",
+            ),
+            toggle(
+                "FFlagDisableShadows",
+                "Disable shadows",
+            ),
+            toggle(
+                "FFlagDisableBloom",
+                "Disable bloom",
+            ),
+            toggle(
+                "FFlagDisableDepthOfField",
+                "Disable depth of field",
+            ),
+            toggle(
+                "FFlagDisableGlobalShadows",
+                "Disable global shadows",
+            ),
+            number(
+                "DFIntConnectionMTUSize",
+                "Network MTU size (1400 = lower ping on some networks)",
+            ),
+            toggle(
+                "FFlagEnableReducedLatency",
+                "Enable reduced latency mode",
+            ),
+        ],
+    },
+    FlagCategory {
         title: "Geometry",
         flags: &[
             number(

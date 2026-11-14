@@ -1,0 +1,56 @@
+window.overlay-surface {
+    background: none;
+}
+
+.overlay-panel {
+    background-color: alpha(@window_bg_color, 0.97);
+    color: @window_fg_color;
+    border: 1px solid alpha(@window_fg_color, 0.14);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px alpha(black, 0.45);
+}
+
+.overlay-panel-title {
+    padding: 6px 6px 6px 12px;
+    border-bottom: 1px solid alpha(@window_fg_color, 0.08);
+}
+
+.overlay-panel-title label {
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.overlay-grip {
+    min-width: 12px;
+    min-height: 12px;
+    margin: 0 4px 4px 0;
+    border-right: 2px solid alpha(@window_fg_color, 0.35);
+    border-bottom: 2px solid alpha(@window_fg_color, 0.35);
+    border-bottom-right-radius: 4px;
+}
+
+.overlay-dock {
+    background-color: alpha(@window_bg_color, 0.97);
+    color: @window_fg_color;
+    border: 1px solid alpha(@window_fg_color, 0.14);
+    border-radius: 999px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 28px alpha(black, 0.45);
+}
+
+.overlay-dock .game-name {
+    font-weight: 700;
+}
+
+.overlay-dock .game-status {
+    font-size: 0.8em;
+}
+
+.overlay-body {
+    padding: 12px;
+}
+
+.overlay-command {
+    font-family: monospace;
+    font-size: 0.8em;
+}
