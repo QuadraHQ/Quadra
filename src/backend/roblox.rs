@@ -13,6 +13,7 @@ use std::path::PathBuf;
 const LATEST_RELEASE_BASE_URL: &str = "https://clientsettingscdn.roblox.com/v2/client-version";
 const DOWNLOAD_BASE_URL: &str = "https://setup.rbxcdn.com/mac";
 const INSTALLED_RELEASE_FILE: &str = "release.toml";
+const PLAYER_INSTALLER_INSIDE_APP: &str = "Contents/MacOS/RobloxPlayerInstaller.app";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -108,6 +109,7 @@ pub fn install(client: Client, release: &RobloxRelease, progress: &Progress) -> 
     replace_directory(&unpacked_app, &app_path(client))?;
     remove_directory_if_present(&unpacking)?;
     if client == Client::Player {
+        remove_player_installer()?;
         fast_flags::reapply_remembered()?;
     }
     fs::write(
@@ -126,17 +128,24 @@ pub fn install_or_update(
 ) -> anyhow::Result<()> {
     progress.step(format!("Checking for {} updates", client.name()));
     match latest_release(client) {
-        Ok(latest) if Some(&latest) != installed => install(client, &latest, progress),
-        Ok(_) => Ok(()),
+        Ok(latest) if Some(&latest) != installed => install(client, &latest, progress)?,
+        Ok(_) => {}
         Err(error) if installed.is_some() => {
             eprintln!(
                 "Starting the installed {} without updating: {error:#}",
                 client.name()
             );
-            Ok(())
         }
-        Err(error) => Err(error),
+        Err(error) => return Err(error),
     }
+    if client == Client::Player {
+        remove_player_installer()?;
+    }
+    Ok(())
+}
+
+fn remove_player_installer() -> anyhow::Result<()> {
+    remove_directory_if_present(&app_path(Client::Player).join(PLAYER_INSTALLER_INSIDE_APP))
 }
 
 fn download_url(archive_name: &str) -> String {
