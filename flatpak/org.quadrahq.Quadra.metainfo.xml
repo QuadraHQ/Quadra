@@ -18,24 +18,28 @@
   <launchable type="desktop-id">org.quadrahq.Quadra.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/flathub/org.quadrahq.Quadra/master/screenshots/roblox.png</image>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/roblox.png</image>
       <caption>Roblox running through Quadra</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/flathub/org.quadrahq.Quadra/master/screenshots/launcher-play.png</image>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play.png</image>
       <caption>The launcher</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/flathub/org.quadrahq.Quadra/master/screenshots/launcher-flags.png</image>
-      <caption>FastFlags</caption>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play-grid.png</image>
+      <caption>The launcher with the Grid theme</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/flathub/org.quadrahq.Quadra/master/screenshots/launcher-settings.png</image>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play-monochrome.png</image>
+      <caption>The launcher with the Monochrome theme</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-servers.png</image>
+      <caption>Joining by region and rejoining past servers</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-settings.png</image>
       <caption>Settings</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/flathub/org.quadrahq.Quadra/master/screenshots/launcher-info.png</image>
-      <caption>Community and authors</caption>
     </screenshot>
   </screenshots>
   <url type="homepage">https://quadrahq.org</url>
