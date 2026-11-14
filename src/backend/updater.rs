@@ -1,7 +1,7 @@
 mod appimage;
 mod install_kind;
 mod release;
-mod version;
+pub mod version;
 
 use super::background::{run_quietly, run_task};
 use crate::state::AppState;

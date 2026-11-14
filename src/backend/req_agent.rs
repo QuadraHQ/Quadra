@@ -38,6 +38,14 @@ pub fn download_agent() -> &'static Agent {
     &DOWNLOAD_AGENT
 }
 
+pub fn get_text(url: &str) -> anyhow::Result<String> {
+    api_agent()
+        .get(url)
+        .call()
+        .and_then(|mut response| response.body_mut().read_to_string())
+        .with_context(|| format!("Couldn't get {url}"))
+}
+
 pub fn get_json<T: DeserializeOwned>(url: &str) -> anyhow::Result<T> {
     api_agent()
         .get(url)

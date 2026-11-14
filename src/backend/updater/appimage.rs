@@ -1,6 +1,6 @@
 use super::release::{self, AppImageUpdate};
 use crate::backend::background::Progress;
-use crate::backend::download::{download_file, sha256_of_file};
+use crate::backend::download::{checksum_listed_for, download_file, sha256_of_file};
 use anyhow::{Context, bail, ensure};
 use std::ffi::CString;
 use std::fs;
@@ -52,7 +52,7 @@ pub fn verify_and_install(
     file_name: &str,
     checksums: &str,
 ) -> anyhow::Result<()> {
-    let expected = expected_checksum(checksums, file_name)
+    let expected = checksum_listed_for(checksums, file_name)
         .with_context(|| format!("The release's checksums don't list {file_name}"))?;
     let actual = sha256_of_file(staged)?;
     if actual != expected {
@@ -62,14 +62,6 @@ pub fn verify_and_install(
     fs::set_permissions(staged, fs::Permissions::from_mode(EXECUTABLE_MODE))?;
     fs::rename(staged, running_appimage)
         .with_context(|| format!("Couldn't replace {}", running_appimage.display()))
-}
-
-fn expected_checksum(checksums: &str, file_name: &str) -> Option<String> {
-    checksums.lines().find_map(|line| {
-        let (checksum, name) = line.split_once(char::is_whitespace)?;
-        let name = name.trim_start().trim_start_matches('*');
-        (name == file_name).then(|| checksum.to_ascii_lowercase())
-    })
 }
 
 fn staged_path(running_appimage: &Path) -> PathBuf {
@@ -151,14 +143,6 @@ mod tests {
         );
         assert!(verify_and_install(&staged, &running, "Quadra-v1-x86_64.AppImage", "").is_err());
         assert_eq!(fs::read(&running).unwrap(), b"old");
-    }
-
-    #[test]
-    fn reads_both_checksum_file_styles() {
-        let text = "AAA  plain\nBBB *binary\n";
-        assert_eq!(expected_checksum(text, "plain").as_deref(), Some("aaa"));
-        assert_eq!(expected_checksum(text, "binary").as_deref(), Some("bbb"));
-        assert_eq!(expected_checksum(text, "missing"), None);
     }
 
     #[test]

@@ -50,6 +50,14 @@ pub fn download_file(url: &str, destination: &Path, progress: &Progress) -> anyh
     Ok(())
 }
 
+pub fn checksum_listed_for(checksums: &str, file_name: &str) -> Option<String> {
+    checksums.lines().find_map(|line| {
+        let (checksum, name) = line.split_once(char::is_whitespace)?;
+        let name = name.trim_start().trim_start_matches('*');
+        (name == file_name).then(|| checksum.to_ascii_lowercase())
+    })
+}
+
 pub fn sha256_of_file(path: &Path) -> anyhow::Result<String> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
@@ -109,4 +117,17 @@ pub fn remove_directory_if_present(directory: &Path) -> anyhow::Result<()> {
             .with_context(|| format!("Couldn't remove {}", directory.display()))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::checksum_listed_for;
+
+    #[test]
+    fn reads_both_checksum_file_styles() {
+        let text = "AAA  plain\nBBB *binary\n";
+        assert_eq!(checksum_listed_for(text, "plain").as_deref(), Some("aaa"));
+        assert_eq!(checksum_listed_for(text, "binary").as_deref(), Some("bbb"));
+        assert_eq!(checksum_listed_for(text, "missing"), None);
+    }
 }

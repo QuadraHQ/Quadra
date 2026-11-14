@@ -29,6 +29,17 @@ impl Runner {
     pub fn is_quadra(&self) -> bool {
         self.name == QUADRA_RUNNER
     }
+
+    pub fn with_current_executable(self) -> Self {
+        if self.is_quadra() {
+            Self {
+                executable: quadra_rosemary::executable(),
+                ..self
+            }
+        } else {
+            self
+        }
+    }
 }
 
 pub fn discover(custom_runner_path: &str) -> Vec<Runner> {

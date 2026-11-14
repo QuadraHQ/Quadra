@@ -6,8 +6,12 @@ pub fn quadra_data_directory() -> PathBuf {
     glib::user_data_dir().join("quadra")
 }
 
+pub fn quadra_rosemary_versions_directory() -> PathBuf {
+    quadra_data_directory().join("rosemary")
+}
+
 pub fn quadra_rosemary_directory(version: &str) -> PathBuf {
-    quadra_data_directory().join("rosemary").join(version)
+    quadra_rosemary_versions_directory().join(version)
 }
 
 pub fn quadra_prefix_directory() -> PathBuf {

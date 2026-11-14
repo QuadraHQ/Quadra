@@ -272,6 +272,8 @@ mod imp {
         darwin_base_installed: Cell<bool>,
         #[property(get, set)]
         newer_darwin_base: RefCell<String>,
+        #[property(get, set)]
+        newer_quadra_rosemary: RefCell<String>,
         #[property(get, set, builder(Renderer::default()))]
         renderer: Cell<Renderer>,
         #[property(get, set)]
