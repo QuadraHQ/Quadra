@@ -22,6 +22,8 @@ finish-args:
   - --filesystem=xdg-data/applications:create
   - --filesystem=xdg-data/mime:create
   - --filesystem=xdg-config/mimeapps.list
+  - --filesystem=xdg-data/butter/runners:ro
+  - --filesystem=~/.var/app/io.github.microlift.butter/data/butter/runners:ro
 
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin

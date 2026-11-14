@@ -62,7 +62,7 @@ pub fn downloads_directory() -> PathBuf {
 
 pub fn butter_runner_directories() -> [PathBuf; 2] {
     [
-        glib::user_data_dir().join("butter").join("runners"),
+        host_data_directory().join("butter").join("runners"),
         glib::home_dir().join(".var/app/io.github.microlift.butter/data/butter/runners"),
     ]
 }
