@@ -2,6 +2,8 @@ const JOINING_GAME: &str = "! Joining game '";
 const PLACE_AFTER_JOB_ID: &str = "' place ";
 const WORD_BEFORE_SERVER_ADDRESS: &str = "at";
 const CONNECTION_ACCEPTED: &str = "Connection accepted from ";
+const JOIN_REPORT: &str = "[FLog::GameJoinLoadTime] Report game_join_loadtime:";
+const UNIVERSE_ID_FIELD: &str = "universeid:";
 const LEFT_GAME_MARKERS: [&str; 2] = [
     "[FLog::Network] Time to disconnect replication data:",
     "[FLog::SingleSurfaceApp] leaveUGCGameInternal",
@@ -16,6 +18,9 @@ pub enum GameEvent {
     },
     Connected {
         server_ip: String,
+    },
+    JoinReported {
+        universe_id: u64,
     },
     Left,
 }
@@ -44,6 +49,17 @@ fn event_in_line(line: &str) -> Option<GameEvent> {
         let server_ip = address.split(['|', ' ', ':']).next()?;
         return Some(GameEvent::Connected {
             server_ip: server_ip.to_owned(),
+        });
+    }
+
+    if let Some((_, report)) = line.split_once(JOIN_REPORT) {
+        let (_, universe_id_onwards) = report.split_once(UNIVERSE_ID_FIELD)?;
+        let universe_id: String = universe_id_onwards
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .collect();
+        return Some(GameEvent::JoinReported {
+            universe_id: universe_id.parse().ok()?,
         });
     }
 
@@ -78,6 +94,15 @@ mod tests {
                 job_id: "abc-1".to_owned(),
                 server_address: Some("10.17.3.215".to_owned()),
             }]
+        );
+    }
+
+    #[test]
+    fn reads_the_universe_id_from_the_join_report() {
+        let line = "[FLog::GameJoinLoadTime] Report game_join_loadtime: placeid:1818, visitid:0, universeid:13058, referral_page:Unknown, userid:42";
+        assert_eq!(
+            events_in(line).collect::<Vec<_>>(),
+            [GameEvent::JoinReported { universe_id: 13058 }]
         );
     }
 }

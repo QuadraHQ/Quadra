@@ -12,13 +12,16 @@ const DISCORD_CLIENT_ID: &str = "363445589247131668";
 const QUADRA_ICON_URL: &str = "https://raw.githubusercontent.com/QuadraHQ/quadra-rewrite/main/data/icons/org.quadrahq.Quadra.png";
 const QUADRA_ICON_TEXT: &str = "Quadra";
 const REFRESH_GAME_DETAILS_EVERY: Duration = Duration::from_secs(60);
+const WAIT_FOR_JOIN_REPORT: Duration = Duration::from_secs(10);
 const PROPERTIES_THAT_DECIDE_PRESENCE: [&str; 2] = ["running", "discord-rich-presence"];
 const SHORTEST_DISCORD_TEXT: usize = 2;
 const LONGEST_DISCORD_TEXT: usize = 128;
 const INVISIBLE_PADDING: char = '\u{2800}';
+const VERIFIED_BADGE: &str = " ☑️";
 
 struct CurrentGame {
     place_id: u64,
+    universe_id: Option<u64>,
     joined_at: i64,
     details: Option<GameDetails>,
     refreshing_details: glib::SourceId,
@@ -44,6 +47,9 @@ pub fn initialize(state: &AppState) {
             for event in game_activity::events_in(output) {
                 match event {
                     GameEvent::Joining { place_id, .. } => join_game(state, &presence, place_id),
+                    GameEvent::JoinReported { universe_id } => {
+                        learn_universe(state, &presence, universe_id);
+                    }
                     GameEvent::Connected { .. } => {}
                     GameEvent::Left => leave_game(&presence),
                 }
@@ -107,12 +113,45 @@ fn join_game(state: &AppState, presence: &SharedPresence, place_id: u64) {
     );
     presence.borrow_mut().game = Some(CurrentGame {
         place_id,
+        universe_id: None,
         joined_at: now_in_seconds(),
         details: None,
         refreshing_details,
     });
 
-    fetch_details(state, presence, place_id);
+    glib::timeout_add_local_once(
+        WAIT_FOR_JOIN_REPORT,
+        glib::clone!(
+            #[strong]
+            state,
+            #[strong]
+            presence,
+            move || {
+                let join_report_never_came = presence.borrow().game.as_ref().is_some_and(|game| {
+                    game.place_id == place_id
+                        && game.universe_id.is_none()
+                        && game.details.is_none()
+                });
+                if join_report_never_came {
+                    fetch_details(&state, &presence, place_id);
+                }
+            }
+        ),
+    );
+}
+
+fn learn_universe(state: &AppState, presence: &SharedPresence, universe_id: u64) {
+    let place_missing_details = {
+        let mut presence = presence.borrow_mut();
+        let Some(game) = presence.game.as_mut() else {
+            return;
+        };
+        game.universe_id = Some(universe_id);
+        game.details.is_none().then_some(game.place_id)
+    };
+    if let Some(place_id) = place_missing_details {
+        fetch_details(state, presence, place_id);
+    }
 }
 
 fn leave_game(presence: &SharedPresence) {
@@ -127,10 +166,20 @@ fn fetch_details(state: &AppState, presence: &SharedPresence, place_id: u64) {
         return;
     }
 
+    let universe_id = presence
+        .borrow()
+        .game
+        .as_ref()
+        .filter(|game| game.place_id == place_id)
+        .and_then(|game| game.universe_id);
+
     let state = state.clone();
     let presence = presence.clone();
     run_quietly(
-        move || game_details::fetch(place_id),
+        move || match universe_id {
+            Some(universe_id) => game_details::fetch_universe(universe_id),
+            None => game_details::fetch(place_id),
+        },
         move |details| {
             let fetched = match details {
                 Ok(details) => details,
@@ -220,12 +269,21 @@ fn playing_presence(game: &CurrentGame) -> RichPresence {
 
     RichPresence {
         details: game_name,
-        state: Some(discord_text(&format!("by {}", details.creator))),
+        state: Some(discord_text(&made_by(details))),
         started_at: Some(game.joined_at),
         large_image,
         small_image,
         link: Some(game_page),
     }
+}
+
+fn made_by(details: &GameDetails) -> String {
+    let badge = if details.creator_is_verified {
+        VERIFIED_BADGE
+    } else {
+        ""
+    };
+    format!("by {}{badge}", details.creator)
 }
 
 fn quadra_icon() -> Image {

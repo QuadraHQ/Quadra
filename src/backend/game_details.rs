@@ -8,6 +8,7 @@ const ICON_IS_READY: &str = "Completed";
 pub struct GameDetails {
     pub name: String,
     pub creator: String,
+    pub creator_is_verified: bool,
     pub icon_url: Option<String>,
 }
 
@@ -29,8 +30,11 @@ struct Game {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Creator {
     name: String,
+    #[serde(default)]
+    has_verified_badge: bool,
 }
 
 #[derive(Deserialize)]
@@ -47,7 +51,10 @@ pub fn fetch(place_id: u64) -> anyhow::Result<GameDetails> {
     let universe_id = universe
         .universe_id
         .with_context(|| format!("Place {place_id} doesn't belong to a game"))?;
+    fetch_universe(universe_id)
+}
 
+pub fn fetch_universe(universe_id: u64) -> anyhow::Result<GameDetails> {
     let games: Listing<Game> = get_json(&format!(
         "https://games.roblox.com/v1/games?universeIds={universe_id}"
     ))?;
@@ -60,6 +67,7 @@ pub fn fetch(place_id: u64) -> anyhow::Result<GameDetails> {
     Ok(GameDetails {
         name: game.name,
         creator: game.creator.name,
+        creator_is_verified: game.creator.has_verified_badge,
         icon_url: icon_url(universe_id).unwrap_or_else(|error| {
             eprintln!("Couldn't get the icon of game {universe_id}: {error:#}");
             None
