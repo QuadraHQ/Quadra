@@ -6,19 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const PLACE_MIME_TYPES_FILE: &str = "org.quadrahq.Quadra.xml";
-const PLACE_MIME_TYPES: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-  <mime-type type="application/x-roblox-rbxl">
-    <comment>Roblox place</comment>
-    <glob pattern="*.rbxl"/>
-  </mime-type>
-  <mime-type type="application/x-roblox-rbxlx">
-    <comment>Roblox XML place</comment>
-    <sub-class-of type="application/xml"/>
-    <glob pattern="*.rbxlx"/>
-  </mime-type>
-</mime-info>
-"#;
+const PLACE_MIME_TYPES: &str = include_str!("../../data/org.quadrahq.Quadra.xml");
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Handler {

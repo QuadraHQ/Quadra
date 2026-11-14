@@ -42,6 +42,7 @@ modules:
       - install -Dm755 target/release/quadra-rewrite -t /app/bin/
       - install -Dm644 data/icons/org.quadrahq.Quadra.png -t /app/share/icons/hicolor/256x256/apps/
       - install -Dm644 flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/
+      - install -Dm644 data/org.quadrahq.Quadra.xml -t /app/share/mime/packages/
     sources:
       - type: dir
         path: ..
