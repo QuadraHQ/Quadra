@@ -55,7 +55,12 @@
     <display_length compare="ge">768</display_length>
   </supports>
   <releases>
-    <release version="0.50.0~alpha.3" date="2026-11-12" type="development">
+    <release version="0.50.1" date="2026-11-14">
+      <description>
+        <p>Edited flatpak manifests for safer sandbox.</p>
+      </description>
+    </release>
+    <release version="0.50.0" date="2026-11-14">
       <description>
         <p>Quadra rewritten in Rust, running Roblox through Rosemary instead of Darling.</p>
       </description>
