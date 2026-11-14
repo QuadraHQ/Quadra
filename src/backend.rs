@@ -1,5 +1,6 @@
 mod account;
 mod background;
+mod butter_access;
 mod cpu_limit;
 mod desktop_entries;
 mod destination;
@@ -10,6 +11,7 @@ mod discord_presence;
 mod download;
 mod fast_flag_allowlist;
 mod fast_flags;
+mod flatpak_override;
 mod game_activity;
 mod game_details;
 mod handlers;
@@ -34,6 +36,7 @@ mod transport_patch;
 mod updater;
 mod vr;
 
+pub use butter_access::missing as missing_butter_access;
 pub use desktop_entries::Shortcut;
 pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
 pub use handlers::Handler;

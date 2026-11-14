@@ -14,8 +14,6 @@ finish-args:
   - --socket=pulseaudio
   - --device=dri
   - --talk-name=org.kde.StatusNotifierWatcher
-  - --filesystem=xdg-data/butter/runners:ro
-  - --filesystem=~/.var/app/io.github.microlift.butter/data/butter/runners:ro
 
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin

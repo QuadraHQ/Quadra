@@ -1,6 +1,7 @@
 mod about;
 mod account;
 mod bound_rows;
+mod butter_access;
 mod custom_flags;
 mod discord_access;
 mod environment;

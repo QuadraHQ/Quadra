@@ -1,4 +1,5 @@
 use super::bound_rows::{ChoiceAction, named_choice_row};
+use super::butter_access::butter_access_row;
 use crate::backend::{self, QUADRA_ROSEMARY_VERSION};
 use crate::state::{AppState, QUADRA_PREFIX, QUADRA_RUNNER};
 use adw::prelude::*;
@@ -56,6 +57,9 @@ pub fn rosemary_runtime_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&rosemary_install_row(state));
     group.add(&rosemary_update_row(state));
     group.add(&runner_row);
+    if let Some(butter_access_row) = butter_access_row() {
+        group.add(&butter_access_row);
+    }
     group.add(&prefix_row);
     group.add(&prefix_status_row(state));
 

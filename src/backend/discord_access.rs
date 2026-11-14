@@ -1,3 +1,4 @@
+use super::flatpak_override;
 use crate::utils::is_running_in_flatpak;
 use gtk::glib;
 use std::fs;
@@ -6,7 +7,6 @@ use std::path::{Path, PathBuf};
 const SOCKET_TABLE: &str = "/proc/net/unix";
 const SOCKET_NAME_PREFIX: &str = "discord-ipc-";
 const DEFAULT_SOCKET_NAME: &str = "discord-ipc-0";
-const QUADRA_FLATPAK_ID: &str = "org.quadrahq.Quadra";
 
 struct KnownDiscord {
     name: &'static str,
@@ -56,7 +56,7 @@ pub fn missing() -> Option<MissingDiscordAccess> {
     }
     let runtime_directory = glib::user_runtime_dir();
     let socket_table = fs::read_to_string(SOCKET_TABLE).unwrap_or_default();
-    let flatpak_id = std::env::var("FLATPAK_ID").unwrap_or_else(|_| QUADRA_FLATPAK_ID.to_owned());
+    let flatpak_id = flatpak_override::quadra_id();
     missing_from(&socket_table, &runtime_directory, &flatpak_id, |path| {
         path.exists()
     })
@@ -100,19 +100,19 @@ fn missing_from(
     };
 
     let mut discords = Vec::new();
-    let mut command = String::from("flatpak override --user");
-    let mut granted = Vec::new();
-    for (name, permission) in permissions {
-        if !running.is_empty() && !discords.contains(&name) {
-            discords.push(name);
-        }
-        if !granted.contains(&permission) {
-            command.push_str(&format!(" --filesystem={permission}"));
-            granted.push(permission);
+    if !running.is_empty() {
+        for (name, _) in &permissions {
+            if !discords.contains(name) {
+                discords.push(*name);
+            }
         }
     }
-    command.push(' ');
-    command.push_str(flatpak_id);
+    let command = flatpak_override::command(
+        flatpak_id,
+        permissions
+            .iter()
+            .map(|(_, permission)| permission.as_str()),
+    );
 
     Some(MissingDiscordAccess { discords, command })
 }
@@ -165,7 +165,7 @@ Num       RefCount Protocol Flags    Type St Inode Path
         missing_from(
             table,
             Path::new(RUNTIME_DIRECTORY),
-            QUADRA_FLATPAK_ID,
+            "org.quadrahq.Quadra",
             |path| visible.iter().any(|visible| path == Path::new(visible)),
         )
     }
