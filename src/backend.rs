@@ -217,7 +217,7 @@ pub fn update_rosemary(state: &AppState) {
     }
     run_task(
         state,
-        |progress| quadra_rosemary::update_before_launch(&runner.executable, progress),
+        move |progress| quadra_rosemary::update_before_launch(&runner.executable, progress),
         |state, ()| refresh(state),
     );
 }
@@ -585,7 +585,7 @@ pub fn update_quadra_rosemary(state: &AppState) {
     }
     run_task(
         state,
-        |progress| {
+        move |progress| {
             let rosemary = runner.executable.clone();
             quadra_rosemary::update_before_launch(&rosemary, progress)
         },
