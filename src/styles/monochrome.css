@@ -55,7 +55,7 @@ window.csd, window.csd.maximized { box-shadow: 0 0 0 1px #2f2f2f; }
 
 selection { background-color: rgba(240, 240, 240, 0.26); color: #ffffff; }
 
-*:focus-visible { outline: 2px solid #f0f0f0; outline-offset: 2px; }
+*:focus:focus-visible { outline: 2px solid #f0f0f0; outline-offset: 2px; }
 
 .topbar {
   min-height: 30px;
