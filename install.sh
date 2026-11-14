@@ -39,6 +39,8 @@ app menu. Run it again to update.
 
 Options:
   --flatpak        install the Flatpak bundle instead (needs flatpak)
+  --tarball        install the prebuilt binary instead (needs GTK 4.18 and
+                   libadwaita 1.7 on this computer)
   --native         build Quadra on this computer instead (needs git, Rust 1.85,
                    a C compiler, GTK 4.18 and libadwaita 1.7 with headers)
   --version TAG    install that release, for example v0.50.0-alpha.3
@@ -170,6 +172,37 @@ install_flatpak() {
     say "Installed the Flatpak. Start it from the app menu or with: flatpak run $FLATPAK_ID"
 }
 
+install_tarball() {
+    need tar "Install it with your package manager and run this again."
+    local archive work unpacked missing
+    mkdir -p "$CACHE_HOME/quadra" "$BIN_HOME" "$DATA_HOME/quadra/icons"
+    archive=$CACHE_HOME/quadra/Quadra-$tag-x86_64.tar.gz
+    say "Downloading Quadra $tag"
+    download_verified "Quadra-$tag-x86_64.tar.gz" "$archive"
+
+    make_temporary -d
+    work=$temporary_path
+    tar -xzf "$archive" -C "$work" || fail "could not unpack Quadra-$tag-x86_64.tar.gz."
+    unpacked=$work/Quadra-x86_64
+    [ -f "$unpacked/bin/quadra-rewrite" ] || fail "Quadra-$tag-x86_64.tar.gz has no Quadra in it."
+
+    install -m 755 -- "$unpacked/bin/quadra-rewrite" "$NATIVE_PATH"
+    install -m 644 -- "$unpacked/share/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png" \
+        "$DATA_HOME/quadra/icons/org.quadrahq.Quadra.png"
+    rm -f -- "$archive"
+    write_menu_entry "$NATIVE_PATH"
+    say "Installed $NATIVE_PATH"
+
+    if command -v ldd >/dev/null 2>&1; then
+        missing=$(ldd "$NATIVE_PATH" 2>/dev/null | awk '/not found/ { print $1 }')
+        if [ -n "$missing" ]; then
+            say "Quadra won't start until these libraries are installed:"
+            printf '%s\n' "$missing" | sed 's/^/    - /'
+            say "Install GTK $MINIMUM_GTK and libadwaita $MINIMUM_LIBADWAITA or newer, or use the AppImage."
+        fi
+    fi
+}
+
 native_problems() {
     local program cargo_minor
     for program in git cargo cc pkg-config; do
@@ -266,6 +299,7 @@ parse_arguments() {
     while [ $# -gt 0 ]; do
         case $1 in
             --flatpak) mode=flatpak ;;
+            --tarball) mode=tarball ;;
             --native) mode=native ;;
             --uninstall) action=uninstall ;;
             --purge) purge=1 ;;
@@ -303,6 +337,7 @@ main() {
     case $mode in
         appimage) install_appimage ;;
         flatpak) install_flatpak ;;
+        tarball) install_tarball ;;
         native) install_native ;;
     esac
     mention_old_quadra
