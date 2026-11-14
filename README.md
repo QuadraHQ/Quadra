@@ -16,12 +16,6 @@
   A bootstrapper for the macOS Roblox Player & Studio client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a>.
 </p>
 
-## EXPERIMENTAL WARNING
-
-This is a rewrite of Quadra in Rust. This hasn't been extensively tested yet, and there are some missing features, including:
-
-- Update checker for Flatpak
-
 ## Install
 
 ```
@@ -33,6 +27,7 @@ Options go after `bash -s --`, for example `curl -fsSL https://quadrahq.org/inst
 
 - `--flatpak`: install the Flatpak bundle instead
 - `--native`: build Quadra on this computer instead
+- `--tarball`: same as native, but with pre-compiled binaries
 - `--version TAG`: install a specific release, such as `v0.50.0-alpha.3`
 - `--uninstall`: remove Quadra but keep its data and your Roblox sign-in; add `--purge` to delete those too
 
