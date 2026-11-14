@@ -19,7 +19,9 @@ mod updates;
 mod vr;
 
 use crate::state::AppState;
-use crate::utils::{scrollable, show_only_while_roblox_is_selected, unfocus_on_outside_click};
+use crate::utils::{
+    is_running_in_flatpak, scrollable, show_only_while_roblox_is_selected, unfocus_on_outside_click,
+};
 use adw::prelude::*;
 use environment::env_section;
 use fast_flags::fast_flags_section;
@@ -55,12 +57,14 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "VR",
         "input-gaming-symbolic",
     );
-    stack.add_titled_with_icon(
-        &scrollable(&integration_section(state)),
-        Some("integration"),
-        "Integration",
-        "view-app-grid-symbolic",
-    );
+    if !is_running_in_flatpak() {
+        stack.add_titled_with_icon(
+            &scrollable(&integration_section(state)),
+            Some("integration"),
+            "Integration",
+            "view-app-grid-symbolic",
+        );
+    }
     show_only_while_roblox_is_selected(&fast_flags, state);
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);

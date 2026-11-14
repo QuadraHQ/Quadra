@@ -19,9 +19,6 @@ finish-args:
   - --filesystem=xdg-run/app/dev.vencord.Vesktop:create
   - --filesystem=xdg-run/.flatpak/dev.vencord.Vesktop:create
   - --filesystem=xdg-run/snap.discord:create
-  - --filesystem=xdg-data/applications:create
-  - --filesystem=xdg-data/mime:create
-  - --filesystem=xdg-config/mimeapps.list
   - --filesystem=xdg-data/butter/runners:ro
   - --filesystem=~/.var/app/io.github.microlift.butter/data/butter/runners:ro
 
@@ -44,7 +41,7 @@ modules:
         cargo --offline build --release --locked
       - install -Dm755 target/release/quadra-rewrite -t /app/bin/
       - install -Dm644 data/icons/org.quadrahq.Quadra.png -t /app/share/icons/hicolor/256x256/apps/
-      - install -Dm644 data/org.quadrahq.Quadra.desktop -t /app/share/applications/
+      - install -Dm644 flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/
     sources:
       - type: dir
         path: ..

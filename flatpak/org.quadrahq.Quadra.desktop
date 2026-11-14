@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Quadra
+Comment=Run Roblox on Linux
+Exec=quadra-rewrite %u
+Icon=org.quadrahq.Quadra
+Keywords=roblox;vinegar;game;gaming;social;experience;launcher;
+Categories=GNOME;GTK;Game;
+MimeType=x-scheme-handler/roblox;x-scheme-handler/roblox-player;
+Terminal=false
+StartupNotify=true
+Actions=roblox;studio;
+
+[Desktop Action roblox]
+Name=Roblox
+Exec=quadra-rewrite --roblox
+
+[Desktop Action studio]
+Name=Roblox Studio
+Exec=quadra-rewrite --studio
