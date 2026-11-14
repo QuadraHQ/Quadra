@@ -8,6 +8,7 @@ use crate::state::{
     AppState, Client, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
 };
+use crate::utils::{find_in_path, is_executable_file};
 use anyhow::Context;
 use gtk::glib;
 use std::cell::RefCell;
@@ -15,7 +16,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::os::unix::process::CommandExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -50,7 +51,7 @@ pub fn start_roblox(
     fast_flags::write_client_settings(&fast_flags)?;
     transport_patch::prepare(state.force_raknet());
 
-    let mut command = Command::new(&runner.executable);
+    let mut command = wrapped_command(state, &runner.executable)?;
     command.arg(roblox::app_path(Client::Player));
     if let Some(launch_uri) = launch_uri {
         command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
@@ -65,7 +66,7 @@ pub fn start_studio(
     runner: &Runner,
     target: &StudioTarget,
 ) -> anyhow::Result<()> {
-    let mut command = Command::new(&runner.executable);
+    let mut command = wrapped_command(state, &runner.executable)?;
     command
         .arg(roblox::app_path(Client::Studio))
         .args(studio_arguments(state, target))
@@ -100,7 +101,7 @@ fn run(
 
     let mut child = command
         .spawn()
-        .with_context(|| format!("Couldn't start {}", runner.executable.display()))?;
+        .with_context(|| format!("Couldn't start {}", command.get_program().display()))?;
     RUNNING_ROBLOX.replace(Some(RunningRoblox {
         process_group: child.id() as i32,
         rosemary: runner.executable.clone(),
@@ -190,6 +191,35 @@ fn signal_process_group(process_group: i32, signal: libc::c_int) {
     unsafe {
         libc::kill(-process_group, signal);
     }
+}
+
+pub fn launch_wrapper_problem(wrapper: &str) -> Option<String> {
+    match launch_wrapper_words(wrapper) {
+        Err(error) => Some(error.to_string()),
+        Ok(words) => {
+            let program = words.first()?;
+            let found = if program.contains('/') {
+                is_executable_file(Path::new(program))
+            } else {
+                find_in_path(program).is_some()
+            };
+            (!found).then(|| format!("{program} isn't installed, or isn't in PATH."))
+        }
+    }
+}
+
+fn wrapped_command(state: &AppState, rosemary: &Path) -> anyhow::Result<Command> {
+    let words = launch_wrapper_words(&state.launch_wrapper())?;
+    let Some((program, arguments)) = words.split_first() else {
+        return Ok(Command::new(rosemary));
+    };
+    let mut command = Command::new(program);
+    command.args(arguments).arg(rosemary);
+    Ok(command)
+}
+
+fn launch_wrapper_words(wrapper: &str) -> anyhow::Result<Vec<String>> {
+    shlex::split(wrapper).context("The launch wrapper has a quote that's never closed.")
 }
 
 fn end_when_quadra_ends(command: &mut Command) {
@@ -337,5 +367,35 @@ fn command_key_value(command_key: CommandKey, ctrl_for_edit_shortcuts: bool) -> 
         format!("{key}+ctrl:edit")
     } else {
         key.to_owned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn splits_the_wrapper_like_a_shell() {
+        assert_eq!(
+            launch_wrapper_words("gamemoderun gamescope -f -W 1920 --").unwrap(),
+            ["gamemoderun", "gamescope", "-f", "-W", "1920", "--"]
+        );
+        assert_eq!(
+            launch_wrapper_words("\"/opt/my tools/run\" 'a b'").unwrap(),
+            ["/opt/my tools/run", "a b"]
+        );
+        assert!(launch_wrapper_words("").unwrap().is_empty());
+    }
+
+    #[test]
+    fn reports_an_unclosed_quote() {
+        assert!(launch_wrapper_words("gamescope \"-f").is_err());
+        assert!(launch_wrapper_problem("gamescope \"-f").is_some());
+    }
+
+    #[test]
+    fn an_empty_wrapper_has_no_problem() {
+        assert_eq!(launch_wrapper_problem(""), None);
+        assert_eq!(launch_wrapper_problem("   "), None);
     }
 }

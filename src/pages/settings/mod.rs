@@ -7,6 +7,7 @@ mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
 mod integration;
+mod launch_wrapper;
 mod mangohud;
 mod mods;
 mod privacy;

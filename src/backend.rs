@@ -34,6 +34,7 @@ mod vr;
 
 pub use desktop_entries::Shortcut;
 pub use handlers::Handler;
+pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;

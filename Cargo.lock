@@ -1336,6 +1336,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "shlex",
  "tar",
  "toml",
  "ureq",

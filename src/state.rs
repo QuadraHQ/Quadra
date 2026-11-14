@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 39] = [
+const SAVED_PROPERTIES: [&str; 40] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -57,6 +57,7 @@ const SAVED_PROPERTIES: [&str; 39] = [
     "ctrl-for-edit-shortcuts",
     "plain-ctrl-click",
     "environment-variables",
+    "launch-wrapper",
     "fast-flags",
     "preferred-region",
     "vr",
@@ -152,6 +153,8 @@ struct SavedSettings {
     plain_ctrl_click: bool,
     opened_before: bool,
     environment_variables: EnvironmentVariables,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    launch_wrapper: String,
     fast_flags: FastFlags,
     #[serde(skip_serializing_if = "String::is_empty")]
     preferred_region: String,
@@ -202,6 +205,7 @@ impl Default for SavedSettings {
             plain_ctrl_click: false,
             opened_before: false,
             environment_variables: EnvironmentVariables::default(),
+            launch_wrapper: String::new(),
             fast_flags: FastFlags::default(),
             preferred_region: String::new(),
             vr: false,
@@ -294,6 +298,8 @@ mod imp {
         plain_ctrl_click: Cell<bool>,
         #[property(get, set)]
         environment_variables: RefCell<EnvironmentVariables>,
+        #[property(get, set)]
+        launch_wrapper: RefCell<String>,
         #[property(get, set)]
         fast_flags: RefCell<FastFlags>,
         #[property(get, set)]
@@ -447,6 +453,7 @@ impl AppState {
             .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
             .property("plain-ctrl-click", settings.plain_ctrl_click)
             .property("environment-variables", settings.environment_variables)
+            .property("launch-wrapper", settings.launch_wrapper)
             .property("fast-flags", settings.fast_flags)
             .property("preferred-region", settings.preferred_region)
             .property("vr", settings.vr)
@@ -650,6 +657,7 @@ impl AppState {
             plain_ctrl_click: self.plain_ctrl_click(),
             opened_before: true,
             environment_variables: self.environment_variables(),
+            launch_wrapper: self.launch_wrapper(),
             fast_flags: self.fast_flags(),
             preferred_region: self.preferred_region(),
             vr: self.vr(),

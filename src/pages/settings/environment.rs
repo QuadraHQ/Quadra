@@ -1,6 +1,7 @@
 use super::account::account_group;
 use super::bound_rows::{choice_row, switch_row};
 use super::environment_variables::environment_variables_group;
+use super::launch_wrapper::launch_wrapper_group;
 use super::privacy::privacy_group;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
@@ -53,6 +54,7 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     section.append(&rosemary_runtime_group(state));
     section.append(&graphics_group(state));
     section.append(&input_group(state));
+    section.append(&launch_wrapper_group(state));
     section.append(&environment_variables_group(state));
     section.append(&account_group(state));
     section.append(&support_group(state));
