@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPOSITORY=${QUADRA_REPOSITORY:-QuadraHQ/quadra-rewrite}
+REPOSITORY=${QUADRA_REPOSITORY:-QuadraHQ/quadra}
 API_URL=${QUADRA_API_URL:-https://api.github.com}
 DOWNLOAD_URL=${QUADRA_DOWNLOAD_URL:-https://github.com}
 FLATHUB_REPOSITORY=https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -13,7 +13,7 @@ DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 APPIMAGE_PATH=$BIN_HOME/Quadra.AppImage
-NATIVE_PATH=$BIN_HOME/quadra-rewrite
+NATIVE_PATH=$BIN_HOME/quadra
 SOURCE_DIRECTORY=$DATA_HOME/quadra/source
 
 MINIMUM_GTK=4.18
@@ -184,9 +184,9 @@ install_tarball() {
     work=$temporary_path
     tar -xzf "$archive" -C "$work" || fail "could not unpack Quadra-$tag-x86_64.tar.gz."
     unpacked=$work/Quadra-x86_64
-    [ -f "$unpacked/bin/quadra-rewrite" ] || fail "Quadra-$tag-x86_64.tar.gz has no Quadra in it."
+    [ -f "$unpacked/bin/quadra" ] || fail "Quadra-$tag-x86_64.tar.gz has no Quadra in it."
 
-    install -m 755 -- "$unpacked/bin/quadra-rewrite" "$NATIVE_PATH"
+    install -m 755 -- "$unpacked/bin/quadra" "$NATIVE_PATH"
     install -m 644 -- "$unpacked/share/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png" \
         "$DATA_HOME/quadra/icons/org.quadrahq.Quadra.png"
     rm -f -- "$archive"
@@ -243,7 +243,7 @@ install_native() {
     say "Building Quadra $tag. This takes a few minutes."
     (cd "$SOURCE_DIRECTORY" && cargo build --release --locked) || fail "the build failed."
     mkdir -p "$BIN_HOME"
-    install -m 755 "$SOURCE_DIRECTORY/target/release/quadra-rewrite" "$NATIVE_PATH"
+    install -m 755 "$SOURCE_DIRECTORY/target/release/quadra" "$NATIVE_PATH"
     write_menu_entry "$NATIVE_PATH"
     say "Built and installed $NATIVE_PATH"
 }

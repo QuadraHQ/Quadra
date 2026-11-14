@@ -29,7 +29,7 @@ export DEPLOY_GTK_VERSION=4
 rm -rf "$appdir"
 linuxdeploy-x86_64.AppImage \
     --appdir "$appdir" \
-    --executable ../target/release/quadra-rewrite \
+    --executable ../target/release/quadra \
     --desktop-file ../data/org.quadrahq.Quadra.desktop \
     --icon-file ../data/icons/org.quadrahq.Quadra.png \
     --plugin gtk

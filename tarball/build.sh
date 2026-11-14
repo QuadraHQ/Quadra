@@ -10,7 +10,7 @@ root="$staging/$name"
 cargo build --release --locked --manifest-path ../Cargo.toml
 
 rm -rf "$staging" "$name.tar.gz"
-install -Dm755 ../target/release/quadra-rewrite "$root/bin/quadra-rewrite"
+install -Dm755 ../target/release/quadra "$root/bin/quadra"
 install -Dm644 ../data/org.quadrahq.Quadra.desktop \
     "$root/share/applications/org.quadrahq.Quadra.desktop"
 install -Dm644 ../data/icons/org.quadrahq.Quadra.png \

@@ -5,7 +5,7 @@ sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
 
-command: quadra-rewrite
+command: quadra
 
 finish-args:
   - --share=network
@@ -23,16 +23,16 @@ cleanup:
   - /share/man
 
 modules:
-  - name: quadra-rewrite
+  - name: quadra
     buildsystem: simple
     build-options:
       env:
-        CARGO_HOME: /run/build/quadra-rewrite/cargo
+        CARGO_HOME: /run/build/quadra/cargo
     build-commands:
       - |
         export RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-rpath,/app/lib64 -C link-arg=-Wl,-rpath,/app/lib"
         cargo --offline build --release --locked
-      - install -Dm755 target/release/quadra-rewrite -t /app/bin/
+      - install -Dm755 target/release/quadra -t /app/bin/
       - install -Dm644 data/icons/org.quadrahq.Quadra.png -t /app/share/icons/hicolor/256x256/apps/
       - install -Dm644 flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/
       - install -Dm644 data/org.quadrahq.Quadra.xml -t /app/share/mime/packages/

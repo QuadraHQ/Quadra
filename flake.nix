@@ -1,5 +1,5 @@
 {
-  description = "Nix flake for Quadra-rewrite";
+  description = "Nix flake for Quadra";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -19,8 +19,8 @@
         cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
       in
       {
-        packages.quadra-rewrite = pkgs.rustPlatform.buildRustPackage {
-          pname = "quadra-rewrite";
+        packages.quadra = pkgs.rustPlatform.buildRustPackage {
+          pname = "quadra";
           version = cargoToml.package.version;
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
@@ -37,7 +37,7 @@
             libadwaita
           ];
         };
-        packages.default = self.packages.${system}.quadra-rewrite;
+        packages.default = self.packages.${system}.quadra;
       }
     );
 }

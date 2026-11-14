@@ -43,7 +43,7 @@
     </screenshot>
   </screenshots>
   <url type="homepage">https://quadrahq.org</url>
-  <url type="bugtracker">https://github.com/QuadraHQ/quadra-rewrite/issues</url>
+  <url type="bugtracker">https://github.com/QuadraHQ/quadra/issues</url>
   <branding>
     <color type="primary" scheme_preference="light">#c4b5fd</color>
     <color type="primary" scheme_preference="dark">#3b2a7a</color>

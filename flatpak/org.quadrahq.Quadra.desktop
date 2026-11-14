@@ -2,7 +2,7 @@
 Type=Application
 Name=Quadra
 Comment=Run Roblox on Linux
-Exec=quadra-rewrite %u
+Exec=quadra %u
 Icon=org.quadrahq.Quadra
 Keywords=roblox;vinegar;game;gaming;social;experience;launcher;
 Categories=GNOME;GTK;Game;
@@ -13,8 +13,8 @@ Actions=roblox;studio;
 
 [Desktop Action roblox]
 Name=Roblox
-Exec=quadra-rewrite --roblox
+Exec=quadra --roblox
 
 [Desktop Action studio]
 Name=Roblox Studio
-Exec=quadra-rewrite --studio
+Exec=quadra --studio

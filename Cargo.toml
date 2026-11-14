@@ -1,5 +1,5 @@
 [package]
-name = "quadra-rewrite"
+name = "quadra"
 version = "0.50.1"
 edition = "2024"
 

@@ -47,7 +47,7 @@ The installer checks every download against the release's `SHA256SUMS` before in
 **Fetch source:**
 
 ```
-git clone https://github.com/QuadraHQ/quadra-rewrite && cd quadra-rewrite
+git clone https://github.com/QuadraHQ/quadra && cd quadra
 ```
 
 **Build directly from source:**
@@ -75,7 +75,7 @@ The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 Try it without installing:
 
 ```sh
-nix run github:QuadraHQ/quadra-rewrite
+nix run github:QuadraHQ/quadra
 ```
 
 Flake input:
@@ -84,7 +84,7 @@ Flake input:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    quadra-rewrite.url = "github:QuadraHQ/quadra-rewrite";
+    quadra.url = "github:QuadraHQ/quadra";
   };
 }
 ```
@@ -92,7 +92,7 @@ Flake input:
 ```Nix
 {
   environment.systemPackages = with pkgs; [
-    inputs.quadra-rewrite.packages.${pkgs.stdenv.hostPlatform.system}.quadra-rewrite
+    inputs.quadra.packages.${pkgs.stdenv.hostPlatform.system}.quadra
   ];
 }
 ```

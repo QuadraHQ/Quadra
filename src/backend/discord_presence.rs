@@ -9,7 +9,8 @@ use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const DISCORD_CLIENT_ID: &str = "363445589247131668";
-const QUADRA_ICON_URL: &str = "https://raw.githubusercontent.com/QuadraHQ/quadra-rewrite/main/data/icons/org.quadrahq.Quadra.png";
+const QUADRA_ICON_URL: &str =
+    "https://raw.githubusercontent.com/QuadraHQ/quadra/main/data/icons/org.quadrahq.Quadra.png";
 const QUADRA_ICON_TEXT: &str = "Quadra";
 const REFRESH_GAME_DETAILS_EVERY: Duration = Duration::from_secs(60);
 const WAIT_FOR_JOIN_REPORT: Duration = Duration::from_secs(10);
