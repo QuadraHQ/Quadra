@@ -1,0 +1,45 @@
+name: Tarball
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
+
+concurrency:
+  group: tarball-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tarball:
+    name: Build tarball
+    if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
+    runs-on: self-hosted
+    container:
+      image: debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential ca-certificates clang curl git lld pkg-config \
+            libadwaita-1-dev libgtk-4-dev
+
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build tarball
+        run: ./tarball/build.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Quadra-x86_64.tar.gz
+          path: tarball/Quadra-x86_64.tar.gz
+          if-no-files-found: error

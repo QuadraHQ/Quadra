@@ -40,6 +40,13 @@ jobs:
     with:
       release: true
 
+  tarball:
+    name: Tarball
+    needs: version
+    uses: ./.github/workflows/tarball.yml
+    with:
+      release: true
+
   flatpak:
     name: Flatpak
     needs: version
@@ -51,7 +58,7 @@ jobs:
 
   release:
     name: Create release
-    needs: [version, appimage, flatpak]
+    needs: [version, appimage, tarball, flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -81,6 +88,7 @@ jobs:
           mkdir release-files
           cp "$(find artifacts -type f -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
           cp "$(find artifacts -type f -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
+          cp "$(find artifacts -type f -name '*.tar.gz' | head -n1)" "release-files/Quadra-$TAG-x86_64.tar.gz"
           (cd release-files && sha256sum Quadra-* > SHA256SUMS)
           ls -la release-files
           cat release-files/SHA256SUMS
