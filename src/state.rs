@@ -270,6 +270,8 @@ mod imp {
         available_prefixes: RefCell<Vec<String>>,
         #[property(get, set)]
         darwin_base_installed: Cell<bool>,
+        #[property(get, set)]
+        newer_darwin_base: RefCell<String>,
         #[property(get, set, builder(Renderer::default()))]
         renderer: Cell<Renderer>,
         #[property(get, set)]

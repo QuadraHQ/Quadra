@@ -40,12 +40,12 @@ pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
-use background::{run_quietly, run_task};
+use background::{Progress, run_quietly, run_task};
 use destination::Destination;
 use gtk::glib;
 use gtk::prelude::*;
 use runners::Runner;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const PROPERTIES_THAT_DECIDE_SELECTED_RUNNER: [&str; 2] = ["runner", "custom-runner-path"];
 
@@ -75,6 +75,7 @@ pub fn refresh(state: &AppState) {
             .map(|runner| runner.name.clone())
             .collect::<Vec<_>>(),
     );
+    state.set_darwin_base_installed(prefix::has_darwin_base(&paths::quadra_prefix_directory()));
     refresh_selected_runner_status(state);
 
     let installed_roblox = roblox::installed_release(Client::Player);
@@ -93,8 +94,43 @@ pub fn refresh(state: &AppState) {
             .unwrap_or_default(),
     );
 
-    state.set_darwin_base_installed(prefix::has_darwin_base(&paths::quadra_prefix_directory()));
     account::refresh(state);
+}
+
+fn look_for_newer_darwin_base(state: &AppState) {
+    let runner = selected_runner(state).filter(Runner::is_installed);
+    let (Some(runner), Some(prefix_directory)) = (runner, updatable_prefix(state)) else {
+        state.set_newer_darwin_base("");
+        return;
+    };
+
+    let state = state.clone();
+    run_quietly(
+        move || prefix::newer_darwin_base(&runner.executable, &prefix_directory),
+        move |newer_release| match newer_release {
+            Ok(newer_release) => state.set_newer_darwin_base(newer_release.unwrap_or_default()),
+            Err(error) => eprintln!("Couldn't check for a newer Darwin base: {error:#}"),
+        },
+    );
+}
+
+fn updatable_prefix(state: &AppState) -> Option<PathBuf> {
+    (state.prefix() == QUADRA_PREFIX && state.darwin_base_installed())
+        .then(paths::quadra_prefix_directory)
+}
+
+fn update_darwin_base_before_launch(
+    rosemary: &Path,
+    prefix_directory: Option<&Path>,
+    progress: &Progress,
+) {
+    let Some(prefix_directory) = prefix_directory else {
+        return;
+    };
+    if let Err(error) = prefix::update_darwin_base_if_outdated(rosemary, prefix_directory, progress)
+    {
+        eprintln!("Couldn't update the Darwin base, launching with the current one: {error:#}");
+    }
 }
 
 pub fn install(state: &AppState, client: Client) {
@@ -161,6 +197,14 @@ pub fn install_darwin_base(state: &AppState) {
 
 pub fn repair_prefix(state: &AppState) {
     run_prefix_task(state, "Repairing the prefix", prefix::repair);
+}
+
+pub fn update_darwin_base(state: &AppState) {
+    run_prefix_task(
+        state,
+        "Updating the Darwin base",
+        prefix::update_darwin_base,
+    );
 }
 
 pub fn play(state: &AppState) {
@@ -282,6 +326,7 @@ fn start_playing(state: &AppState, destination: Destination) {
     let vr_settings = vr::VrSettings::wanted_by(state);
     let mod_settings = mods::ModSettings::of(state);
     let rosemary = runner.executable.clone();
+    let prefix_to_update = updatable_prefix(state);
 
     run_task(
         state,
@@ -290,6 +335,7 @@ fn start_playing(state: &AppState, destination: Destination) {
                 quadra_rosemary::install(progress)?;
             }
 
+            update_darwin_base_before_launch(&rosemary, prefix_to_update.as_deref(), progress);
             roblox::install_or_update(Client::Player, installed.as_ref(), progress)?;
             progress.step("Applying mods");
             mods::prepare(&mod_settings)?;
@@ -320,6 +366,8 @@ pub fn open_studio(state: &AppState, target: StudioTarget) {
     };
     let should_install_quadra_rosemary = runner.is_quadra() && !runner.is_installed();
     let installed = roblox::installed_release(Client::Studio);
+    let rosemary = runner.executable.clone();
+    let prefix_to_update = updatable_prefix(state);
 
     run_task(
         state,
@@ -327,6 +375,7 @@ pub fn open_studio(state: &AppState, target: StudioTarget) {
             if should_install_quadra_rosemary {
                 quadra_rosemary::install(progress)?;
             }
+            update_darwin_base_before_launch(&rosemary, prefix_to_update.as_deref(), progress);
             roblox::install_or_update(Client::Studio, installed.as_ref(), progress)
         },
         move |state, ()| {
@@ -405,6 +454,7 @@ fn refresh_selected_runner_status(state: &AppState) {
             .as_ref()
             .map(|runner| runner.executable.as_path()),
     ));
+    look_for_newer_darwin_base(state);
 }
 
 fn prefer_an_installed_runner(state: &AppState) {

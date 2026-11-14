@@ -7,8 +7,12 @@ use gtk::glib;
 const PROPERTIES_THAT_DECIDE_ROSEMARY_INSTALL_ROW: [&str; 4] =
     ["rosemary-installed", "runner", "first-launch", "busy"];
 const PROPERTIES_THAT_DECIDE_RUNNER_DESCRIPTION: [&str; 2] = ["rosemary-installed", "runner"];
-const PROPERTIES_THAT_DECIDE_PREFIX_STATUS: [&str; 3] =
-    ["darwin-base-installed", "rosemary-installed", "busy"];
+const PROPERTIES_THAT_DECIDE_PREFIX_STATUS: [&str; 4] = [
+    "darwin-base-installed",
+    "newer-darwin-base",
+    "rosemary-installed",
+    "busy",
+];
 
 pub fn rosemary_runtime_group(state: &AppState) -> adw::PreferencesGroup {
     let choose_custom_runner = ChoiceAction {
@@ -53,21 +57,25 @@ pub fn rosemary_runtime_group(state: &AppState) -> adw::PreferencesGroup {
 #[derive(Clone, Copy)]
 enum PrefixAction {
     InstallDarwinBase,
+    UpdateDarwinBase,
     RepairPrefix,
 }
 
 impl PrefixAction {
     fn for_state(state: &AppState) -> Self {
-        if state.darwin_base_installed() {
-            Self::RepairPrefix
-        } else {
+        if !state.darwin_base_installed() {
             Self::InstallDarwinBase
+        } else if !state.newer_darwin_base().is_empty() {
+            Self::UpdateDarwinBase
+        } else {
+            Self::RepairPrefix
         }
     }
 
     fn label(self) -> &'static str {
         match self {
             Self::InstallDarwinBase => "Install",
+            Self::UpdateDarwinBase => "Update",
             Self::RepairPrefix => "Repair",
         }
     }
@@ -86,6 +94,7 @@ fn prefix_status_row(state: &AppState) -> adw::ActionRow {
         state,
         move |_| match PrefixAction::for_state(&state) {
             PrefixAction::InstallDarwinBase => backend::install_darwin_base(&state),
+            PrefixAction::UpdateDarwinBase => backend::update_darwin_base(&state),
             PrefixAction::RepairPrefix => backend::repair_prefix(&state),
         }
     ));
@@ -118,17 +127,36 @@ fn show_prefix_status(
     action_button: &gtk::Button,
     state: &AppState,
 ) {
-    action_button.set_label(PrefixAction::for_state(state).label());
+    let action = PrefixAction::for_state(state);
+    action_button.set_label(action.label());
     action_button.set_sensitive(state.rosemary_installed() && !state.busy());
 
-    if state.darwin_base_installed() {
-        row.set_subtitle("Darwin base installed");
-        status_icon.set_icon_name(Some("object-select-symbolic"));
+    let (subtitle, icon_name, is_healthy) = match action {
+        PrefixAction::InstallDarwinBase => (
+            "Darwin base not installed".to_owned(),
+            "dialog-warning-symbolic",
+            false,
+        ),
+        PrefixAction::UpdateDarwinBase => (
+            format!(
+                "Darwin base {} is available, it installs when you play",
+                state.newer_darwin_base()
+            ),
+            "software-update-available-symbolic",
+            true,
+        ),
+        PrefixAction::RepairPrefix => (
+            "Darwin base installed".to_owned(),
+            "object-select-symbolic",
+            true,
+        ),
+    };
+    row.set_subtitle(&subtitle);
+    status_icon.set_icon_name(Some(icon_name));
+    if is_healthy {
         status_icon.remove_css_class("warning");
         status_icon.add_css_class("success");
     } else {
-        row.set_subtitle("Darwin base not installed");
-        status_icon.set_icon_name(Some("dialog-warning-symbolic"));
         status_icon.remove_css_class("success");
         status_icon.add_css_class("warning");
     }
