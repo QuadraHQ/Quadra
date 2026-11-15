@@ -86,12 +86,19 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
             "view-app-grid-symbolic",
         );
     }
+    let advanced_content = scrollable(&advanced_section(state));
     stack.add_titled_with_icon(
-        &scrollable(&advanced_section(state)),
+        &advanced_content,
         Some("advanced"),
         "Advanced",
         "preferences-dev-symbolic",
     );
+
+    let advanced_page = stack.page(&advanced_content);
+    state
+        .bind_property("advanced-settings-visible", &advanced_page, "visible")
+        .sync_create()
+        .build();
 
     show_only_while_roblox_is_selected(&performance, state);
     show_only_while_roblox_is_selected(&mods, state);
