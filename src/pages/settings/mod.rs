@@ -13,12 +13,9 @@ mod integration;
 mod launch_wrapper;
 mod mangohud;
 mod mods;
-mod network;
-mod performance;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
-mod runtime;
 mod session;
 mod support;
 mod updates;
@@ -33,9 +30,6 @@ use advanced::advanced_section;
 use general::general_section;
 use integration::integration_section;
 use mods::mods_section;
-use network::network_section;
-use performance::performance_section;
-use runtime::runtime_section;
 use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
@@ -45,14 +39,8 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
     stack.add_titled_with_icon(
         &scrollable(&general_section(state)),
         Some("general"),
-        "Network",
-        "network-wired-symbolic",
-    );
-    let performance = stack.add_titled_with_icon(
-        &scrollable(&performance_section(state)),
-        Some("performance"),
-        "Performance",
-        "speedometer-symbolic",
+        "General",
+        "preferences-system-symbolic",
     );
     let mods = stack.add_titled_with_icon(
         &scrollable(&mods_section(state)),
@@ -90,7 +78,6 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
 
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
-
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)
