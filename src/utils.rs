@@ -13,7 +13,7 @@ pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
         .build()
 }
 
-pub const APP_ICON_PNG: &[u8] = include_bytes!("../data/icons/org.quadrahq.Quadra.png");
+pub const APP_ICON_PNG: &[u8] = include_bytes!("../data/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png");
 
 const BUNDLED_FONTS: [(&str, &[u8]); 2] = [
     ("Archivo.ttf", include_bytes!("../assets/fonts/Archivo.ttf")),
