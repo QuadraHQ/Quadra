@@ -27,6 +27,7 @@ const LOG_FILE: &str = "roblox.log";
 const FORCE_STOP_DELAY: Duration = Duration::from_secs(10);
 const PROTOCOL_STRING_ARGUMENT: &str = "-protocolString";
 const VULKAN_DRIVERS_VARIABLE: &str = "VK_DRIVER_FILES";
+const GIO_MODULES_VARIABLE: &str = "GIO_EXTRA_MODULES";
 
 struct RunningRoblox {
     process_group: i32,
@@ -55,7 +56,7 @@ pub fn start_roblox(
         release_channel::keep_player_on_production(&prefix_directory);
     }
 
-    let mut command = wrapped_command(state, &runner.executable)?;
+    let mut command = rosemary_command(state, &runner.executable)?;
     command.arg(roblox::app_path(Client::Player));
     if let Some(launch_uri) = launch_uri {
         command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
@@ -70,7 +71,7 @@ pub fn start_studio(
     runner: &Runner,
     target: &StudioTarget,
 ) -> anyhow::Result<()> {
-    let mut command = wrapped_command(state, &runner.executable)?;
+    let mut command = rosemary_command(state, &runner.executable)?;
     command
         .arg(roblox::app_path(Client::Studio))
         .args(studio_arguments(state, target))
@@ -210,6 +211,12 @@ pub fn launch_wrapper_problem(wrapper: &str) -> Option<String> {
             (!found).then(|| format!("{program} isn't installed, or isn't in PATH."))
         }
     }
+}
+
+fn rosemary_command(state: &AppState, rosemary: &Path) -> anyhow::Result<Command> {
+    let mut command = wrapped_command(state, rosemary)?;
+    command.env_remove(GIO_MODULES_VARIABLE);
+    Ok(command)
 }
 
 fn wrapped_command(state: &AppState, rosemary: &Path) -> anyhow::Result<Command> {
