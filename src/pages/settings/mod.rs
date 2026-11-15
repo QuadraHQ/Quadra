@@ -13,12 +13,9 @@ mod integration;
 mod launch_wrapper;
 mod mangohud;
 mod mods;
-mod network;
-mod performance;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
-mod runtime;
 mod session;
 mod support;
 mod updates;
@@ -33,7 +30,6 @@ use advanced::advanced_section;
 use general::general_section;
 use integration::integration_section;
 use mods::mods_section;
-use runtime::runtime_section;
 use vr::vr_section;
 
 pub fn settings_page(state: &AppState) -> gtk::Widget {
@@ -45,12 +41,6 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         Some("general"),
         "General",
         "preferences-system-symbolic",
-    );
-    stack.add_titled_with_icon(
-        &scrollable(&runtime_section(state)),
-        Some("runtime"),
-        "Runtime",
-        "computer-symbolic",
     );
     let mods = stack.add_titled_with_icon(
         &scrollable(&mods_section(state)),
