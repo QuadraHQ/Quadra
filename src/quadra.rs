@@ -5,7 +5,6 @@ use crate::components::grid_backdrop::grid_backdrop;
 use crate::components::header::bar;
 use crate::components::launch_window::launch_window;
 use crate::components::line_field_backdrop::line_field_backdrop;
-use crate::components::overlay::Overlay;
 use crate::components::play_action::PlayAction;
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
@@ -50,7 +49,6 @@ pub struct Quadra {
     state: AppState,
     window: ApplicationWindow,
     launch_window: ApplicationWindow,
-    overlay: Option<Rc<Overlay>>,
     pages: ViewStack,
     tray_icon: RefCell<Option<TrayIcon>>,
     launched_directly: Cell<bool>,
@@ -66,7 +64,6 @@ impl Quadra {
             state: state.clone(),
             window,
             launch_window: launch_window(app, state),
-            overlay: Overlay::new(state),
             pages,
             tray_icon: RefCell::new(None),
             launched_directly: Cell::new(false),
@@ -132,16 +129,6 @@ impl Quadra {
         }
     }
 
-    pub fn toggle_overlay(&self) {
-        match &self.overlay {
-            Some(overlay) => overlay.toggle(),
-            None => self.state.report_error(
-                "Your desktop doesn't support the overlay: it needs the Wayland layer-shell \
-                 protocol, which GNOME doesn't provide.",
-            ),
-        }
-    }
-
     fn show(&self, page: Page) {
         self.launched_directly.set(false);
         self.pages.set_visible_child_name(page.name());
@@ -152,7 +139,6 @@ impl Quadra {
         match request {
             TrayRequest::OpenHome => self.show(Page::Home),
             TrayRequest::OpenSettings => self.show(Page::Settings),
-            TrayRequest::ToggleOverlay => self.toggle_overlay(),
             TrayRequest::PerformPlayAction => {
                 let action = PlayAction::for_client(&self.state, self.state.current_client());
                 if action.is_available(&self.state) {

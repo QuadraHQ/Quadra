@@ -1,7 +1,6 @@
 mod account;
 mod background;
 mod butter_access;
-mod compositor_binding;
 mod cpu_limit;
 mod current_game;
 mod desktop_entries;
@@ -23,7 +22,6 @@ mod live_log;
 mod mangohud;
 mod mime_defaults;
 mod mods;
-mod overlay_data;
 mod paths;
 mod prefix;
 mod quadra_rosemary;
@@ -40,7 +38,6 @@ mod updater;
 mod vr;
 
 pub use butter_access::missing as missing_butter_access;
-pub use compositor_binding::{CompositorBinding, compositor_binding_for};
 pub use desktop_entries::Shortcut;
 pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
 pub use handlers::Handler;
@@ -48,7 +45,6 @@ pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
-pub use overlay_data::{read_layout as read_overlay_layout, read_notes as read_overlay_notes, write_layout as write_overlay_layout, write_notes as write_overlay_notes};
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;

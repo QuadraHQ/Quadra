@@ -14,7 +14,6 @@ mod launch_wrapper;
 mod mangohud;
 mod mods;
 mod network;
-mod overlay;
 mod performance;
 mod privacy;
 mod rosemary_options;
@@ -35,7 +34,6 @@ use general::general_section;
 use integration::integration_section;
 use mods::mods_section;
 use network::network_section;
-use overlay::overlay_section;
 use performance::performance_section;
 use runtime::runtime_section;
 use vr::vr_section;
@@ -68,12 +66,6 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         "Network",
         "network-wired-symbolic",
     );
-    let overlay = stack.add_titled_with_icon(
-        &scrollable(&overlay_section(state)),
-        Some("overlay"),
-        "Overlay",
-        "window-new-symbolic",
-    );
     let mods = stack.add_titled_with_icon(
         &scrollable(&mods_section(state)),
         Some("mods"),
@@ -105,7 +97,6 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
     show_only_while_roblox_is_selected(&network, state);
-    show_only_while_roblox_is_selected(&overlay, state);
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)

@@ -15,7 +15,6 @@ const BYTES_PER_ARGB_PIXEL: usize = 4;
 pub enum TrayRequest {
     OpenHome,
     OpenSettings,
-    ToggleOverlay,
     PerformPlayAction,
     Quit,
 }
@@ -97,7 +96,6 @@ impl ksni::Tray for QuadraTray {
             MenuItem::Separator,
             Self::menu_item("Open Quadra", TrayRequest::OpenHome),
             Self::menu_item("Settings", TrayRequest::OpenSettings),
-            Self::menu_item("Toggle overlay", TrayRequest::ToggleOverlay),
             MenuItem::Separator,
             Self::menu_item("Quit", TrayRequest::Quit),
         ]
