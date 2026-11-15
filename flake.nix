@@ -35,7 +35,6 @@
             gtk4
             gtk4-layer-shell
             libadwaita
-            webkitgtk_6_0
           ];
         };
         packages.default = self.packages.${system}.quadra;
