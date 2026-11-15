@@ -137,7 +137,7 @@ extract_icon() {
     local work source
     make_temporary -d
     work=$temporary_path
-    (cd "$work" && "$APPIMAGE_PATH" --appimage-extract 'usr/share/icons/hicolor/*/apps/org.quadrahq.Quadra.png' \
+    (cd "$work" && "$APPIMAGE_PATH" --appimage-extract 'usr/share/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png' \
         >/dev/null 2>&1) || return 0
     source=$(find "$work" -name 'org.quadrahq.Quadra.png' -print -quit 2>/dev/null)
     [ -n "$source" ] || return 0
