@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 40] = [
+const SAVED_PROPERTIES: [&str; 41] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -80,6 +80,7 @@ const SAVED_PROPERTIES: [&str; 40] = [
     "block-telemetry",
     "force-raknet",
     "theme",
+    "advanced-settings-visible",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -181,6 +182,7 @@ struct SavedSettings {
     block_telemetry: bool,
     force_raknet: bool,
     theme: Theme,
+    advanced_settings_visible: bool,
 }
 
 impl Default for SavedSettings {
@@ -228,6 +230,7 @@ impl Default for SavedSettings {
             block_telemetry: false,
             force_raknet: false,
             theme: Theme::default(),
+            advanced_settings_visible: false,
         }
     }
 }
@@ -348,6 +351,12 @@ mod imp {
         block_telemetry: Cell<bool>,
         #[property(get, set)]
         force_raknet: Cell<bool>,
+        #[property(get, set)]
+        advanced_settings_visible: Cell<bool>,
+        #[property(get, set)]
+        in_game: Cell<bool>,
+        #[property(get, set)]
+        session_started_at: Cell<i64>,
         #[property(get, set)]
         available_update: RefCell<String>,
         #[property(get, set)]
@@ -483,6 +492,7 @@ impl AppState {
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
             .property("force-raknet", settings.force_raknet)
+            .property("advanced-settings-visible", settings.advanced_settings_visible)
             .property("first-launch", !file_existed && !settings.opened_before)
             .property("theme", settings.theme)
             .build();
@@ -680,6 +690,7 @@ impl AppState {
             block_telemetry: self.block_telemetry(),
             force_raknet: self.force_raknet(),
             theme: self.theme(),
+            advanced_settings_visible: self.advanced_settings_visible(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
