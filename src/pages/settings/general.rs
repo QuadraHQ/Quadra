@@ -6,9 +6,13 @@ use super::support::support_group;
 use super::updates::launcher_version_row;
 use crate::state::{AppState, LaunchMode, Theme};
 use adw::prelude::*;
+use gtk::prelude::*;
 
 pub fn general_section(state: &AppState) -> gtk::Box {
-    // Quadra group
+    let group = adw::PreferencesGroup::builder()
+        .title("Quadra")
+        .build();
+
     let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
     launch_mode_row.set_subtitle("Settings stay available from the system tray");
 
@@ -19,14 +23,12 @@ pub fn general_section(state: &AppState) -> gtk::Box {
     theme_row.set_subtitle("Change the theme to what you like.");
 
     let advanced_row = switch_row(state, "advanced-settings-visible", "Advanced settings");
-    advanced_row.set_subtitle("Show advanced settings like experimental features.");
+    advanced_row.set_subtitle("Only enable if you know what you're doing.");
 
-    let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
-    quadra_group.add(&launcher_version_row(state));
-    quadra_group.add(&launch_mode_row);
-    quadra_group.add(&run_in_background_row);
-    quadra_group.add(&theme_row);
-    quadra_group.add(&advanced_row);
+    group.add(&launch_mode_row);
+    group.add(&run_in_background_row);
+    group.add(&theme_row);
+    group.add(&advanced_row);
 
     let discord_rich_presence_row =
         switch_row(state, "discord-rich-presence", "Show what you're playing");
@@ -38,7 +40,7 @@ pub fn general_section(state: &AppState) -> gtk::Box {
     discord_group.add(&discord_rich_presence_row);
 
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    section.append(&quadra_group);
+    section.append(&group);
     section.append(&discord_group);
     section.append(&session_group(state));
     section.append(&super::privacy::privacy_group(state));
