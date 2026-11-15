@@ -36,6 +36,15 @@
             gtk4-layer-shell
             libadwaita
           ];
+
+          postInstall = ''
+            install -Dm644 data/org.quadrahq.Quadra.desktop \
+              "$out/share/applications/org.quadrahq.Quadra.desktop"
+            install -Dm644 data/org.quadrahq.Quadra.xml \
+              "$out/share/mime/packages/org.quadrahq.Quadra.xml"
+            mkdir -p "$out/share/icons"
+            cp -r data/icons/hicolor "$out/share/icons/"
+          '';
         };
         packages.default = self.packages.${system}.quadra;
       }
