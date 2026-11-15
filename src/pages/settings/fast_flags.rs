@@ -45,6 +45,88 @@ impl ToggleSetting {
     }
 }
 
+struct PerformancePreset {
+    name: &'static str,
+    description: &'static str,
+    flags: &'static [(&'static str, FastFlagValue)],
+}
+
+const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
+    PerformancePreset {
+        name: "Maximum Performance",
+        description: "All performance flags enabled. Lowest visual quality, highest FPS.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            ("FFlagDebugDisableClusterCulling", FastFlagValue::Toggle(true)),
+            ("FFlagDebugGraphicsDisableComputeShaders", FastFlagValue::Toggle(true)),
+            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(999)),
+            ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(500)),
+            ("FFlagRenderFontResolution", FastFlagValue::Number(1)),
+            ("FFlagDebugGraphicsPreferOpenGL", FastFlagValue::Toggle(true)),
+            ("FFlagDebugGraphicsPreferVulkan", FastFlagValue::Toggle(true)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            ("FFlagLuaAppEnableLowMemoryMode", FastFlagValue::Toggle(true)),
+            ("FFlagDisableShadows", FastFlagValue::Toggle(true)),
+            ("FFlagDisableBloom", FastFlagValue::Toggle(true)),
+            ("FFlagDisableDepthOfField", FastFlagValue::Toggle(true)),
+            ("FFlagDisableGlobalShadows", FastFlagValue::Toggle(true)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(1400)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+        ],
+    },
+    PerformancePreset {
+        name: "Balanced",
+        description: "Moderate performance gains with acceptable visuals.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+        ],
+    },
+    PerformancePreset {
+        name: "Low Latency / Anti-Stutter",
+        description: "Optimized for reducing lag spikes and input latency. Keeps visuals decent.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(1400)),
+        ],
+    },
+    PerformancePreset {
+        name: "Reset to Defaults",
+        description: "Clears all performance flags, uses Roblox defaults.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(false)),
+            ("FFlagDebugDisableClusterCulling", FastFlagValue::Toggle(false)),
+            ("FFlagDebugGraphicsDisableComputeShaders", FastFlagValue::Toggle(false)),
+            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(true)),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(60)),
+            ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(0)),
+            ("FFlagRenderFontResolution", FastFlagValue::Number(0)),
+            ("FFlagDebugGraphicsPreferOpenGL", FastFlagValue::Toggle(false)),
+            ("FFlagDebugGraphicsPreferVulkan", FastFlagValue::Toggle(false)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(0)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(0)),
+            ("FFlagLuaAppEnableLowMemoryMode", FastFlagValue::Toggle(false)),
+            ("FFlagDisableShadows", FastFlagValue::Toggle(false)),
+            ("FFlagDisableBloom", FastFlagValue::Toggle(false)),
+            ("FFlagDisableDepthOfField", FastFlagValue::Toggle(false)),
+            ("FFlagDisableGlobalShadows", FastFlagValue::Toggle(false)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(0)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(false)),
+        ],
+    },
+];
+
 pub fn fast_flags_section(state: &AppState) -> gtk::Box {
     let allowlist_link = gtk::LinkButton::builder()
         .uri(ALLOWLIST_SOURCE)
@@ -60,14 +142,43 @@ pub fn fast_flags_section(state: &AppState) -> gtk::Box {
         .header_suffix(&allowlist_link)
         .build();
 
+    // Performance presets
+    let presets_group = adw::PreferencesGroup::builder()
+        .title("Performance Presets")
+        .description("Quick-apply flag combinations for FPS gains. These are client-side only and not bannable.")
+        .build();
+
+    for preset in PERFORMANCE_PRESETS {
+        let button = gtk::Button::builder()
+            .label(preset.name)
+            .tooltip_text(preset.description)
+            .halign(gtk::Align::Start)
+            .build();
+        let state_clone = state.clone();
+        let flags = preset.flags;
+        button.connect_clicked(move |_| {
+            apply_preset(&state_clone, flags);
+        });
+        presets_group.add(&button);
+    }
+
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&about_group);
+    section.append(&presets_group);
     for category in ALLOWLIST {
         section.append(&category_group(state, category));
     }
     section.append(&custom_flags_group(state));
 
     section
+}
+
+fn apply_preset(state: &AppState, flags: &[(&str, FastFlagValue)]) {
+    let mut new_flags = state.fast_flags().clone();
+    for (name, value) in flags {
+        new_flags = new_flags.with(name, Some(value.clone()));
+    }
+    state.set_fast_flags(new_flags);
 }
 
 fn category_group(state: &AppState, category: &FlagCategory) -> adw::PreferencesGroup {

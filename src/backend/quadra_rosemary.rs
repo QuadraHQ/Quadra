@@ -203,3 +203,24 @@ fn install_archive(archive: &Archive, progress: &Progress) -> anyhow::Result<()>
 
     Ok(())
 }
+
+pub fn update_before_launch(rosemary: &std::path::Path, progress: &Progress) -> anyhow::Result<()> {
+    let Some(installed) = installed_version() else {
+        return Ok(());
+    };
+    let bundled = Version::parse(VERSION);
+    let installed_version = Version::parse(&installed);
+    if installed_version >= bundled {
+        return Ok(());
+    }
+    progress.step(format!("Updating Quadra's Rosemary to {VERSION}"));
+    install_archive(
+        &Archive {
+            version: VERSION,
+            name: ARCHIVE_NAME,
+            url: ARCHIVE_URL,
+            sha256: ARCHIVE_SHA256,
+        },
+        progress,
+    )
+}

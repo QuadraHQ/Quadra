@@ -1,7 +1,7 @@
 use super::join_availability::JoinAvailability;
-use super::time_since::time_since;
 use crate::backend;
 use crate::state::{AppState, JoinedServer, PlayedGame};
+use crate::utils::time_since;
 use adw::prelude::*;
 use gtk::glib;
 use std::cell::RefCell;

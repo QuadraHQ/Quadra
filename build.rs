@@ -13,7 +13,11 @@ const MACH_O_LINKER: &str = "ld64.lld";
 const RUST_LINKER: &str = "rust-lld";
 
 fn main() {
-    println!("cargo:rerun-if-changed=vr");
+    // Only re-run if specific source files or toolchain env vars change
+    for source in VR_SOURCES {
+        println!("cargo:rerun-if-changed=vr/{source}");
+    }
+    println!("cargo:rerun-if-changed=vr/libSystem.tbd");
     println!("cargo:rerun-if-env-changed={LINKER_ENV}");
     println!("cargo:rerun-if-env-changed={COMPILER_ENV}");
 
@@ -31,6 +35,35 @@ fn main() {
 }
 
 fn build_vr_library(out_directory: &Path, library: &Path) -> Result<(), String> {
+    // Check if library is already up to date
+    if library.exists() {
+        if let Ok(lib_meta) = library.metadata()
+            && let Ok(lib_time) = lib_meta.modified()
+        {
+            let mut sources_newer = false;
+            for source in VR_SOURCES {
+                let source_path = Path::new("vr").join(source);
+                if let Ok(src_meta) = source_path.metadata()
+                    && let Ok(src_time) = src_meta.modified()
+                    && src_time > lib_time
+                {
+                    sources_newer = true;
+                    break;
+                }
+            }
+            let tbd_path = Path::new("vr").join("libSystem.tbd");
+            if let Ok(tbd_meta) = tbd_path.metadata()
+                && let Ok(tbd_time) = tbd_meta.modified()
+                && tbd_time > lib_time
+            {
+                sources_newer = true;
+            }
+            if !sources_newer {
+                return Ok(()); // Library is up to date, skip rebuild
+            }
+        }
+    }
+
     let compiler = env::var(COMPILER_ENV).unwrap_or_else(|_| "clang".to_owned());
     let mut linker = linker_command(&compiler)
         .ok_or("neither ld64.lld (from lld) nor Rust's rust-lld was found")?;
@@ -39,18 +72,33 @@ fn build_vr_library(out_directory: &Path, library: &Path) -> Result<(), String> 
     let mut objects = Vec::new();
     for source in VR_SOURCES {
         let object = out_directory.join(source).with_extension("o");
-        run(Command::new(&compiler)
-            .args(["-target", MACOS_TARGET, "-ffreestanding", "-O2"])
-            .args([
-                "-fno-omit-frame-pointer",
-                "-Werror=incompatible-function-pointer-types",
-            ])
-            .arg("-I")
-            .arg(sources)
-            .arg("-c")
-            .arg(sources.join(source))
-            .arg("-o")
-            .arg(&object))?;
+        // Only recompile object if source is newer
+        let source_path = sources.join(source);
+        let needs_recompile = object
+            .metadata()
+            .and_then(|m| m.modified())
+            .map(|obj_time| {
+                source_path
+                    .metadata()
+                    .and_then(|src_meta| src_meta.modified())
+                    .map(|src_time| src_time > obj_time)
+                    .unwrap_or(true)
+            })
+            .unwrap_or(true);
+        if needs_recompile {
+            run(Command::new(&compiler)
+                .args(["-target", MACOS_TARGET, "-ffreestanding", "-O2"])
+                .args([
+                    "-fno-omit-frame-pointer",
+                    "-Werror=incompatible-function-pointer-types",
+                ])
+                .arg("-I")
+                .arg(sources)
+                .arg("-c")
+                .arg(&source_path)
+                .arg("-o")
+                .arg(&object))?;
+        }
         objects.push(object);
     }
 

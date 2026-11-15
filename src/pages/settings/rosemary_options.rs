@@ -48,7 +48,7 @@ pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
 
 pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
     let title_bar_row = choice_row::<TitleBar>(state, "title-bar", "Title bar");
-    title_bar_row.set_subtitle("Mac-style shows Roblox's menus inside the title bar.");
+    title_bar_row.set_subtitle("Mac-style shows Roblox's menus inside the title bar. Hidden uses server decorations with no menu bar.");
 
     let menu_bar_row = switch_row(state, "show-menu-bar", "Show Roblox's menus");
     menu_bar_row.set_subtitle(
@@ -89,7 +89,7 @@ pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
     group
 }
 
-fn refresh_rate_row(state: &AppState) -> adw::ActionRow {
+pub fn refresh_rate_row(state: &AppState) -> adw::ActionRow {
     let refresh_rate_input = gtk::Entry::builder()
         .placeholder_text("The monitor's")
         .valign(gtk::Align::Center)
