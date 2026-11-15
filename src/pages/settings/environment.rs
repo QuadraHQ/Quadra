@@ -23,11 +23,15 @@ pub fn env_section(state: &AppState) -> gtk::Box {
     let theme_row = choice_row::<Theme>(state, "theme", "The app theme.");
     theme_row.set_subtitle("Change the theme to what you like.");
 
+    let advanced_row = switch_row(state, "advanced-settings-visible", "Advanced settings");
+    advanced_row.set_subtitle("Show advanced settings like experimental features.");
+
     let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
     quadra_group.add(&launcher_version_row(state));
     quadra_group.add(&launch_mode_row);
     quadra_group.add(&run_in_background_row);
     quadra_group.add(&theme_row);
+    quadra_group.add(&advanced_row);
 
     let discord_rich_presence_row =
         switch_row(state, "discord-rich-presence", "Show what you're playing");
