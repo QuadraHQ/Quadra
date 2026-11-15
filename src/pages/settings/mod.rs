@@ -33,6 +33,8 @@ use advanced::advanced_section;
 use general::general_section;
 use integration::integration_section;
 use mods::mods_section;
+use network::network_section;
+use performance::performance_section;
 use runtime::runtime_section;
 use vr::vr_section;
 
@@ -51,6 +53,18 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         Some("runtime"),
         "Runtime",
         "computer-symbolic",
+    );
+    let network = stack.add_titled_with_icon(
+        &scrollable(&network_section(state)),
+        Some("network"),
+        "Network",
+        "network-wired-symbolic",
+    );
+    let performance = stack.add_titled_with_icon(
+        &scrollable(&performance_section(state)),
+        Some("performance"),
+        "Performance",
+        "speedometer-symbolic",
     );
     let mods = stack.add_titled_with_icon(
         &scrollable(&mods_section(state)),
@@ -86,8 +100,10 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         .sync_create()
         .build();
 
+    show_only_while_roblox_is_selected(&performance, state);
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
+    show_only_while_roblox_is_selected(&network, state);
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)
