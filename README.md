@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data/icons/org.quadrahq.Quadra.png" alt="Quadra logo" width="160">
+  <img src="data/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png" alt="Quadra logo" width="160">
 </p>
 
 <h1 align="center">
