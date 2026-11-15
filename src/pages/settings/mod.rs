@@ -45,18 +45,6 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
     stack.add_titled_with_icon(
         &scrollable(&general_section(state)),
         Some("general"),
-        "General",
-        "preferences-system-symbolic",
-    );
-    stack.add_titled_with_icon(
-        &scrollable(&runtime_section(state)),
-        Some("runtime"),
-        "Runtime",
-        "computer-symbolic",
-    );
-    let network = stack.add_titled_with_icon(
-        &scrollable(&network_section(state)),
-        Some("network"),
         "Network",
         "network-wired-symbolic",
     );
@@ -100,10 +88,9 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         .sync_create()
         .build();
 
-    show_only_while_roblox_is_selected(&performance, state);
     show_only_while_roblox_is_selected(&mods, state);
     show_only_while_roblox_is_selected(&vr, state);
-    show_only_while_roblox_is_selected(&network, state);
+
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)
