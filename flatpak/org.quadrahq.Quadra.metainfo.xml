@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>org.quadrahq.Quadra</id>
   <name>Quadra</name>
-  <summary>Play Roblox on Linux with the macOS client</summary>
+  <summary>Run Roblox's macOS client on Linux</summary>
   <developer id="wtf.aubree">
     <name>aubree.wtf</name>
   </developer>
@@ -10,7 +10,7 @@
   <project_license>GPL-3.0-only</project_license>
   <description>
     <p>
-      Quadra runs the official macOS Roblox Player and Studio clients on Linux
+      Quadra runs the macOS Roblox Player and Studio on Linux
       through Rosemary.
     </p>
     <p>Quadra is not affiliated with Roblox Corporation.</p>
