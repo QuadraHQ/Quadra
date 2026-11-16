@@ -19,6 +19,7 @@ mod session;
 mod support;
 mod updates;
 mod vr;
+mod vr_access;
 
 use crate::state::AppState;
 use crate::utils::{

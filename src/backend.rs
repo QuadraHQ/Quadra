@@ -35,6 +35,7 @@ mod telemetry;
 mod transport_patch;
 mod updater;
 mod vr;
+mod vr_access;
 
 pub use butter_access::missing as missing_butter_access;
 pub use desktop_entries::Shortcut;
@@ -44,6 +45,7 @@ pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
+pub use vr_access::missing as missing_vr_access;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;

@@ -40,6 +40,24 @@ modules:
         tag: release-1.1.65
         commit: 24a1f2b92d212501a2b1b8d30ffd53abf55fcfa8
 
+  - name: cjson
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - -DENABLE_CJSON_TEST=OFF
+    cleanup:
+      - /include
+      - /lib/cmake
+      - /lib/pkgconfig
+      - /lib/libcjson.so
+    sources:
+      - type: git
+        url: https://github.com/DaveGamble/cJSON.git
+        tag: v1.7.19
+        commit: c859b25da02955fef659d658b8f324b5cde87be3
+
   - name: quadra
     buildsystem: simple
     build-options:
