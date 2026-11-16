@@ -59,6 +59,12 @@
     <display_length compare="ge">768</display_length>
   </supports>
   <releases>
+    <release version="0.50.2" date="2026-11-15">
+      <description>
+        <p>Fixed Roblox not launching due to it stuck finding its own installer.</p>
+        <p>Added new logo.</p>
+      </description>
+     </release>
     <release version="0.50.1" date="2026-11-14">
       <description>
         <p>Edited flatpak manifests for safer sandbox.</p>
