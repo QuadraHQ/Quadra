@@ -24,6 +24,22 @@ cleanup:
   - /share/man
 
 modules:
+  - name: openxr-loader
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_LIBDIR=lib
+    cleanup:
+      - /include
+      - /lib/cmake
+      - /lib/pkgconfig
+      - /lib/libopenxr_loader.so
+    sources:
+      - type: git
+        url: https://github.com/KhronosGroup/OpenXR-SDK.git
+        tag: release-1.1.65
+        commit: 24a1f2b92d212501a2b1b8d30ffd53abf55fcfa8
+
   - name: quadra
     buildsystem: simple
     build-options:

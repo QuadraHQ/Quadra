@@ -25,7 +25,8 @@ const ACTIVE_RUNTIME_MANIFEST: &str = "openxr/1/active_runtime.json";
 const SYSTEM_ACTIVE_RUNTIME_MANIFEST: &str = "/etc/openxr/1/active_runtime.json";
 const DEFAULT_XDG_CONFIG_DIRS: &str = "/etc/xdg";
 const OPENXR_LOADER: &str = "libopenxr_loader.so.1";
-const LIBRARY_DIRECTORIES: [&str; 4] = [
+const LIBRARY_DIRECTORIES: [&str; 5] = [
+    "/app/lib",
     "/usr/lib",
     "/usr/lib64",
     "/usr/lib/x86_64-linux-gnu",
