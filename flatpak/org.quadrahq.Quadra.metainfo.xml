@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>org.quadrahq.Quadra</id>
   <name>Quadra</name>
-  <summary>Run Roblox's macOS client on Linux</summary>
+  <summary>Build and play in Roblox worlds</summary>
   <developer id="wtf.aubree">
     <name>aubree.wtf</name>
   </developer>
