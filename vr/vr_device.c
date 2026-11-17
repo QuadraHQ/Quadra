@@ -19,11 +19,11 @@
  * methods fill that state from OpenXR and submit the eyes (vr_xr.c).
  *
  *   QUADRA_VR=openxr  present on the host OpenXR runtime (WiVRn, Monado...)
- *                       and mirror both eyes into the game window
+ *                       and mirror the left eye into the game window
  *   QUADRA_VR=openxr-headset  the headset only; the window is not presented
  *   ...-lag0            (development) submit the views the frame opened with,
  *                       instead of the previous frame's (see vr_xr.c)
- *   QUADRA_VR=1       emulated head only, eyes mirrored into the window
+ *   QUADRA_VR=1       emulated head only, left eye mirrored into the window
  *   QUADRA_VR=debug   also the client's own emulator mirror
  *                       (FFlagDebugEnableVREmulator)
  *
@@ -64,6 +64,7 @@ extern int mach_timebase_info(unsigned int info[2]);
 #define VR_SLOT_PRESENT_WINDOW 31
 #define VR_SLOT_DISPLAY_RATE 37
 #define VR_SLOT_SET_DISPLAY_RATE 38
+#define VR_MIRROR_EYE 0 /* the left eye is what the window shows */
 #define GL_SLOT_BEGIN_FRAME 13
 #define GL_SLOT_MAIN_FRAMEBUFFER 15
 /* getVR and setVR sit next to each other; they moved from slots 17 and 18 to
@@ -152,7 +153,7 @@ static unsigned long vr_frames, vr_begins, vr_ends, vr_eye_requests;
 static void *vr_graphics_device;
 static int vr_mirror_ready;
 
-/* Window mirror: both eyes side by side, blitted before DeviceGL presents. */
+/* Window mirror: one eye, blitted before DeviceGL presents. */
 static void (*vr_glBindFramebuffer)(unsigned int, unsigned int);
 static void (*vr_glBlitFramebuffer)(int, int, int, int, int, int, int, int, unsigned int, unsigned int);
 static void (*vr_glGetIntegerv)(unsigned int, int *);
@@ -429,20 +430,18 @@ static void vr_mirror(void *self) {
     unsigned char scissor = vr_glIsEnabled(0x0C11);
     if (scissor) vr_glDisable(0x0C11);
     vr_glColorMask(1, 1, 1, 1);
-    vr_glBindFramebuffer(0x8CA9, window_name); /* GL_DRAW_FRAMEBUFFER */
-    for (long eye = 0; eye < 2; ++eye) {
-        const unsigned char *framebuffer =
-            ((const unsigned char *(*)(void *, long))vr_debug_vtable[VR_SLOT_EYE_FRAMEBUFFER])(self, eye);
-        if (!vr_framebuffer(framebuffer, &eye_name, &eye_width, &eye_height)) continue;
-        /* Fit each eye into its half of the window, keeping its aspect. */
-        int half = window_width / 2;
-        int width = half, height = (int)((long)half * eye_height / eye_width);
+    const unsigned char *framebuffer =
+        ((const unsigned char *(*)(void *, long))vr_debug_vtable[VR_SLOT_EYE_FRAMEBUFFER])(self, VR_MIRROR_EYE);
+    if (vr_framebuffer(framebuffer, &eye_name, &eye_width, &eye_height)) {
+        /* Fit the eye into the window, keeping its aspect. */
+        int width = window_width, height = (int)((long)window_width * eye_height / eye_width);
         if (height > window_height) {
             height = window_height;
             width = (int)((long)window_height * eye_width / eye_height);
         }
-        int x = (int)eye * half + (half - width) / 2, y = (window_height - height) / 2;
-        vr_glBindFramebuffer(0x8CA8, eye_name); /* GL_READ_FRAMEBUFFER */
+        int x = (window_width - width) / 2, y = (window_height - height) / 2;
+        vr_glBindFramebuffer(0x8CA9, window_name); /* GL_DRAW_FRAMEBUFFER */
+        vr_glBindFramebuffer(0x8CA8, eye_name);    /* GL_READ_FRAMEBUFFER */
         vr_glBlitFramebuffer(0, 0, eye_width, eye_height, x, y, x + width, y + height,
                              0x4000 /* GL_COLOR_BUFFER_BIT */, 0x2601 /* GL_LINEAR */);
     }

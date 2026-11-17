@@ -23,7 +23,8 @@ pub struct RichPresence {
     pub details: String,
     pub state: Option<String>,
     pub started_at: Option<i64>,
-    pub large_image: Image,
+    pub ended_at: Option<i64>,
+    pub large_image: Option<Image>,
     pub small_image: Option<Image>,
     pub link: Option<Link>,
 }
@@ -122,9 +123,12 @@ fn set_presence(
 }
 
 fn as_activity(presence: &RichPresence) -> Activity<'_> {
-    let mut assets = Assets::new()
-        .large_image(&presence.large_image.url)
-        .large_text(&presence.large_image.text);
+    let mut assets = Assets::new();
+    if let Some(large_image) = &presence.large_image {
+        assets = assets
+            .large_image(&large_image.url)
+            .large_text(&large_image.text);
+    }
     if let Some(small_image) = &presence.small_image {
         assets = assets
             .small_image(&small_image.url)
@@ -135,8 +139,15 @@ fn as_activity(presence: &RichPresence) -> Activity<'_> {
     if let Some(state) = &presence.state {
         activity = activity.state(state);
     }
-    if let Some(started_at) = presence.started_at {
-        activity = activity.timestamps(Timestamps::new().start(started_at));
+    if presence.started_at.is_some() || presence.ended_at.is_some() {
+        let mut timestamps = Timestamps::new();
+        if let Some(started_at) = presence.started_at {
+            timestamps = timestamps.start(started_at);
+        }
+        if let Some(ended_at) = presence.ended_at {
+            timestamps = timestamps.end(ended_at);
+        }
+        activity = activity.timestamps(timestamps);
     }
     if let Some(link) = &presence.link {
         activity = activity.buttons(vec![Button::new(&link.label, &link.url)]);

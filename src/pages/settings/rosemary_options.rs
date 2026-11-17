@@ -50,6 +50,11 @@ pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
     let title_bar_row = choice_row::<TitleBar>(state, "title-bar", "Title bar");
     title_bar_row.set_subtitle("Mac-style shows Roblox's menus inside the title bar.");
 
+    let menu_bar_row = switch_row(state, "show-menu-bar", "Show Roblox's menus");
+    menu_bar_row.set_subtitle(
+        "The Roblox, Edit and Window menus. Their shortcuts keep working when hidden.",
+    );
+
     let command_key_row = choice_row::<CommandKey>(state, "command-key", "Command key");
     command_key_row.set_subtitle("The key Roblox sees as ⌘ Command.");
 
@@ -76,6 +81,7 @@ pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
         .description("Rosemary options for the keyboard, mouse and window.")
         .build();
     group.add(&title_bar_row);
+    group.add(&menu_bar_row);
     group.add(&command_key_row);
     group.add(&ctrl_for_edit_shortcuts_row);
     group.add(&plain_ctrl_click_row);

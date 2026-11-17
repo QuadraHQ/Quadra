@@ -1,6 +1,8 @@
 mod account;
 mod background;
+mod bloxstrap_rpc;
 mod butter_access;
+mod cache;
 mod cpu_limit;
 mod desktop_entries;
 mod destination;
@@ -321,6 +323,10 @@ pub fn hardware_report() -> String {
 
 pub fn sign_out(state: &AppState) {
     account::sign_out(state);
+}
+
+pub fn clear_roblox_cache(state: &AppState, when_finished: impl FnOnce(u64) + 'static) {
+    cache::clear(state, when_finished);
 }
 
 pub fn diagnostics_directory() -> std::path::PathBuf {
