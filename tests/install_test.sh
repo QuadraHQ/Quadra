@@ -40,9 +40,9 @@ out=$(run bash "$script" --version v9.9.9); [ -x "$installed" ] && check "--vers
 printf '#!/bin/sh\necho aarch64\n' > "$fakebin/uname"; chmod +x "$fakebin/uname"
 out=$(run env PATH="$fakebin:$PATH" bash "$script"); [ $? -ne 0 ] && echo "$out" | grep -q "only has x86_64" && check "wrong architecture: refuses" ok || check "arch" "$out"
 
-for t in git cc pkg-config; do printf '#!/bin/sh\n[ "$1" = "--atleast-version=4.18" ] && exit 1; [ "${1#--atleast}" != "$1" ] && exit 1; exit 0\n' > "$fakebin/$t"; chmod +x "$fakebin/$t"; done
+for t in git cc; do printf '#!/bin/sh\nexit 0\n' > "$fakebin/$t"; chmod +x "$fakebin/$t"; done
 printf '#!/bin/sh\necho "cargo 1.70.0 (x 2024-01-01)"\n' > "$fakebin/cargo"; chmod +x "$fakebin/cargo"; rm "$fakebin/uname"
-out=$(run env PATH="$fakebin:$PATH" bash "$script" --native); [ $? -ne 0 ] && echo "$out" | grep -q "GTK 4.18" && echo "$out" | grep -q "libadwaita" && echo "$out" | grep -q "Rust 1.85" && check "--native lists every missing requirement and builds nothing" ok || check "native" "$out"
+out=$(run env PATH="$fakebin:$PATH" bash "$script" --native); [ $? -ne 0 ] && echo "$out" | grep -q "Rust 1.92" && check "--native lists every missing requirement and builds nothing" ok || check "native" "$out"
 
 mkdir -p "$home/.local/share/quadra/prefix" "$home/.config/quadra" "$home/.local/share/applications"
 echo x > "$home/.local/share/quadra/prefix/cookie"; echo x > "$home/.config/quadra/config.toml"

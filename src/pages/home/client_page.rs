@@ -1,40 +1,38 @@
-use super::logs_button::logs_button;
 use super::play_button::play_button;
-use super::playtime_label::playtime_label;
-use super::status_label::status_label;
-use crate::components::icon::app_icon;
+use crate::components::icon::{Symbol, app_icon};
+use crate::components::preferences::{caption, symbol_button, title};
+use crate::components::roblox_status::status_text;
+use crate::components::style::{Emphasis, Look, TITLE_SIZE};
+use crate::quadra::Message;
 use crate::state::{AppState, Client};
-use adw::prelude::*;
+use crate::utils::format_playtime;
+use iced::widget::{Column, center, space};
+use iced::{Alignment, Element};
 
-pub fn client_page(state: &AppState, client: Client) -> gtk::Widget {
-    let logo = app_icon(128);
+pub fn client_page<'a>(state: &AppState, look: Look, client: Client) -> Element<'a, Message> {
+    let playtime = (client == Client::Player)
+        .then(|| playtime_label(state, look))
+        .flatten();
 
-    let title = gtk::Label::builder()
-        .label(client.home_title())
-        .css_classes(["title-1"])
-        .build();
-
-    let subtitle = status_label(state, client);
-
-    let logs_button = logs_button(state);
-
-    let play_button = play_button(state, client);
-
-    let content = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
+    let content = Column::new()
+        .push(app_icon(128.0))
+        .push(title(look, client.home_title(), TITLE_SIZE))
+        .push(caption(look, status_text(state, client)).center().size(14))
+        .push(playtime)
+        .push(space().height(0))
+        .push(
+            symbol_button(look, Symbol::Terminal, "Show Logs", Emphasis::Flat)
+                .on_press(Message::ShowLogs),
+        )
+        .push(play_button(state, look, client))
         .spacing(12)
-        .halign(gtk::Align::Center)
-        .valign(gtk::Align::Center)
-        .vexpand(true)
-        .build();
-    content.append(&logo);
-    content.append(&title);
-    content.append(&subtitle);
-    if client == Client::Player {
-        content.append(&playtime_label(state));
-    }
-    content.append(&logs_button);
-    content.append(&play_button);
+        .align_x(Alignment::Center);
 
-    content.upcast()
+    center(content).into()
+}
+
+fn playtime_label<'a>(state: &AppState, look: Look) -> Option<iced::widget::Text<'a>> {
+    let seconds = state.playtime_seconds();
+    (state.show_playtime() && seconds > 0)
+        .then(|| caption(look, format!("Played for {}", format_playtime(seconds))).size(14))
 }

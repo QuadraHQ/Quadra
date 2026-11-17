@@ -16,9 +16,7 @@ APPIMAGE_PATH=$BIN_HOME/Quadra.AppImage
 NATIVE_PATH=$BIN_HOME/quadra
 SOURCE_DIRECTORY=$DATA_HOME/quadra/source
 
-MINIMUM_GTK=4.18
-MINIMUM_LIBADWAITA=1.7
-MINIMUM_RUST_MINOR=85
+MINIMUM_RUST_MINOR=92
 
 mode=appimage
 action=install
@@ -39,10 +37,9 @@ app menu. Run it again to update.
 
 Options:
   --flatpak        install the Flatpak bundle instead (needs flatpak)
-  --tarball        install the prebuilt binary instead (needs GTK 4.18 and
-                   libadwaita 1.7 on this computer)
-  --native         build Quadra on this computer instead (needs git, Rust 1.85,
-                   a C compiler, GTK 4.18 and libadwaita 1.7 with headers)
+  --tarball        install the prebuilt binary instead
+  --native         build Quadra on this computer instead (needs git, Rust 1.92
+                   and a C compiler)
   --version TAG    install that release, for example v0.50.0-alpha.3
   --uninstall      remove Quadra but keep its data and your Roblox sign-in
   --purge          with --uninstall, also delete Quadra's data and sign-in
@@ -198,22 +195,16 @@ install_tarball() {
         if [ -n "$missing" ]; then
             say "Quadra won't start until these libraries are installed:"
             printf '%s\n' "$missing" | sed 's/^/    - /'
-            say "Install GTK $MINIMUM_GTK and libadwaita $MINIMUM_LIBADWAITA or newer, or use the AppImage."
+            say "Install them with your package manager, or use the AppImage."
         fi
     fi
 }
 
 native_problems() {
     local program cargo_minor
-    for program in git cargo cc pkg-config; do
+    for program in git cargo cc; do
         command -v "$program" >/dev/null 2>&1 || printf '%s is not installed\n' "$program"
     done
-    if command -v pkg-config >/dev/null 2>&1; then
-        pkg-config --atleast-version="$MINIMUM_GTK" gtk4 2>/dev/null \
-            || printf 'GTK %s or newer, with its headers, is needed\n' "$MINIMUM_GTK"
-        pkg-config --atleast-version="$MINIMUM_LIBADWAITA" libadwaita-1 2>/dev/null \
-            || printf 'libadwaita %s or newer, with its headers, is needed\n' "$MINIMUM_LIBADWAITA"
-    fi
     if command -v cargo >/dev/null 2>&1; then
         cargo_minor=$(cargo --version 2>/dev/null | sed -n 's/^cargo 1\.\([0-9]*\)\..*/\1/p')
         [ "${cargo_minor:-0}" -ge "$MINIMUM_RUST_MINOR" ] \

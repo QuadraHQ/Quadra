@@ -38,8 +38,8 @@ The installer checks every download against the release's `SHA256SUMS` before in
 **Prerequisites:**
 
 - Git
-- Rust 1.88+
-- GTK4, `gtk4-layer-shell` and libadwaita
+- Rust 1.92+
+- A C compiler (Quadra's GUI, iced, loads Wayland/X11, xkbcommon and the GPU driver at runtime, so no GUI headers are needed)
 - clang for VR support (optional; without it Quadra builds without VR)
 - flatpak-builder for building Flatpaks
 - curl for building AppImages

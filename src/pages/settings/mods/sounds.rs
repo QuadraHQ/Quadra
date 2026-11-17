@@ -1,34 +1,39 @@
-use crate::components::file_row::{Pick, file_row};
-use crate::pages::settings::bound_rows::{choice_row, show_when, switch_row};
+use crate::components::file_row::{ChosenPath, Pick, file_row};
+use crate::components::preferences::preference_group;
+use crate::components::style::Look;
+use crate::pages::settings::bound_rows::{choice_row, switch_row};
+use crate::quadra::Message;
 use crate::state::{AppState, DeathSound};
-use adw::prelude::*;
+use iced::Element;
 
-const AUDIO_EXTENSIONS: [&str; 3] = ["ogg", "mp3", "wav"];
+const AUDIO_FILES: &[Pick] = &[Pick::File(&["ogg", "mp3", "wav"])];
 
-pub fn sounds_group(state: &AppState) -> adw::PreferencesGroup {
-    let death_sound_row = choice_row::<DeathSound>(state, "death-sound", "Death sound");
-    death_sound_row.set_subtitle("The sound played when your character resets or dies");
+pub fn sounds_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let death_sound = state.death_sound();
+    let custom_death_sound_row = (death_sound == DeathSound::Custom).then(|| {
+        file_row(
+            state,
+            look,
+            ChosenPath::DeathSound,
+            "Custom death sound",
+            AUDIO_FILES,
+        )
+    });
 
-    let custom_death_sound_row = file_row(
-        state,
-        "custom-death-sound",
-        "Custom death sound",
-        &[Pick::File(&AUDIO_EXTENSIONS)],
-    );
-    show_when(
-        &custom_death_sound_row,
-        state,
-        "death-sound",
-        |sound: DeathSound| sound == DeathSound::Custom,
-    );
-
-    let group = adw::PreferencesGroup::builder().title("Sounds").build();
-    group.add(&death_sound_row);
-    group.add(&custom_death_sound_row);
-    group.add(&switch_row(
-        state,
-        "old-character-sounds",
-        "Classic movement sounds",
-    ));
-    group
+    preference_group(look)
+        .title("Sounds")
+        .push(
+            choice_row(look, "Death sound", death_sound, |state, sound| {
+                state.set_death_sound(sound)
+            })
+            .subtitle("The sound played when your character resets or dies"),
+        )
+        .push_maybe(custom_death_sound_row)
+        .push(switch_row(
+            look,
+            "Classic movement sounds",
+            state.old_character_sounds(),
+            |state, on| state.set_old_character_sounds(on),
+        ))
+        .into()
 }

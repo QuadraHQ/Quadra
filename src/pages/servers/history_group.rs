@@ -1,173 +1,116 @@
-use super::join_availability::JoinAvailability;
+use super::ServersMessage;
 use super::time_since::time_since;
 use crate::backend;
+use crate::components::icon::{self, Symbol};
+use crate::components::preferences::{preference_group, preference_row, push_button};
+use crate::components::style::{self, Emphasis, Look};
+use crate::quadra::{Message, act};
 use crate::state::{AppState, JoinedServer, PlayedGame};
-use adw::prelude::*;
-use gtk::glib;
-use std::cell::RefCell;
-use std::rc::Rc;
+use iced::widget::{Column, button, container, rule};
+use iced::{Element, Length};
+use std::collections::HashSet;
 
 const UNKNOWN_LOCATION: &str = "Unknown location";
 
-type ShownRows = Rc<RefCell<Vec<gtk::Widget>>>;
-
-pub fn history_groups(
+pub fn history_groups<'a>(
     state: &AppState,
-    join_availability: &JoinAvailability,
-) -> [adw::PreferencesGroup; 2] {
-    let history_group = adw::PreferencesGroup::builder()
-        .title("Server history")
-        .description(
-            "Servers you joined with Quadra. Rejoining asks Roblox for the same server, \
-             and Roblox picks a new one if it has closed.",
-        )
-        .build();
-
-    let forget_row = adw::ButtonRow::builder()
-        .title("Clear history")
-        .css_classes(["destructive-action"])
-        .build();
-    forget_row.connect_activated(glib::clone!(
-        #[weak]
-        state,
-        move |_| backend::forget_server_history(&state)
-    ));
-    let forget_group = adw::PreferencesGroup::new();
-    forget_group.add(&forget_row);
-
-    let shown_rows = ShownRows::default();
-    show_history(
-        &history_group,
-        &forget_group,
-        &shown_rows,
-        state,
-        join_availability,
+    look: Look,
+    expanded_games: &HashSet<u64>,
+    can_join: bool,
+) -> Vec<Element<'a, Message>> {
+    let history = state.server_history();
+    let history_group = preference_group(look).title("Server history").description(
+        "Servers you joined with Quadra. Rejoining asks Roblox for the same server, \
+         and Roblox picks a new one if it has closed.",
     );
 
-    state.connect_server_history_notify(glib::clone!(
-        #[weak]
-        history_group,
-        #[weak]
-        forget_group,
-        #[strong]
-        shown_rows,
-        #[strong]
-        join_availability,
-        move |state| show_history(
-            &history_group,
-            &forget_group,
-            &shown_rows,
-            state,
-            &join_availability
+    if history.0.is_empty() {
+        let nothing_played =
+            preference_row(look, "No servers yet").subtitle("Games you join will show up here.");
+        return vec![history_group.push(nothing_played).into()];
+    }
+
+    let games = history.0.iter().map(|game| {
+        game_row(
+            game,
+            expanded_games.contains(&game.place_id),
+            can_join,
+            look,
         )
-    ));
+    });
+    let forget_button = push_button(look, "Clear history", Emphasis::Destructive)
+        .on_press(act(backend::forget_server_history))
+        .width(Length::Fill);
 
-    [history_group, forget_group]
+    vec![history_group.extend(games).into(), forget_button.into()]
 }
 
-fn show_history(
-    history_group: &adw::PreferencesGroup,
-    forget_group: &adw::PreferencesGroup,
-    shown_rows: &ShownRows,
-    state: &AppState,
-    join_availability: &JoinAvailability,
-) {
-    for row in shown_rows.borrow_mut().drain(..) {
-        history_group.remove(&row);
-    }
-
-    let history = state.server_history();
-    let rows: Vec<gtk::Widget> = if history.0.is_empty() {
-        vec![nothing_played_row().upcast()]
-    } else {
-        history
-            .0
-            .iter()
-            .map(|game| game_row(state, game, join_availability).upcast())
-            .collect()
-    };
-
-    for row in &rows {
-        history_group.add(row);
-    }
-    forget_group.set_visible(!history.0.is_empty());
-    shown_rows.replace(rows);
-}
-
-fn nothing_played_row() -> adw::ActionRow {
-    adw::ActionRow::builder()
-        .title("No servers yet")
-        .subtitle("Games you join will show up here.")
-        .build()
-}
-
-fn game_row(
-    state: &AppState,
+fn game_row<'a>(
     game: &PlayedGame,
-    join_availability: &JoinAvailability,
-) -> adw::ExpanderRow {
+    is_expanded: bool,
+    can_join: bool,
+    look: Look,
+) -> Element<'a, Message> {
     let title = if game.name.is_empty() {
         format!("Place {}", game.place_id)
     } else {
         game.name.clone()
     };
-    let row = adw::ExpanderRow::builder()
-        .title(title)
-        .subtitle(game.last_played_at().map(time_since).unwrap_or_default())
-        .use_markup(false)
-        .build();
-
     let place_id = game.place_id;
-    let play_button = suffix_button("Play");
-    play_button.add_css_class("suggested-action");
-    play_button.connect_clicked(glib::clone!(
-        #[weak]
-        state,
-        move |_| backend::join_game(&state, place_id)
-    ));
-    join_availability.applies_to(&play_button);
-    row.add_suffix(&play_button);
 
-    for server in &game.servers {
-        row.add_row(&server_row(state, place_id, server, join_availability));
+    let play_button = push_button(look, "Play", Emphasis::Suggested)
+        .on_press_maybe(can_join.then(|| act(move |state| backend::join_game(state, place_id))));
+    let expander = button(icon::symbol(
+        if is_expanded {
+            Symbol::Collapse
+        } else {
+            Symbol::Expand
+        },
+        look,
+    ))
+    .padding(7)
+    .style(style::emphasized(look, Emphasis::Flat))
+    .on_press(Message::Servers(ServersMessage::ToggleGame(place_id)));
+
+    let header = preference_row(look, title)
+        .subtitle(game.last_played_at().map(time_since).unwrap_or_default())
+        .suffix(play_button)
+        .suffix(expander);
+
+    let mut rows = Column::new().push(header);
+    if is_expanded {
+        for server in &game.servers {
+            rows = rows
+                .push(rule::horizontal(1).style(style::separator(look)))
+                .push(server_row(place_id, server, can_join, look));
+        }
     }
-
-    row
+    rows.into()
 }
 
-fn server_row(
-    state: &AppState,
+fn server_row<'a>(
     place_id: u64,
     server: &JoinedServer,
-    join_availability: &JoinAvailability,
-) -> adw::ActionRow {
+    can_join: bool,
+    look: Look,
+) -> Element<'a, Message> {
     let title = server
         .location
         .as_deref()
         .or(server.address.as_deref())
-        .unwrap_or(UNKNOWN_LOCATION);
-    let row = adw::ActionRow::builder()
-        .title(title)
-        .subtitle(time_since(server.joined_at))
-        .use_markup(false)
-        .build();
-
+        .unwrap_or(UNKNOWN_LOCATION)
+        .to_owned();
     let job_id = server.job_id.clone();
-    let rejoin_button = suffix_button("Rejoin");
-    rejoin_button.connect_clicked(glib::clone!(
-        #[weak]
-        state,
-        move |_| backend::rejoin_server(&state, place_id, &job_id)
-    ));
-    join_availability.applies_to(&rejoin_button);
-    row.add_suffix(&rejoin_button);
 
-    row
-}
+    let rejoin_button = push_button(look, "Rejoin", Emphasis::Normal).on_press_maybe(
+        can_join.then(|| act(move |state| backend::rejoin_server(state, place_id, &job_id))),
+    );
 
-fn suffix_button(label: &str) -> gtk::Button {
-    gtk::Button::builder()
-        .label(label)
-        .valign(gtk::Align::Center)
-        .build()
+    container(
+        preference_row(look, title)
+            .subtitle(time_since(server.joined_at))
+            .suffix(rejoin_button),
+    )
+    .padding(iced::padding::left(16))
+    .into()
 }

@@ -1,10 +1,10 @@
-use crate::state::{AppState, Theme};
-use gtk::prelude::*;
-use gtk::{gdk, glib};
-use std::cell::RefCell;
+use crate::quadra::Message;
+use iced::mouse::Cursor;
+use iced::widget::canvas::{self, Cache, Geometry};
+use iced::widget::image;
+use iced::{Element, Length, Point, Rectangle, Renderer, Size, Theme};
 use std::f64::consts::TAU;
-use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const WIDTH: usize = 1280;
 const HEIGHT: usize = 800;
@@ -12,14 +12,33 @@ const WANDERERS: usize = 520;
 const SHORTEST_LIFE: i32 = 60;
 const LONGEST_LIFE: i32 = 260;
 const STEP_LENGTH: f64 = 1.15;
-const TICK_INTERVAL: Duration = Duration::from_millis(40);
+pub const TICK_INTERVAL: Duration = Duration::from_millis(40);
 const TICKS_UNTIL_DRAWN: u32 = 190;
 const STEPS_PER_TICK: u32 = 3;
-const TICKS_SKIPPED_WITHOUT_ANIMATIONS: u32 = 8;
 const BRIGHTNESS_PER_VISIT: u8 = 15;
 const BRIGHTEST_LINE: u8 = 112;
 const FLOW_CELL_SIZE: f64 = 150.0;
 const FLOW_TURNS: f64 = 2.0;
+
+struct Random(u64);
+
+impl Random {
+    fn seeded_by_clock() -> Self {
+        let nanoseconds = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_nanos() as u64);
+        Self(nanoseconds ^ u64::from(std::process::id()) << 32)
+    }
+
+    fn fraction(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut mixed = self.0;
+        mixed = (mixed ^ (mixed >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        mixed = (mixed ^ (mixed >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        mixed ^= mixed >> 31;
+        (mixed >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
 
 struct Wanderer {
     x: f64,
@@ -28,11 +47,12 @@ struct Wanderer {
 }
 
 impl Wanderer {
-    fn spawn() -> Self {
+    fn spawn(random: &mut Random) -> Self {
+        let lifetimes = f64::from(LONGEST_LIFE - SHORTEST_LIFE + 1);
         Self {
-            x: glib::random_double_range(0.0, WIDTH as f64),
-            y: glib::random_double_range(0.0, HEIGHT as f64),
-            steps_left: glib::random_int_range(SHORTEST_LIFE, LONGEST_LIFE + 1),
+            x: random.fraction() * WIDTH as f64,
+            y: random.fraction() * HEIGHT as f64,
+            steps_left: SHORTEST_LIFE + (random.fraction() * lifetimes) as i32,
         }
     }
 
@@ -47,10 +67,10 @@ struct FlowField {
 }
 
 impl FlowField {
-    fn random() -> Self {
+    fn random(random: &mut Random) -> Self {
         let columns = (WIDTH as f64 / FLOW_CELL_SIZE) as usize + 3;
         let rows = (HEIGHT as f64 / FLOW_CELL_SIZE) as usize + 3;
-        let lattice = (0..columns * rows).map(|_| glib::random_double()).collect();
+        let lattice = (0..columns * rows).map(|_| random.fraction()).collect();
         Self { lattice, columns }
     }
 
@@ -80,152 +100,139 @@ fn lerp(from: f64, to: f64, t: f64) -> f64 {
     from + (to - from) * t
 }
 
-struct LineField {
+pub struct LineField {
     pixels: Vec<u8>,
     flow: FlowField,
     wanderers: Vec<Wanderer>,
+    random: Random,
     ticks: u32,
+    shown: Option<image::Handle>,
+    uploading: Option<image::Handle>,
+    drawing: Cache,
+}
+
+impl Default for LineField {
+    fn default() -> Self {
+        let mut random = Random::seeded_by_clock();
+        Self {
+            pixels: vec![0; WIDTH * HEIGHT],
+            flow: FlowField::random(&mut random),
+            wanderers: (0..WANDERERS)
+                .map(|_| Wanderer::spawn(&mut random))
+                .collect(),
+            random,
+            ticks: 0,
+            shown: None,
+            uploading: None,
+            drawing: Cache::default(),
+        }
+    }
 }
 
 impl LineField {
-    fn new() -> Self {
-        Self {
-            pixels: vec![0; WIDTH * HEIGHT],
-            flow: FlowField::random(),
-            wanderers: (0..WANDERERS).map(|_| Wanderer::spawn()).collect(),
-            ticks: 0,
-        }
+    fn is_drawn(&self) -> bool {
+        self.ticks >= TICKS_UNTIL_DRAWN
     }
 
-    fn advance(&mut self, ticks: u32) {
-        for wanderer in &mut self.wanderers {
-            for _ in 0..STEPS_PER_TICK * ticks {
-                let angle = self.flow.angle_at(wanderer.x, wanderer.y);
+    pub fn is_settled(&self) -> bool {
+        self.is_drawn() && self.uploading.is_none()
+    }
+
+    pub fn tick(&mut self) {
+        if self.is_settled() {
+            return;
+        }
+        if let Some(uploaded) = self.uploading.take() {
+            self.shown = Some(uploaded);
+        }
+        if !self.is_drawn() {
+            self.advance();
+            self.uploading = Some(self.image());
+            if self.is_drawn() {
+                self.pixels = Vec::new();
+                self.wanderers = Vec::new();
+            }
+        }
+        self.drawing.clear();
+    }
+
+    pub fn view(&self) -> Option<Element<'_, Message>> {
+        self.shown.as_ref().or(self.uploading.as_ref())?;
+        Some(
+            canvas::Canvas::new(self)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
+        )
+    }
+
+    fn advance(&mut self) {
+        let Self {
+            pixels,
+            flow,
+            wanderers,
+            random,
+            ..
+        } = self;
+        for wanderer in wanderers {
+            for _ in 0..STEPS_PER_TICK {
+                let angle = flow.angle_at(wanderer.x, wanderer.y);
                 wanderer.x += angle.cos() * STEP_LENGTH;
                 wanderer.y += angle.sin() * STEP_LENGTH;
                 wanderer.steps_left -= 1;
                 if wanderer.steps_left <= 0 || !wanderer.is_inside() {
-                    *wanderer = Wanderer::spawn();
+                    *wanderer = Wanderer::spawn(random);
                     continue;
                 }
 
-                let pixel = &mut self.pixels[wanderer.y as usize * WIDTH + wanderer.x as usize];
+                let pixel = &mut pixels[wanderer.y as usize * WIDTH + wanderer.x as usize];
                 *pixel = pixel
                     .saturating_add(BRIGHTNESS_PER_VISIT)
                     .min(BRIGHTEST_LINE);
             }
         }
-        self.ticks += ticks;
+        self.ticks += 1;
     }
 
-    fn is_drawn(&self) -> bool {
-        self.ticks >= TICKS_UNTIL_DRAWN
-    }
-
-    fn texture(&self) -> gdk::MemoryTexture {
-        gdk::MemoryTexture::new(
-            WIDTH as i32,
-            HEIGHT as i32,
-            gdk::MemoryFormat::G8,
-            &glib::Bytes::from(&self.pixels),
-            WIDTH,
-        )
+    fn image(&self) -> image::Handle {
+        let rgba = self
+            .pixels
+            .iter()
+            .flat_map(|&brightness| [brightness, brightness, brightness, u8::MAX])
+            .collect::<Vec<u8>>();
+        image::Handle::from_rgba(WIDTH as u32, HEIGHT as u32, rgba)
     }
 }
 
-fn animations_enabled() -> bool {
-    gtk::Settings::default().is_none_or(|settings| settings.is_gtk_enable_animations())
-}
+impl canvas::Program<Message> for LineField {
+    type State = ();
 
-pub fn line_field_backdrop(state: &AppState) -> gtk::Picture {
-    let backdrop = gtk::Picture::builder()
-        .can_shrink(true)
-        .content_fit(gtk::ContentFit::Cover)
-        .hexpand(true)
-        .vexpand(true)
-        .can_target(false)
-        .build();
-
-    let unfinished_field = Rc::new(RefCell::new(Some(LineField::new())));
-    let drawing: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
-
-    backdrop.connect_map(glib::clone!(
-        #[strong]
-        unfinished_field,
-        #[strong]
-        drawing,
-        move |backdrop| {
-            let still_drawing_in = unfinished_field.borrow().is_some();
-            let already_ticking = drawing.borrow().is_some();
-            if still_drawing_in && !already_ticking {
-                let ticking = draw_in(backdrop, &unfinished_field, &drawing);
-                drawing.replace(Some(ticking));
-            }
-        }
-    ));
-
-    backdrop.connect_unmap(glib::clone!(
-        #[strong]
-        drawing,
-        move |_| {
-            if let Some(source) = drawing.take() {
-                source.remove();
-            }
-        }
-    ));
-
-    state
-        .bind_property("theme", &backdrop, "visible")
-        .transform_to(|_, theme: Theme| Some(theme == Theme::Monochrome))
-        .sync_create()
-        .build();
-
-    backdrop
-}
-
-fn draw_in(
-    backdrop: &gtk::Picture,
-    unfinished_field: &Rc<RefCell<Option<LineField>>>,
-    drawing: &Rc<RefCell<Option<glib::SourceId>>>,
-) -> glib::SourceId {
-    let animate = animations_enabled();
-    let ticks_per_frame = if animate {
-        1
-    } else {
-        TICKS_SKIPPED_WITHOUT_ANIMATIONS
-    };
-
-    glib::timeout_add_local(
-        TICK_INTERVAL,
-        glib::clone!(
-            #[weak]
-            backdrop,
-            #[strong]
-            unfinished_field,
-            #[strong]
-            drawing,
-            #[upgrade_or]
-            glib::ControlFlow::Break,
-            move || {
-                let mut field_slot = unfinished_field.borrow_mut();
-                let Some(field) = field_slot.as_mut() else {
-                    drawing.take();
-                    return glib::ControlFlow::Break;
-                };
-
-                field.advance(ticks_per_frame);
-                let drawn = field.is_drawn();
-                if animate || drawn {
-                    backdrop.set_paintable(Some(&field.texture()));
+    fn draw(
+        &self,
+        _state: &(),
+        renderer: &Renderer,
+        _theme: &Theme,
+        bounds: Rectangle,
+        _cursor: Cursor,
+    ) -> Vec<Geometry> {
+        let drawing = self.drawing.draw(renderer, bounds.size(), |frame| {
+            let covering = covering(frame.size());
+            frame.with_clip(Rectangle::with_size(frame.size()), |frame| {
+                for image in [&self.uploading, &self.shown].into_iter().flatten() {
+                    frame.draw_image(covering, image);
                 }
-                if !drawn {
-                    return glib::ControlFlow::Continue;
-                }
+            });
+        });
+        vec![drawing]
+    }
+}
 
-                field_slot.take();
-                drawing.take();
-                glib::ControlFlow::Break
-            }
-        ),
-    )
+fn covering(area: Size) -> Rectangle {
+    let scale = f32::max(area.width / WIDTH as f32, area.height / HEIGHT as f32);
+    let size = Size::new(WIDTH as f32 * scale, HEIGHT as f32 * scale);
+    let position = Point::new(
+        (area.width - size.width) / 2.0,
+        (area.height - size.height) / 2.0,
+    );
+    Rectangle::new(position, size)
 }

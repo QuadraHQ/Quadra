@@ -1,52 +1,30 @@
-use crate::backend;
+use super::{Settings, SettingsMessage};
+use crate::components::preferences::preference_group;
+use crate::components::style::{self, Look};
+use crate::quadra::Message;
 use crate::state::AppState;
-use adw::prelude::*;
-use gtk::glib;
+use iced::Element;
+use iced::widget::{container, text_input};
 
 const DESCRIPTION: &str =
     "Programs that start Rosemary, like gamemoderun or gamescope -f --. They can be chained.";
 
-pub fn launch_wrapper_group(state: &AppState) -> adw::PreferencesGroup {
-    let row = adw::EntryRow::builder().title("Launch wrapper").build();
-    state
-        .bind_property("launch-wrapper", &row, "text")
-        .bidirectional()
-        .sync_create()
-        .build();
-
-    let group = adw::PreferencesGroup::builder()
-        .title("Launch wrapper")
-        .description(DESCRIPTION)
-        .build();
-    group.add(&row);
-
-    state.follow_properties(
-        &["launch-wrapper"],
-        glib::clone!(
-            #[weak]
-            row,
-            #[weak]
-            group,
-            move |state| show_launch_wrapper_problem(&row, &group, state)
-        ),
-    );
-
-    group
-}
-
-fn show_launch_wrapper_problem(
-    row: &adw::EntryRow,
-    group: &adw::PreferencesGroup,
+pub fn launch_wrapper_group<'a>(
+    settings: &'a Settings,
     state: &AppState,
-) {
-    match backend::launch_wrapper_problem(&state.launch_wrapper()) {
-        Some(problem) => {
-            row.add_css_class("error");
-            group.set_description(Some(&problem));
-        }
-        None => {
-            row.remove_css_class("error");
-            group.set_description(Some(DESCRIPTION));
-        }
-    }
+    look: Look,
+) -> Element<'a, Message> {
+    let problem = settings.launch_wrapper_problem.as_deref();
+    let input = text_input("Launch wrapper", &state.launch_wrapper())
+        .font(look.mono)
+        .size(13)
+        .padding([7, 10])
+        .style(style::input(look, problem.is_none()))
+        .on_input(|wrapper| Message::Settings(SettingsMessage::LaunchWrapperChanged(wrapper)));
+
+    preference_group(look)
+        .title("Launch wrapper")
+        .description(problem.unwrap_or(DESCRIPTION))
+        .push(container(input).padding([6, 12]))
+        .into()
 }

@@ -1,6 +1,5 @@
 use super::account::account_group;
-use super::bound_rows::{choice_row, switch_row};
-use super::discord_access::ask_for_discord_access_when_turned_on;
+use super::bound_rows::{choice_row, switch, switch_row};
 use super::environment_variables::environment_variables_group;
 use super::launch_wrapper::launch_wrapper_group;
 use super::privacy::privacy_group;
@@ -9,57 +8,76 @@ use super::rosemary_runtime::rosemary_runtime_group;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
-use crate::state::{AppState, LaunchMode, Runtime, Theme};
-use adw::prelude::*;
+use super::{Settings, SettingsMessage};
+use crate::components::preferences::{preference_group, preference_row};
+use crate::components::style::Look;
+use crate::quadra::Message;
+use crate::state::AppState;
+use iced::Element;
 
-pub fn env_section(state: &AppState) -> gtk::Box {
-    // Quadra group
-    let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
-    launch_mode_row.set_subtitle("Settings stay available from the system tray");
+pub fn env_section<'a>(
+    settings: &'a Settings,
+    state: &AppState,
+    look: Look,
+) -> Vec<Element<'a, Message>> {
+    let quadra_group = preference_group(look)
+        .title("Quadra")
+        .push(launcher_version_row(state, look))
+        .push(
+            choice_row(
+                look,
+                "When Quadra starts",
+                state.launch_mode(),
+                |state, mode| state.set_launch_mode(mode),
+            )
+            .subtitle("Settings stay available from the system tray"),
+        )
+        .push(
+            switch_row(
+                look,
+                "Run in the background",
+                state.run_in_background(),
+                |state, on| state.set_run_in_background(on),
+            )
+            .subtitle("Keep Quadra in the system tray after its window closes"),
+        )
+        .push(
+            choice_row(look, "The app theme.", state.theme(), |state, theme| {
+                state.set_theme(theme)
+            })
+            .subtitle("Change the theme to what you like."),
+        );
 
-    let run_in_background_row = switch_row(state, "run-in-background", "Run in the background");
-    run_in_background_row.set_subtitle("Keep Quadra in the system tray after its window closes");
+    let discord_group = preference_group(look).title("Discord").push(
+        preference_row(look, "Show what you're playing")
+            .subtitle("Show the Roblox game you're in on your Discord profile")
+            .suffix(switch(look, state.discord_rich_presence(), true, |on| {
+                Message::Settings(SettingsMessage::DiscordPresenceToggled(on))
+            })),
+    );
 
-    let theme_row = choice_row::<Theme>(state, "theme", "The app theme.");
-    theme_row.set_subtitle("Change the theme to what you like.");
-
-    let quadra_group = adw::PreferencesGroup::builder().title("Quadra").build();
-    quadra_group.add(&launcher_version_row(state));
-    quadra_group.add(&launch_mode_row);
-    quadra_group.add(&run_in_background_row);
-    quadra_group.add(&theme_row);
-
-    let discord_rich_presence_row =
-        switch_row(state, "discord-rich-presence", "Show what you're playing");
-    discord_rich_presence_row
-        .set_subtitle("Show the Roblox game you're in on your Discord profile");
-    ask_for_discord_access_when_turned_on(&discord_rich_presence_row);
-
-    let discord_group = adw::PreferencesGroup::builder().title("Discord").build();
-    discord_group.add(&discord_rich_presence_row);
-
-    // Runtime selection
-    let runtime_row = choice_row::<Runtime>(state, "runtime", "Run Roblox with");
-
-    let runtime_group = adw::PreferencesGroup::builder()
+    let runtime_group = preference_group(look)
         .title("Runtime")
         .description("Which compatibility layer the macOS Roblox client runs on.")
-        .build();
-    runtime_group.add(&runtime_row);
+        .push(choice_row(
+            look,
+            "Run Roblox with",
+            state.runtime(),
+            |state, runtime| state.set_runtime(runtime),
+        ));
 
-    let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    section.append(&quadra_group);
-    section.append(&discord_group);
-    section.append(&session_group(state));
-    section.append(&privacy_group(state));
-    section.append(&runtime_group);
-    section.append(&rosemary_runtime_group(state));
-    section.append(&graphics_group(state));
-    section.append(&input_group(state));
-    section.append(&launch_wrapper_group(state));
-    section.append(&environment_variables_group(state));
-    section.append(&account_group(state));
-    section.append(&support_group(state));
-
-    section
+    vec![
+        quadra_group.into(),
+        discord_group.into(),
+        session_group(state, look),
+        privacy_group(state, look),
+        runtime_group.into(),
+        rosemary_runtime_group(settings, state, look),
+        graphics_group(settings, state, look),
+        input_group(state, look),
+        launch_wrapper_group(settings, state, look),
+        environment_variables_group(&settings.variables, look),
+        account_group(state, look),
+        support_group(settings, state, look),
+    ]
 }

@@ -1,65 +1,39 @@
-use crate::components::play_action::{PROPERTIES_THAT_DECIDE_PLAY_ACTION, PlayAction};
+use crate::components::icon::Symbol;
+use crate::components::play_action::PlayAction;
+use crate::components::preferences::{symbol_button, with_tooltip};
+use crate::components::style::{Emphasis, Look};
+use crate::quadra::{Message, act};
 use crate::state::{AppState, Client};
-use adw::prelude::*;
-use gtk::glib;
+use iced::Element;
 
-const ACTION_STYLE_CLASSES: [&str; 2] = ["suggested-action", "destructive-action"];
-
-fn style_class(action: PlayAction) -> Option<&'static str> {
+fn emphasis(action: PlayAction) -> Emphasis {
     match action {
-        PlayAction::Install(_) | PlayAction::Play(_) => Some("suggested-action"),
-        PlayAction::Stop => Some("destructive-action"),
-        PlayAction::Opening | PlayAction::Stopping => None,
+        PlayAction::Install(_) | PlayAction::Play(_) => Emphasis::Suggested,
+        PlayAction::Stop => Emphasis::Destructive,
+        PlayAction::Opening | PlayAction::Stopping => Emphasis::Normal,
     }
 }
 
-pub fn play_button(state: &AppState, client: Client) -> gtk::Button {
-    let content = adw::ButtonContent::new();
-
-    let button = gtk::Button::builder()
-        .child(&content)
-        .css_classes(["pill"])
-        .halign(gtk::Align::Center)
-        .build();
-
-    button.connect_clicked(glib::clone!(
-        #[strong]
-        state,
-        move |_| PlayAction::for_client(&state, client).perform(&state)
-    ));
-
-    state.follow_properties(
-        &PROPERTIES_THAT_DECIDE_PLAY_ACTION,
-        glib::clone!(
-            #[weak]
-            button,
-            #[weak]
-            content,
-            move |state| show_action(&button, &content, state, client)
-        ),
-    );
-
-    button
+fn symbol(action: PlayAction) -> Symbol {
+    match action {
+        PlayAction::Install(_) => Symbol::Download,
+        PlayAction::Play(_) | PlayAction::Opening => Symbol::Play,
+        PlayAction::Stop | PlayAction::Stopping => Symbol::Stop,
+    }
 }
 
-fn show_action(
-    button: &gtk::Button,
-    content: &adw::ButtonContent,
-    state: &AppState,
-    client: Client,
-) {
+pub fn play_button<'a>(state: &AppState, look: Look, client: Client) -> Element<'a, Message> {
     let action = PlayAction::for_client(state, client);
+    let button = symbol_button(look, symbol(action), action.label(), emphasis(action))
+        .padding([10, 28])
+        .on_press_maybe(
+            action
+                .is_available(state)
+                .then(|| act(move |state| PlayAction::for_client(state, client).perform(state))),
+        );
 
-    content.set_label(action.label());
-    content.set_icon_name(action.icon_name());
-
-    for style_class in ACTION_STYLE_CLASSES {
-        button.remove_css_class(style_class);
+    match action.explanation_when_unavailable(state) {
+        Some(explanation) => with_tooltip(look, button, explanation),
+        None => button.into(),
     }
-    if let Some(style_class) = style_class(action) {
-        button.add_css_class(style_class);
-    }
-
-    button.set_sensitive(action.is_available(state));
-    button.set_tooltip_text(action.explanation_when_unavailable(state));
 }

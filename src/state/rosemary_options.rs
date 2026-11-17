@@ -1,9 +1,7 @@
 use super::Choice;
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraRenderer")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Renderer {
     #[default]
     #[serde(rename = "metal")]
@@ -23,8 +21,7 @@ impl Choice for Renderer {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraPresentationMode")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PresentationMode {
     #[default]
@@ -55,8 +52,7 @@ impl Choice for PresentationMode {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraSwapInterval")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SwapInterval {
     #[default]
@@ -84,8 +80,7 @@ impl Choice for SwapInterval {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraTitleBar")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TitleBar {
     #[default]
@@ -104,8 +99,7 @@ impl Choice for TitleBar {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraCommandKey")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommandKey {
     #[default]

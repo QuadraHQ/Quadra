@@ -303,7 +303,7 @@ fn runtime_manifest_candidates() -> Vec<PathBuf> {
     if let Some(chosen) = std::env::var_os("XR_RUNTIME_JSON").filter(|value| !value.is_empty()) {
         candidates.push(PathBuf::from(chosen));
     }
-    candidates.push(gtk::glib::user_config_dir().join(ACTIVE_RUNTIME_MANIFEST));
+    candidates.push(crate::utils::config_directory().join(ACTIVE_RUNTIME_MANIFEST));
     let config_directories = std::env::var("XDG_CONFIG_DIRS")
         .ok()
         .filter(|directories| !directories.is_empty())

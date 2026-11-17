@@ -5,13 +5,13 @@ use super::{
     cpu_limit, fast_flags, live_log, mods, paths, prefix, release_channel, roblox, telemetry,
     transport_patch,
 };
+use crate::main_loop::{spawn_local, timeout_once};
 use crate::state::{
     AppState, Client, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
 };
 use crate::utils::{find_in_path, is_executable_file};
 use anyhow::Context;
-use gtk::glib;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::{self, File};
@@ -127,7 +127,7 @@ fn run(
     });
 
     let state = state.clone();
-    glib::spawn_future_local(async move {
+    spawn_local(async move {
         let exited_cleanly = exit_receiver.recv().await.unwrap_or(true);
         RUNNING_ROBLOX.replace(None);
         let crashed = !exited_cleanly && !state.stopping();
@@ -163,7 +163,7 @@ pub fn stop_roblox() {
 
         let process_group = running_roblox.process_group;
         signal_process_group(process_group, libc::SIGTERM);
-        glib::timeout_add_local_once(FORCE_STOP_DELAY, move || {
+        timeout_once(FORCE_STOP_DELAY, move || {
             if is_still_running(process_group) {
                 signal_process_group(process_group, libc::SIGKILL);
             }

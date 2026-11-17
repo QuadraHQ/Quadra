@@ -17,6 +17,7 @@ mod flatpak_override;
 mod game_activity;
 mod game_details;
 mod handlers;
+mod key_file;
 mod launch;
 mod launch_request;
 mod live_log;
@@ -40,7 +41,7 @@ mod vr;
 
 pub use butter_access::missing as missing_butter_access;
 pub use desktop_entries::Shortcut;
-pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
+pub use discord_access::missing as missing_discord_access;
 pub use handlers::Handler;
 pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
@@ -48,11 +49,9 @@ pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folde
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
-use crate::utils::is_executable_file;
+use crate::utils::{documents_directory, is_executable_file, open_with_default_app};
 use background::{Progress, run_quietly, run_task};
 use destination::Destination;
-use gtk::glib;
-use gtk::prelude::*;
 use runners::Runner;
 use std::path::{Path, PathBuf};
 
@@ -63,7 +62,7 @@ pub fn initialize(state: &AppState) {
         &PROPERTIES_THAT_DECIDE_SELECTED_RUNNER,
         refresh_selected_runner_status,
     );
-    state.connect_notify_local(Some("prefix"), |state, _| account::refresh(state));
+    state.connect_property_notify("prefix", account::refresh);
     updater::initialize(state);
     quadra_rosemary::look_for_update(state);
     fast_flag_allowlist::initialize();
@@ -330,7 +329,7 @@ pub fn clear_roblox_cache(state: &AppState, when_finished: impl FnOnce(u64) + 's
 }
 
 pub fn diagnostics_directory() -> std::path::PathBuf {
-    glib::user_special_dir(glib::UserDirectory::Documents).unwrap_or_else(glib::home_dir)
+    documents_directory()
 }
 
 pub fn collect_diagnostics_in_background(state: &AppState) {
@@ -347,8 +346,9 @@ pub fn collect_diagnostics_in_background(state: &AppState) {
             diagnostics::collect(&summary, &directory)
         },
         |_, archive| {
-            gtk::FileLauncher::new(Some(&gtk::gio::File::for_path(archive)))
-                .open_containing_folder(gtk::Window::NONE, gtk::gio::Cancellable::NONE, |_| {});
+            if let Some(folder) = archive.parent() {
+                open_with_default_app(folder);
+            }
         },
     );
 }

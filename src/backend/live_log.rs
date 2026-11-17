@@ -1,5 +1,5 @@
+use crate::main_loop::spawn_local;
 use crate::state::{AppState, Client};
-use gtk::glib;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ pub fn follow(state: &AppState, log: File, writer_finished: Arc<AtomicBool>) {
     std::thread::spawn(move || read_until_writer_finishes(log, &writer_finished, &output_sender));
 
     let state = state.clone();
-    glib::spawn_future_local(async move {
+    spawn_local(async move {
         while let Ok(mut output) = output_receiver.recv().await {
             while let Ok(more_output) = output_receiver.try_recv() {
                 output.push_str(&more_output);

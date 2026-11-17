@@ -1,9 +1,7 @@
 use super::Choice;
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraDeathSound")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeathSound {
     #[default]
@@ -24,8 +22,7 @@ impl Choice for DeathSound {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraCursorStyle")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CursorStyle {
     #[default]
