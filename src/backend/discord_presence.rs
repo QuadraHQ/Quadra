@@ -1,17 +1,20 @@
 use super::background::run_quietly;
+use super::bloxstrap_rpc::{Overrides, PresenceUpdate};
 use super::discord_ipc::{DiscordClient, Image, Link, RichPresence};
 use super::game_activity::{self, GameEvent};
 use super::game_details::{self, GameDetails};
 use crate::state::AppState;
 use gtk::glib;
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const DISCORD_CLIENT_ID: &str = "363445589247131668";
-const QUADRA_ICON_URL: &str = "https://raw.githubusercontent.com/QuadraHQ/quadra-rewrite/main/data/icons/org.quadrahq.Quadra.png";
+const QUADRA_ICON_URL: &str = "https://raw.githubusercontent.com/QuadraHQ/quadra/main/data/icons/hicolor/512x512/apps/org.quadrahq.Quadra.png";
 const QUADRA_ICON_TEXT: &str = "Quadra";
 const REFRESH_GAME_DETAILS_EVERY: Duration = Duration::from_secs(60);
+const SHORTEST_TIME_BETWEEN_RPC_UPDATES: Duration = Duration::from_secs(1);
 const WAIT_FOR_JOIN_REPORT: Duration = Duration::from_secs(10);
 const PROPERTIES_THAT_DECIDE_PRESENCE: [&str; 2] = ["running", "discord-rich-presence"];
 const SHORTEST_DISCORD_TEXT: usize = 2;
@@ -24,6 +27,7 @@ struct CurrentGame {
     universe_id: Option<u64>,
     joined_at: i64,
     details: Option<GameDetails>,
+    overrides: Overrides,
     refreshing_details: glib::SourceId,
 }
 
@@ -33,6 +37,9 @@ struct Presence {
     roblox_started_at: Option<i64>,
     game: Option<CurrentGame>,
     shown_presence: Option<RichPresence>,
+    last_rpc_update_at: Option<Instant>,
+    asset_urls: HashMap<u64, String>,
+    requested_assets: HashSet<u64>,
 }
 
 type SharedPresence = Rc<RefCell<Presence>>;
@@ -52,6 +59,9 @@ pub fn initialize(state: &AppState) {
                     }
                     GameEvent::Connected { .. } => {}
                     GameEvent::Left => leave_game(&presence),
+                    GameEvent::PresenceUpdated(update) => {
+                        update_presence(state, &presence, update);
+                    }
                 }
             }
             show(state, &presence);
@@ -116,6 +126,7 @@ fn join_game(state: &AppState, presence: &SharedPresence, place_id: u64) {
         universe_id: None,
         joined_at: now_in_seconds(),
         details: None,
+        overrides: Overrides::default(),
         refreshing_details,
     });
 
@@ -155,9 +166,73 @@ fn learn_universe(state: &AppState, presence: &SharedPresence, universe_id: u64)
 }
 
 fn leave_game(presence: &SharedPresence) {
-    let left_game = presence.borrow_mut().game.take();
+    let left_game = {
+        let mut presence = presence.borrow_mut();
+        presence.asset_urls.clear();
+        presence.requested_assets.clear();
+        presence.game.take()
+    };
     if let Some(game) = left_game {
         game.refreshing_details.remove();
+    }
+}
+
+fn update_presence(state: &AppState, presence: &SharedPresence, update: PresenceUpdate) {
+    {
+        let mut presence = presence.borrow_mut();
+        let now = Instant::now();
+        let is_too_soon = presence
+            .last_rpc_update_at
+            .is_some_and(|last| now.duration_since(last) <= SHORTEST_TIME_BETWEEN_RPC_UPDATES);
+        let Some(game) = presence.game.as_mut().filter(|_| !is_too_soon) else {
+            return;
+        };
+        game.overrides.apply(update);
+        presence.last_rpc_update_at = Some(now);
+    }
+    fetch_missing_assets(state, presence);
+}
+
+fn fetch_missing_assets(state: &AppState, presence: &SharedPresence) {
+    if !state.discord_rich_presence() {
+        return;
+    }
+
+    let missing: Vec<u64> = {
+        let mut presence = presence.borrow_mut();
+        let wanted: Vec<u64> = presence
+            .game
+            .as_ref()
+            .map(|game| game.overrides.asset_ids().collect())
+            .unwrap_or_default();
+        wanted
+            .into_iter()
+            .filter(|asset_id| {
+                !presence.asset_urls.contains_key(asset_id)
+                    && presence.requested_assets.insert(*asset_id)
+            })
+            .collect()
+    };
+
+    for asset_id in missing {
+        let state = state.clone();
+        let presence = presence.clone();
+        run_quietly(
+            move || game_details::asset_image_url(asset_id),
+            move |url| {
+                match url {
+                    Ok(Some(url)) => {
+                        presence.borrow_mut().asset_urls.insert(asset_id, url);
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        eprintln!("Couldn't get the image of asset {asset_id}: {error:#}");
+                        presence.borrow_mut().requested_assets.remove(&asset_id);
+                    }
+                }
+                show(&state, &presence);
+            },
+        );
     }
 }
 
@@ -213,7 +288,7 @@ fn show(state: &AppState, presence: &SharedPresence) {
     let mut presence = presence.borrow_mut();
     let wants_presence = state.discord_rich_presence() && state.running();
     let rich_presence = wants_presence.then(|| match &presence.game {
-        Some(game) => playing_presence(game),
+        Some(game) => playing_presence(game, &presence.asset_urls),
         None => idle_presence(presence.roblox_started_at),
     });
 
@@ -232,13 +307,32 @@ fn idle_presence(roblox_started_at: Option<i64>) -> RichPresence {
         details: "Idle".to_owned(),
         state: None,
         started_at: roblox_started_at,
-        large_image: quadra_icon(),
+        ended_at: None,
+        large_image: Some(quadra_icon()),
         small_image: None,
         link: None,
     }
 }
 
-fn playing_presence(game: &CurrentGame) -> RichPresence {
+fn playing_presence(game: &CurrentGame, asset_urls: &HashMap<u64, String>) -> RichPresence {
+    let presence = game.overrides.over(game_presence(game), asset_urls);
+    RichPresence {
+        details: discord_text(&presence.details),
+        state: presence.state.as_deref().map(discord_text),
+        large_image: presence.large_image.map(fitted_image),
+        small_image: presence.small_image.map(fitted_image),
+        ..presence
+    }
+}
+
+fn fitted_image(image: Image) -> Image {
+    Image {
+        text: discord_text(&image.text),
+        ..image
+    }
+}
+
+fn game_presence(game: &CurrentGame) -> RichPresence {
     let game_page = Link {
         label: "See game page".to_owned(),
         url: format!("https://www.roblox.com/games/{}", game.place_id),
@@ -249,7 +343,8 @@ fn playing_presence(game: &CurrentGame) -> RichPresence {
             details: "Playing a game".to_owned(),
             state: None,
             started_at: Some(game.joined_at),
-            large_image: quadra_icon(),
+            ended_at: None,
+            large_image: Some(quadra_icon()),
             small_image: None,
             link: Some(game_page),
         };
@@ -271,7 +366,8 @@ fn playing_presence(game: &CurrentGame) -> RichPresence {
         details: game_name,
         state: Some(discord_text(&made_by(details))),
         started_at: Some(game.joined_at),
-        large_image,
+        ended_at: None,
+        large_image: Some(large_image),
         small_image,
         link: Some(game_page),
     }

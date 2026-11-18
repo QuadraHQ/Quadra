@@ -28,7 +28,10 @@ pub fn initialize(state: &AppState) {
                 GameEvent::Connected { server_ip } if state.notify_server_location() => {
                     look_up(state, &server_ip);
                 }
-                GameEvent::Connected { .. } | GameEvent::JoinReported { .. } | GameEvent::Left => {}
+                GameEvent::Connected { .. }
+                | GameEvent::JoinReported { .. }
+                | GameEvent::Left
+                | GameEvent::PresenceUpdated(_) => {}
             }
         }
     });

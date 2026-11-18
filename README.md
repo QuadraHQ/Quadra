@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data/icons/org.quadrahq.Quadra.png" alt="Quadra logo" width="160">
+  <img src="data/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png" alt="Quadra logo" width="160">
 </p>
 
 <h1 align="center">
@@ -47,7 +47,7 @@ The installer checks every download against the release's `SHA256SUMS` before in
 **Fetch source:**
 
 ```
-git clone https://github.com/QuadraHQ/quadra-rewrite && cd quadra-rewrite
+git clone https://github.com/QuadraHQ/quadra && cd quadra
 ```
 
 **Build directly from source:**
@@ -75,7 +75,7 @@ The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 Try it without installing:
 
 ```sh
-nix run github:QuadraHQ/quadra-rewrite
+nix run github:QuadraHQ/quadra
 ```
 
 Flake input:
@@ -84,7 +84,7 @@ Flake input:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    quadra-rewrite.url = "github:QuadraHQ/quadra-rewrite";
+    quadra.url = "github:QuadraHQ/quadra";
   };
 }
 ```
@@ -92,7 +92,7 @@ Flake input:
 ```Nix
 {
   environment.systemPackages = with pkgs; [
-    inputs.quadra-rewrite.packages.${pkgs.stdenv.hostPlatform.system}.quadra-rewrite
+    inputs.quadra.packages.${pkgs.stdenv.hostPlatform.system}.quadra
   ];
 }
 ```
@@ -113,7 +113,3 @@ Flake input:
 ## License
 
 GPL-3.0-only.
-
-## Credits
-
-- [Fishstrap](https://github.com/fishstrap/fishstrap) (MIT, by returnrqt) for the overlay's design, and [Bloxstrap](https://github.com/bloxstraplabs/bloxstrap) (MIT, by pizzaboxer) which Fishstrap is built on. Their license texts are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

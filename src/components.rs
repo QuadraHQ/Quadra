@@ -1,6 +1,5 @@
 pub mod close_roblox_dialog;
 pub mod command_dialog;
-pub mod copy_button;
 pub mod error_dialog;
 pub mod file_row;
 pub mod grid_backdrop;
@@ -12,6 +11,5 @@ pub mod line_field_backdrop;
 pub mod logs_dialog;
 pub mod play_action;
 pub mod roblox_status;
-pub mod shortcut_recorder;
 pub mod tray;
 pub mod update_banner;

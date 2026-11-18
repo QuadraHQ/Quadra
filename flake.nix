@@ -1,5 +1,5 @@
 {
-  description = "Nix flake for Quadra-rewrite";
+  description = "Nix flake for Quadra";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -19,8 +19,8 @@
         cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
       in
       {
-        packages.quadra-rewrite = pkgs.rustPlatform.buildRustPackage {
-          pname = "quadra-rewrite";
+        packages.quadra = pkgs.rustPlatform.buildRustPackage {
+          pname = "quadra";
           version = cargoToml.package.version;
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
@@ -36,8 +36,17 @@
             gtk4-layer-shell
             libadwaita
           ];
+
+          postInstall = ''
+            install -Dm644 data/org.quadrahq.Quadra.desktop \
+              "$out/share/applications/org.quadrahq.Quadra.desktop"
+            install -Dm644 data/org.quadrahq.Quadra.xml \
+              "$out/share/mime/packages/org.quadrahq.Quadra.xml"
+            mkdir -p "$out/share/icons"
+            cp -r data/icons/hicolor "$out/share/icons/"
+          '';
         };
-        packages.default = self.packages.${system}.quadra-rewrite;
+        packages.default = self.packages.${system}.quadra;
       }
     );
 }

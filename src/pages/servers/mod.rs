@@ -3,6 +3,7 @@ mod join_availability;
 mod join_by_link_row;
 mod place_link;
 mod region_row;
+mod time_since;
 
 use crate::backend;
 use crate::state::AppState;

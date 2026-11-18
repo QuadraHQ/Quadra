@@ -1,0 +1,43 @@
+name: Bug report
+description: Report something in Quadra that isn't working
+type: Bug
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong, and what did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact steps that make the bug happen.
+      placeholder: |
+        1. Open Quadra
+        2. Click Play
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic logs
+      description: |
+        In Quadra, open Settings, go to Support and click **Collect** next to Diagnostics, or run `quadra --collect-diagnostics`.
+        This saves a `quadra-diagnostics-*.tar.gz` archive to your Documents folder. Drag it into this box to attach it.
+        Cookies, join tickets and custom environment variables are removed from the archive.
+    validations:
+      required: true
+
+  - type: textarea
+    id: system
+    attributes:
+      label: System information
+      description: Paste the output of `fastfetch --logo none --pipe`.
+      render: text
+    validations:
+      required: true

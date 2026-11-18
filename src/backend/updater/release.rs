@@ -3,8 +3,7 @@ use crate::backend::req_agent::api_agent;
 use anyhow::Context;
 use serde::Deserialize;
 
-const RELEASES_URL: &str =
-    "https://api.github.com/repos/QuadraHQ/quadra-rewrite/releases?per_page=30";
+const RELEASES_URL: &str = "https://api.github.com/repos/QuadraHQ/quadra/releases?per_page=30";
 const APPIMAGE_SUFFIX: &str = "-x86_64.AppImage";
 const CHECKSUMS_NAME: &str = "SHA256SUMS";
 

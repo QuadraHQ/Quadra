@@ -1,0 +1,11 @@
+name: Feature request
+description: Suggest something new for Quadra
+type: Feature
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What would you like Quadra to do, and why would it help you?
+    validations:
+      required: true

@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>org.quadrahq.Quadra</id>
   <name>Quadra</name>
-  <summary>Play Roblox on Linux with the macOS client</summary>
+  <summary>Build and play in Roblox worlds</summary>
   <developer id="wtf.aubree">
     <name>aubree.wtf</name>
   </developer>
@@ -10,7 +10,7 @@
   <project_license>GPL-3.0-only</project_license>
   <description>
     <p>
-      Quadra runs the official macOS Roblox Player and Studio clients on Linux
+      Quadra runs the macOS Roblox Player and Studio on Linux
       through Rosemary.
     </p>
     <p>Quadra is not affiliated with Roblox Corporation.</p>
@@ -43,7 +43,7 @@
     </screenshot>
   </screenshots>
   <url type="homepage">https://quadrahq.org</url>
-  <url type="bugtracker">https://github.com/QuadraHQ/quadra-rewrite/issues</url>
+  <url type="bugtracker">https://github.com/QuadraHQ/quadra/issues</url>
   <branding>
     <color type="primary" scheme_preference="light">#c4b5fd</color>
     <color type="primary" scheme_preference="dark">#3b2a7a</color>
@@ -59,6 +59,19 @@
     <display_length compare="ge">768</display_length>
   </supports>
   <releases>
+    <release version="0.50.3" date="2026-11-17">
+      <description>
+        <p>Added clear cache button</p>
+        <p>Added support for Bloxstrap RPC</p>
+        <p>Added "Hide menu bar" toggle</p>
+      </description>
+    </release>
+    <release version="0.50.2" date="2026-11-15">
+      <description>
+        <p>Fixed Roblox not launching due to it stuck finding its own installer.</p>
+        <p>Added new logo.</p>
+      </description>
+    </release>
     <release version="0.50.1" date="2026-11-14">
       <description>
         <p>Edited flatpak manifests for safer sandbox.</p>

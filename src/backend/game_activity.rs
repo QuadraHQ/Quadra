@@ -1,3 +1,5 @@
+use super::bloxstrap_rpc::{self, PresenceUpdate};
+
 const JOINING_GAME: &str = "! Joining game '";
 const PLACE_AFTER_JOB_ID: &str = "' place ";
 const WORD_BEFORE_SERVER_ADDRESS: &str = "at";
@@ -23,6 +25,7 @@ pub enum GameEvent {
         universe_id: u64,
     },
     Left,
+    PresenceUpdated(PresenceUpdate),
 }
 
 pub fn events_in(output: &str) -> impl Iterator<Item = GameEvent> + '_ {
@@ -30,6 +33,10 @@ pub fn events_in(output: &str) -> impl Iterator<Item = GameEvent> + '_ {
 }
 
 fn event_in_line(line: &str) -> Option<GameEvent> {
+    if line.contains(bloxstrap_rpc::MARKER) {
+        return bloxstrap_rpc::presence_update_in(line).map(GameEvent::PresenceUpdated);
+    }
+
     if let Some((_, job_and_place)) = line.split_once(JOINING_GAME) {
         let (job_id, place_and_server) = job_and_place.split_once(PLACE_AFTER_JOB_ID)?;
         let mut words = place_and_server.split_whitespace();
@@ -104,5 +111,12 @@ mod tests {
             events_in(line).collect::<Vec<_>>(),
             [GameEvent::JoinReported { universe_id: 13058 }]
         );
+    }
+
+    #[test]
+    fn reads_rich_presence_updates_and_never_mistakes_their_text_for_a_join() {
+        let line = r#"[FLog::Output] [BloxstrapRPC] {"command":"SetRichPresence","data":{"details":"! Joining game 'x' place 5"}}"#;
+        let events: Vec<_> = events_in(line).collect();
+        assert!(matches!(events.as_slice(), [GameEvent::PresenceUpdated(_)]));
     }
 }
