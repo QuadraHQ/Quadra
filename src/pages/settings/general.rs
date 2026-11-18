@@ -1,12 +1,14 @@
 use super::account::account_group;
 use super::bound_rows::{choice_row, switch_row};
 use super::discord_access::ask_for_discord_access_when_turned_on;
+use super::performance::performance_group;
+use super::runtime::runtime_section;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
 use crate::state::{AppState, LaunchMode, Theme};
+use crate::utils::show_only_while_roblox_is_selected;
 use adw::prelude::*;
-use gtk::prelude::*;
 
 pub fn general_section(state: &AppState) -> gtk::Box {
     let group = adw::PreferencesGroup::builder()
@@ -25,6 +27,7 @@ pub fn general_section(state: &AppState) -> gtk::Box {
     let advanced_row = switch_row(state, "advanced-settings-visible", "Advanced settings");
     advanced_row.set_subtitle("Only enable if you know what you're doing.");
 
+    group.add(&launcher_version_row(state));
     group.add(&launch_mode_row);
     group.add(&run_in_background_row);
     group.add(&theme_row);
@@ -42,6 +45,12 @@ pub fn general_section(state: &AppState) -> gtk::Box {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&group);
     section.append(&discord_group);
+    section.append(&runtime_section(state));
+
+    let performance = performance_group(state);
+    show_only_while_roblox_is_selected(&performance, state);
+    section.append(&performance);
+
     section.append(&session_group(state));
     section.append(&super::privacy::privacy_group(state));
     section.append(&account_group(state));

@@ -5,7 +5,6 @@ use crate::state::{AppState, Runtime};
 use adw::prelude::*;
 
 pub fn runtime_section(state: &AppState) -> gtk::Box {
-    // Runtime selection
     let runtime_row = choice_row::<Runtime>(state, "runtime", "Run Roblox with");
 
     let runtime_group = adw::PreferencesGroup::builder()

@@ -7,6 +7,8 @@ use adw::prelude::*;
 use gtk::glib;
 
 const INVALID_NUMBER_STYLE: &str = "error";
+const CUSTOM_PRESET_LABEL: &str = "Custom";
+const CUSTOM_PRESET_DESCRIPTION: &str = "Your own mix of flags, set below.";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ToggleSetting {
@@ -142,25 +144,11 @@ pub fn fast_flags_section(state: &AppState) -> gtk::Box {
         .header_suffix(&allowlist_link)
         .build();
 
-    // Performance presets
     let presets_group = adw::PreferencesGroup::builder()
         .title("Performance Presets")
         .description("Quick-apply flag combinations for FPS gains. These are client-side only and not bannable.")
         .build();
-
-    for preset in PERFORMANCE_PRESETS {
-        let button = gtk::Button::builder()
-            .label(preset.name)
-            .tooltip_text(preset.description)
-            .halign(gtk::Align::Start)
-            .build();
-        let state_clone = state.clone();
-        let flags = preset.flags;
-        button.connect_clicked(move |_| {
-            apply_preset(&state_clone, flags);
-        });
-        presets_group.add(&button);
-    }
+    presets_group.add(&presets_row(state));
 
     let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
     section.append(&about_group);
@@ -173,9 +161,91 @@ pub fn fast_flags_section(state: &AppState) -> gtk::Box {
     section
 }
 
-fn apply_preset(state: &AppState, flags: &[(&str, FastFlagValue)]) {
+fn presets_row(state: &AppState) -> adw::ComboRow {
+    let labels: Vec<&str> = std::iter::once(CUSTOM_PRESET_LABEL)
+        .chain(PERFORMANCE_PRESETS.iter().map(|preset| preset.name))
+        .collect();
+
+    let row = adw::ComboRow::builder()
+        .title("Preset")
+        .model(&gtk::StringList::new(&labels))
+        .build();
+    show_applied_preset(&row, state);
+    show_preset_description(&row);
+
+    row.connect_selected_notify(glib::clone!(
+        #[strong]
+        state,
+        move |row| {
+            show_preset_description(row);
+            if let Some(preset) = preset_at(row.selected()) {
+                apply_preset(&state, preset);
+            }
+        }
+    ));
+    state.connect_notify_local(
+        Some("fast-flags"),
+        glib::clone!(
+            #[weak]
+            row,
+            move |state, _| show_applied_preset(&row, state)
+        ),
+    );
+
+    row
+}
+
+fn preset_at(position: u32) -> Option<&'static PerformancePreset> {
+    let index = usize::try_from(position).ok()?.checked_sub(1)?;
+    PERFORMANCE_PRESETS.get(index)
+}
+
+fn position_of(preset: Option<&PerformancePreset>) -> u32 {
+    let index = preset.and_then(|preset| {
+        PERFORMANCE_PRESETS
+            .iter()
+            .position(|candidate| std::ptr::eq(candidate, preset))
+    });
+    index.map_or(0, |index| index as u32 + 1)
+}
+
+fn show_applied_preset(row: &adw::ComboRow, state: &AppState) {
+    let selected_is_still_applied =
+        preset_at(row.selected()).is_some_and(|preset| is_applied(preset, state));
+    if selected_is_still_applied {
+        return;
+    }
+
+    let most_specific_applied_preset = PERFORMANCE_PRESETS
+        .iter()
+        .filter(|preset| is_applied(preset, state))
+        .max_by_key(|preset| preset.flags.len());
+    let position = position_of(most_specific_applied_preset);
+    if row.selected() != position {
+        row.set_selected(position);
+    }
+}
+
+fn show_preset_description(row: &adw::ComboRow) {
+    let description = preset_at(row.selected())
+        .map_or(CUSTOM_PRESET_DESCRIPTION, |preset| preset.description);
+    row.set_subtitle(description);
+}
+
+fn is_applied(preset: &PerformancePreset, state: &AppState) -> bool {
+    let flags = state.fast_flags();
+    preset
+        .flags
+        .iter()
+        .all(|(name, value)| flags.get(name).as_ref() == Some(value))
+}
+
+fn apply_preset(state: &AppState, preset: &PerformancePreset) {
+    if is_applied(preset, state) {
+        return;
+    }
     let mut new_flags = state.fast_flags().clone();
-    for (name, value) in flags {
+    for (name, value) in preset.flags {
         new_flags = new_flags.with(name, Some(value.clone()));
     }
     state.set_fast_flags(new_flags);

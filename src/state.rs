@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 41] = [
+const SAVED_PROPERTIES: [&str; 42] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -53,6 +53,7 @@ const SAVED_PROPERTIES: [&str; 41] = [
     "presentation-mode",
     "opengl-swap-interval",
     "title-bar",
+    "show-menu-bar",
     "command-key",
     "ctrl-for-edit-shortcuts",
     "plain-ctrl-click",
@@ -149,6 +150,7 @@ struct SavedSettings {
     presentation_mode: PresentationMode,
     opengl_swap_interval: SwapInterval,
     title_bar: TitleBar,
+    show_menu_bar: bool,
     command_key: CommandKey,
     ctrl_for_edit_shortcuts: bool,
     plain_ctrl_click: bool,
@@ -202,6 +204,7 @@ impl Default for SavedSettings {
             presentation_mode: PresentationMode::default(),
             opengl_swap_interval: SwapInterval::default(),
             title_bar: TitleBar::default(),
+            show_menu_bar: true,
             command_key: CommandKey::default(),
             ctrl_for_edit_shortcuts: false,
             plain_ctrl_click: false,
@@ -293,6 +296,8 @@ mod imp {
         opengl_swap_interval: Cell<SwapInterval>,
         #[property(get, set, builder(TitleBar::default()))]
         title_bar: Cell<TitleBar>,
+        #[property(get, set)]
+        show_menu_bar: Cell<bool>,
         #[property(get, set, builder(CommandKey::default()))]
         command_key: Cell<CommandKey>,
         #[property(get, set)]
@@ -458,6 +463,7 @@ impl AppState {
             .property("presentation-mode", settings.presentation_mode)
             .property("opengl-swap-interval", settings.opengl_swap_interval)
             .property("title-bar", settings.title_bar)
+            .property("show-menu-bar", settings.show_menu_bar)
             .property("command-key", settings.command_key)
             .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
             .property("plain-ctrl-click", settings.plain_ctrl_click)
@@ -662,6 +668,7 @@ impl AppState {
             presentation_mode: self.presentation_mode(),
             opengl_swap_interval: self.opengl_swap_interval(),
             title_bar: self.title_bar(),
+            show_menu_bar: self.show_menu_bar(),
             command_key: self.command_key(),
             ctrl_for_edit_shortcuts: self.ctrl_for_edit_shortcuts(),
             plain_ctrl_click: self.plain_ctrl_click(),
@@ -715,6 +722,7 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let Ok(table) = toml::from_str::<toml::Table>(contents) else {
         return (SavedSettings::default(), Some(SettingsProblem::Unparsable));
     };
+    let table = hidden_title_bar_as_hidden_menu_bar(table);
     if let Ok(settings) = table.clone().try_into::<SavedSettings>() {
         return (settings, None);
     }
@@ -728,6 +736,16 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let settings = readable.try_into().unwrap_or_default();
     let names = unreadable.keys().cloned().collect();
     (settings, Some(SettingsProblem::InvalidValues(names)))
+}
+
+fn hidden_title_bar_as_hidden_menu_bar(mut table: toml::Table) -> toml::Table {
+    let title_bar_is_hidden =
+        table.get("title_bar").and_then(toml::Value::as_str) == Some("hidden");
+    if title_bar_is_hidden {
+        table.insert("title_bar".to_owned(), "system".into());
+        table.insert("show_menu_bar".to_owned(), false.into());
+    }
+    table
 }
 
 struct LoadedSettings {
@@ -847,6 +865,7 @@ mod tests {
         assert_eq!(settings.prefix, QUADRA_PREFIX);
         assert!(!settings.discord_rich_presence);
         assert!(settings.vr_mirror);
+        assert!(settings.show_menu_bar);
         assert_eq!(settings.vr_render_scale, DEFAULT_VR_RENDER_SCALE);
         assert!(settings.custom_mods);
         assert!(settings.show_playtime);
@@ -870,6 +889,14 @@ mod tests {
         assert!(matches!(problem, Some(SettingsProblem::Unparsable)));
         assert_eq!(settings.runner, QUADRA_RUNNER);
         assert!(!settings.mangohud);
+    }
+
+    #[test]
+    fn a_hidden_title_bar_becomes_a_system_title_bar_without_menus() {
+        let (settings, problem) = parse_settings("title_bar = \"hidden\"\n");
+        assert!(problem.is_none());
+        assert_eq!(settings.title_bar, TitleBar::System);
+        assert!(!settings.show_menu_bar);
     }
 
     #[test]

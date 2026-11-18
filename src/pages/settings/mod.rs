@@ -18,6 +18,7 @@ mod performance;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
+mod runtime;
 mod session;
 mod support;
 mod updates;

@@ -272,7 +272,7 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
     ));
     environment.push((
         "ROSEMARY_MENU".to_owned(),
-        menu_value(state.title_bar()).to_owned(),
+        menu_value(state.title_bar(), state.show_menu_bar()).to_owned(),
     ));
     environment.push((
         "ROSEMARY_COMMAND_KEY".to_owned(),
@@ -347,15 +347,14 @@ fn decorations_value(title_bar: TitleBar) -> &'static str {
     match title_bar {
         TitleBar::MacStyle => "client",
         TitleBar::System => "server",
-        TitleBar::Hidden => "server",
     }
 }
 
-fn menu_value(title_bar: TitleBar) -> &'static str {
-    match title_bar {
-        TitleBar::MacStyle => "titlebar",
-        TitleBar::System => "strip",
-        TitleBar::Hidden => "none",
+fn menu_value(title_bar: TitleBar, show_menu_bar: bool) -> &'static str {
+    match (title_bar, show_menu_bar) {
+        (_, false) => "none",
+        (TitleBar::MacStyle, true) => "titlebar",
+        (TitleBar::System, true) => "strip",
     }
 }
 
@@ -375,6 +374,14 @@ fn command_key_value(command_key: CommandKey, ctrl_for_edit_shortcuts: bool) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_hidden_menu_bar_wins_over_the_title_bar() {
+        assert_eq!(menu_value(TitleBar::MacStyle, true), "titlebar");
+        assert_eq!(menu_value(TitleBar::System, true), "strip");
+        assert_eq!(menu_value(TitleBar::MacStyle, false), "none");
+        assert_eq!(menu_value(TitleBar::System, false), "none");
+    }
 
     #[test]
     fn splits_the_wrapper_like_a_shell() {

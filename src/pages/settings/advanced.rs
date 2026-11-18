@@ -1,7 +1,7 @@
 use super::environment_variables::environment_variables_group;
+use super::fast_flags::fast_flags_section;
 use super::launch_wrapper::launch_wrapper_group;
 use super::network::network_section;
-use super::performance::performance_section;
 use crate::state::AppState;
 use adw::prelude::*;
 
@@ -23,6 +23,6 @@ pub fn advanced_section(state: &AppState) -> gtk::Box {
     section.append(&launch_wrapper_group(state));
     section.append(&environment_variables_group(state));
     section.append(&network_section(state));
-    section.append(&performance_section(state));
+    section.append(&fast_flags_section(state));
     section
 }
