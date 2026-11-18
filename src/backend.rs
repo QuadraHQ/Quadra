@@ -3,6 +3,7 @@ mod background;
 mod bloxstrap_rpc;
 mod butter_access;
 mod cache;
+mod controller_access;
 mod cpu_limit;
 mod desktop_entries;
 mod destination;
@@ -39,6 +40,9 @@ mod updater;
 mod vr;
 
 pub use butter_access::missing as missing_butter_access;
+pub use controller_access::{
+    command_to_change as controller_access_command, is_granted as controller_access_is_granted,
+};
 pub use desktop_entries::Shortcut;
 pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
 pub use handlers::Handler;

@@ -22,6 +22,11 @@ pub fn command<'a>(flatpak_id: &str, permissions: impl IntoIterator<Item = &'a s
     command
 }
 
+pub fn device_command(flatpak_id: &str, device: &str, is_allowed: bool) -> String {
+    let flag = if is_allowed { "--device" } else { "--nodevice" };
+    format!("flatpak override --user {flag}={device} {flatpak_id}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -35,6 +40,18 @@ mod tests {
             ),
             "flatpak override --user --filesystem=xdg-run/a --filesystem=xdg-run/b:ro \
              org.quadrahq.Quadra"
+        );
+    }
+
+    #[test]
+    fn allows_and_disallows_a_device() {
+        assert_eq!(
+            device_command(QUADRA_FLATPAK_ID, "all", true),
+            "flatpak override --user --device=all org.quadrahq.Quadra"
+        );
+        assert_eq!(
+            device_command(QUADRA_FLATPAK_ID, "all", false),
+            "flatpak override --user --nodevice=all org.quadrahq.Quadra"
         );
     }
 }

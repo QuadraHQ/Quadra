@@ -1,4 +1,5 @@
 use super::bound_rows::{choice_row, switch_row};
+use super::controller_access::controller_access_row;
 use super::mangohud::mangohud_row;
 use crate::state::{
     AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
@@ -85,6 +86,9 @@ pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&command_key_row);
     group.add(&ctrl_for_edit_shortcuts_row);
     group.add(&plain_ctrl_click_row);
+    if let Some(controller_access_row) = controller_access_row() {
+        group.add(&controller_access_row);
+    }
 
     group
 }

@@ -3,6 +3,7 @@ mod account;
 mod advanced;
 mod bound_rows;
 mod butter_access;
+mod controller_access;
 mod custom_flags;
 mod discord_access;
 mod environment_variables;
