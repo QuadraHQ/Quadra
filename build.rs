@@ -36,8 +36,8 @@ fn main() {
 
 fn build_vr_library(out_directory: &Path, library: &Path) -> Result<(), String> {
     // Check if library is already up to date
-    if library.exists() {
-        if let Ok(lib_meta) = library.metadata()
+    if library.exists()
+        && let Ok(lib_meta) = library.metadata()
             && let Ok(lib_time) = lib_meta.modified()
         {
             let mut sources_newer = false;
@@ -62,7 +62,6 @@ fn build_vr_library(out_directory: &Path, library: &Path) -> Result<(), String> 
                 return Ok(()); // Library is up to date, skip rebuild
             }
         }
-    }
 
     let compiler = env::var(COMPILER_ENV).unwrap_or_else(|_| "clang".to_owned());
     let mut linker = linker_command(&compiler)
