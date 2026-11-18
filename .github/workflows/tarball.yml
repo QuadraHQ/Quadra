@@ -19,6 +19,8 @@ jobs:
     name: Build tarball
     if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
     runs-on: ubuntu-24.04
+    container:
+      image: debian:trixie
     steps:
       - name: Install build dependencies
         run: |
