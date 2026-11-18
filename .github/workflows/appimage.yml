@@ -18,9 +18,7 @@ jobs:
   appimage:
     name: Build AppImage
     if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
-    runs-on: self-hosted
-    container:
-      image: debian:forky
+    runs-on: ubuntu-24.04
     env:
       APPIMAGE_EXTRACT_AND_RUN: 1
     steps:

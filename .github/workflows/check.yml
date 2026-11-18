@@ -13,9 +13,7 @@ concurrency:
 jobs:
   check:
     name: Format, lint and test
-    runs-on: self-hosted
-    container:
-      image: debian:trixie
+    runs-on: ubuntu-24.04
     steps:
       - name: Install build dependencies
         run: |
