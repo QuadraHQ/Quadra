@@ -11,9 +11,7 @@ use crate::utils::show_only_while_roblox_is_selected;
 use adw::prelude::*;
 
 pub fn general_section(state: &AppState) -> gtk::Box {
-    let group = adw::PreferencesGroup::builder()
-        .title("Quadra")
-        .build();
+    let group = adw::PreferencesGroup::builder().title("Quadra").build();
 
     let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
     launch_mode_row.set_subtitle("Settings stay available from the system tray");

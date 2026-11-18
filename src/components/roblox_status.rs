@@ -21,7 +21,11 @@ pub fn status_text(state: &AppState, client: Client) -> String {
 
     if state.busy() {
         let desc = state.task_description();
-        let desc = if desc.is_empty() { "Starting…" } else { &desc };
+        let desc = if desc.is_empty() {
+            "Starting…"
+        } else {
+            &desc
+        };
         let percent = (state.task_progress() * 100.0).round();
         if percent > 0.0 {
             format!("{} ({percent}%)", desc)

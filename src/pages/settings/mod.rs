@@ -28,8 +28,8 @@ use crate::state::AppState;
 use crate::utils::{
     is_running_in_flatpak, scrollable, show_only_while_roblox_is_selected, unfocus_on_outside_click,
 };
-use adw::prelude::*;
 use advanced::advanced_section;
+use adw::prelude::*;
 use general::general_section;
 use integration::integration_section;
 use mods::mods_section;

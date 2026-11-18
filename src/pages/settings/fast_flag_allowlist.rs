@@ -70,10 +70,7 @@ pub const ALLOWLIST: &[FlagCategory] = &[
                 "FFlagDebugGraphicsPreferOpenGL",
                 "Prefer OpenGL over Metal (via Vulkan translation)",
             ),
-            toggle(
-                "FFlagDebugGraphicsPreferVulkan",
-                "Prefer Vulkan over Metal",
-            ),
+            toggle("FFlagDebugGraphicsPreferVulkan", "Prefer Vulkan over Metal"),
             number(
                 "DFIntGCJobFrequencyMs",
                 "Garbage collector frequency (higher = less frequent, 250 = recommended)",
@@ -86,34 +83,16 @@ pub const ALLOWLIST: &[FlagCategory] = &[
                 "FFlagLuaAppEnableLowMemoryMode",
                 "Low memory mode (reduces RAM usage, may lower quality)",
             ),
-            toggle(
-                "FFlagDisablePostFx",
-                "Disable all post-effects (legacy)",
-            ),
-            toggle(
-                "FFlagDisableShadows",
-                "Disable shadows",
-            ),
-            toggle(
-                "FFlagDisableBloom",
-                "Disable bloom",
-            ),
-            toggle(
-                "FFlagDisableDepthOfField",
-                "Disable depth of field",
-            ),
-            toggle(
-                "FFlagDisableGlobalShadows",
-                "Disable global shadows",
-            ),
+            toggle("FFlagDisablePostFx", "Disable all post-effects (legacy)"),
+            toggle("FFlagDisableShadows", "Disable shadows"),
+            toggle("FFlagDisableBloom", "Disable bloom"),
+            toggle("FFlagDisableDepthOfField", "Disable depth of field"),
+            toggle("FFlagDisableGlobalShadows", "Disable global shadows"),
             number(
                 "DFIntConnectionMTUSize",
                 "Network MTU size (1400 = lower ping on some networks)",
             ),
-            toggle(
-                "FFlagEnableReducedLatency",
-                "Enable reduced latency mode",
-            ),
+            toggle("FFlagEnableReducedLatency", "Enable reduced latency mode"),
         ],
     },
     FlagCategory {

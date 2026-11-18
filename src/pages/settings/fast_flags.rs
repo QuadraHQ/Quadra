@@ -59,17 +59,35 @@ const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
         description: "All performance flags enabled. Lowest visual quality, highest FPS.",
         flags: &[
             ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
-            ("FFlagDebugDisableClusterCulling", FastFlagValue::Toggle(true)),
-            ("FFlagDebugGraphicsDisableComputeShaders", FastFlagValue::Toggle(true)),
-            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            (
+                "FFlagDebugDisableClusterCulling",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagDebugGraphicsDisableComputeShaders",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
             ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(999)),
             ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(500)),
             ("FFlagRenderFontResolution", FastFlagValue::Number(1)),
-            ("FFlagDebugGraphicsPreferOpenGL", FastFlagValue::Toggle(true)),
-            ("FFlagDebugGraphicsPreferVulkan", FastFlagValue::Toggle(true)),
+            (
+                "FFlagDebugGraphicsPreferOpenGL",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagDebugGraphicsPreferVulkan",
+                FastFlagValue::Toggle(true),
+            ),
             ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
             ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
-            ("FFlagLuaAppEnableLowMemoryMode", FastFlagValue::Toggle(true)),
+            (
+                "FFlagLuaAppEnableLowMemoryMode",
+                FastFlagValue::Toggle(true),
+            ),
             ("FFlagDisableShadows", FastFlagValue::Toggle(true)),
             ("FFlagDisableBloom", FastFlagValue::Toggle(true)),
             ("FFlagDisableDepthOfField", FastFlagValue::Toggle(true)),
@@ -83,7 +101,10 @@ const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
         description: "Moderate performance gains with acceptable visuals.",
         flags: &[
             ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
-            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
             ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
             ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
             ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
@@ -95,7 +116,10 @@ const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
         description: "Optimized for reducing lag spikes and input latency. Keeps visuals decent.",
         flags: &[
             ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
-            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(false)),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
             ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
             ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
             ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
@@ -108,17 +132,35 @@ const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
         description: "Clears all performance flags, uses Roblox defaults.",
         flags: &[
             ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(false)),
-            ("FFlagDebugDisableClusterCulling", FastFlagValue::Toggle(false)),
-            ("FFlagDebugGraphicsDisableComputeShaders", FastFlagValue::Toggle(false)),
-            ("FFlagTaskSchedulerLimitFrequency", FastFlagValue::Toggle(true)),
+            (
+                "FFlagDebugDisableClusterCulling",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagDebugGraphicsDisableComputeShaders",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(true),
+            ),
             ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(60)),
             ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(0)),
             ("FFlagRenderFontResolution", FastFlagValue::Number(0)),
-            ("FFlagDebugGraphicsPreferOpenGL", FastFlagValue::Toggle(false)),
-            ("FFlagDebugGraphicsPreferVulkan", FastFlagValue::Toggle(false)),
+            (
+                "FFlagDebugGraphicsPreferOpenGL",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagDebugGraphicsPreferVulkan",
+                FastFlagValue::Toggle(false),
+            ),
             ("DFIntGCJobFrequencyMs", FastFlagValue::Number(0)),
             ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(0)),
-            ("FFlagLuaAppEnableLowMemoryMode", FastFlagValue::Toggle(false)),
+            (
+                "FFlagLuaAppEnableLowMemoryMode",
+                FastFlagValue::Toggle(false),
+            ),
             ("FFlagDisableShadows", FastFlagValue::Toggle(false)),
             ("FFlagDisableBloom", FastFlagValue::Toggle(false)),
             ("FFlagDisableDepthOfField", FastFlagValue::Toggle(false)),
@@ -227,8 +269,8 @@ fn show_applied_preset(row: &adw::ComboRow, state: &AppState) {
 }
 
 fn show_preset_description(row: &adw::ComboRow) {
-    let description = preset_at(row.selected())
-        .map_or(CUSTOM_PRESET_DESCRIPTION, |preset| preset.description);
+    let description =
+        preset_at(row.selected()).map_or(CUSTOM_PRESET_DESCRIPTION, |preset| preset.description);
     row.set_subtitle(description);
 }
 

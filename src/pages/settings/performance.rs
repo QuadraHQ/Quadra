@@ -8,7 +8,8 @@ pub fn performance_group(state: &AppState) -> adw::PreferencesGroup {
     mangohud_row.set_subtitle("Show FPS, frame times, and GPU stats in-game");
 
     let refresh_rate_row = refresh_rate_row(state);
-    refresh_rate_row.set_subtitle("Override the refresh rate Roblox detects. Default: monitor's refresh rate.");
+    refresh_rate_row
+        .set_subtitle("Override the refresh rate Roblox detects. Default: monitor's refresh rate.");
 
     let group = adw::PreferencesGroup::builder()
         .title("Performance")

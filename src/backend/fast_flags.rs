@@ -53,9 +53,7 @@ fn write_if_changed(path: &Path, flags: &FastFlags) -> anyhow::Result<()> {
     let new_hash = compute_flags_hash(flags);
     let hash_path = path.with_file_name(FAST_FLAGS_HASH_FILE);
 
-    if hash_path.exists()
-        && fs::read_to_string(&hash_path).ok().as_deref() == Some(&new_hash)
-    {
+    if hash_path.exists() && fs::read_to_string(&hash_path).ok().as_deref() == Some(&new_hash) {
         return Ok(()); // Flags haven't changed, skip write
     }
 
@@ -70,8 +68,12 @@ fn write_if_changed(path: &Path, flags: &FastFlags) -> anyhow::Result<()> {
         .with_context(|| format!("Couldn't write the FastFlags to {}", path.display()))?;
 
     // Write the hash file
-    fs::write(&hash_path, &new_hash)
-        .with_context(|| format!("Couldn't write the FastFlags hash to {}", hash_path.display()))?;
+    fs::write(&hash_path, &new_hash).with_context(|| {
+        format!(
+            "Couldn't write the FastFlags hash to {}",
+            hash_path.display()
+        )
+    })?;
 
     Ok(())
 }

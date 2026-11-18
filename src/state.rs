@@ -494,7 +494,10 @@ impl AppState {
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("block-telemetry", settings.block_telemetry)
             .property("force-raknet", settings.force_raknet)
-            .property("advanced-settings-visible", settings.advanced_settings_visible)
+            .property(
+                "advanced-settings-visible",
+                settings.advanced_settings_visible,
+            )
             .property("first-launch", !file_existed && !settings.opened_before)
             .property("theme", settings.theme)
             .build();
