@@ -4,7 +4,6 @@ mod bloxstrap_rpc;
 mod butter_access;
 mod cache;
 mod cpu_limit;
-mod current_game;
 mod desktop_entries;
 mod destination;
 mod diagnostics;
@@ -70,7 +69,6 @@ pub fn initialize(state: &AppState) {
     fast_flag_allowlist::initialize();
     fast_flags::initialize(state);
     discord_presence::initialize(state);
-    current_game::initialize(state);
     server_history::initialize(state);
     server_location::initialize(state);
     refresh(state);
@@ -194,64 +192,63 @@ pub fn install_rosemary(state: &AppState) {
     if state.busy() {
         return;
     }
-    run_task(
-        state,
-        |progress| quadra_rosemary::install(progress),
-        |state, ()| refresh(state),
-    );
+
+    run_task(state, quadra_rosemary::install, |state, ()| {
+        refresh(state);
+        state.set_runner(QUADRA_RUNNER);
+        quadra_rosemary::look_for_update(state);
+    });
 }
 
-pub fn update_rosemary(state: &AppState) {
-    if state.busy() {
-        return;
-    }
-    let Some(runner) = selected_runner(state) else {
-        state.report_error("The selected runner can't be found. Choose another one in Settings.");
+fn update_quadra_rosemary_before_launch(runner: &Runner, progress: &Progress) {
+    let Some(release) = runner
+        .is_quadra()
+        .then(quadra_rosemary::available_update)
+        .flatten()
+    else {
         return;
     };
-    if !runner.is_quadra() {
-        state.report_error("Only the Quadra runner can be updated from here.");
+    if let Err(error) = quadra_rosemary::update(&release, progress) {
+        eprintln!("Couldn't update Rosemary, launching with the current one: {error:#}");
+    }
+}
+
+pub fn install_darwin_base(state: &AppState) {
+    run_prefix_task(
+        state,
+        "Installing the Darwin base",
+        prefix::install_darwin_base,
+    );
+}
+
+pub fn repair_prefix(state: &AppState) {
+    run_prefix_task(state, "Repairing the prefix", prefix::repair);
+}
+
+pub fn update_quadra_rosemary(state: &AppState) {
+    if state.busy() || state.running() {
         return;
     }
+    let Some(release) = quadra_rosemary::available_update() else {
+        return;
+    };
+
     run_task(
         state,
-        move |progress| quadra_rosemary::update_before_launch(&runner.executable, progress),
+        move |progress| quadra_rosemary::update(&release, progress),
         |state, ()| refresh(state),
     );
 }
 
-pub fn prefer_an_installed_runner(state: &AppState) {
-    let runners = runners::discover(&state.custom_runner_path());
-    for runner in runners {
-        if runner.is_installed() {
-            state.set_runner(runner.name);
-            return;
-        }
-    }
+pub fn installed_quadra_rosemary_version() -> Option<String> {
+    quadra_rosemary::installed_version()
 }
 
-fn selected_runner(state: &AppState) -> Option<Runner> {
-    runners::find(&state.runner(), &state.custom_runner_path())
-}
-
-fn refresh_selected_runner_status(state: &AppState) {
-    let selected_runner_is_installed =
-        selected_runner(state).is_some_and(|runner| runner.is_installed());
-    state.set_rosemary_installed(selected_runner_is_installed);
-
-    let installed_rosemary = selected_runner(state).filter(Runner::is_installed);
-
-    run_quietly(
-        move || {
-            let version = installed_rosemary
-                .as_ref()
-                .map(|runner| runner.executable.clone())
-                .and_then(|_| quadra_rosemary::installed_version());
-            Ok(version)
-        },
-        move |_version| {
-            // Rosemary version tracking not implemented in state
-        },
+pub fn update_darwin_base(state: &AppState) {
+    run_prefix_task(
+        state,
+        "Updating the Darwin base",
+        prefix::update_darwin_base,
     );
 }
 
@@ -385,8 +382,10 @@ fn start_playing(state: &AppState, destination: Destination) {
             if should_install_quadra_rosemary {
                 quadra_rosemary::install(progress)?;
             }
-            let rosemary = runner.executable.clone();
             update_quadra_rosemary_before_launch(&runner, progress);
+            let runner = runner.with_current_executable();
+            let rosemary = runner.executable.clone();
+
             update_darwin_base_before_launch(&rosemary, prefix_to_update.as_deref(), progress);
             roblox::install_or_update(Client::Player, installed.as_ref(), progress)?;
             progress.step("Applying mods");
@@ -426,10 +425,10 @@ pub fn open_studio(state: &AppState, target: StudioTarget) {
             if should_install_quadra_rosemary {
                 quadra_rosemary::install(progress)?;
             }
-            let rosemary = runner.executable.clone();
             update_quadra_rosemary_before_launch(&runner, progress);
+            let runner = runner.with_current_executable();
             update_darwin_base_before_launch(
-                &rosemary,
+                &runner.executable,
                 prefix_to_update.as_deref(),
                 progress,
             );
@@ -461,50 +460,23 @@ pub fn remove_shortcut(state: &AppState, shortcut: Shortcut) {
     }
 }
 
-pub fn refresh_shortcuts(state: &AppState) {
-    for shortcut in Shortcut::ALL {
-        if let Err(error) = shortcut.entry().refresh() {
-            eprintln!("Couldn't refresh {}: {error:#}", shortcut.entry().file_name);
-        }
-    }
-}
-
-fn update_quadra_rosemary_before_launch(runner: &Runner, progress: &Progress) {
-    if runner.is_quadra() && runner.is_installed() {
-        let rosemary = runner.executable.clone();
-        if let Err(error) = quadra_rosemary::update_before_launch(&rosemary, progress) {
-            eprintln!("Couldn't update Quadra Rosemary before launch: {error:#}");
-        }
-    }
-}
-
-pub fn start_current_game_status_updater(state: &AppState) {
-    if state.running() {
-        current_game::initialize(state);
-    }
-}
-
 pub fn handler_is_enabled(handler: Handler) -> bool {
-    handler.entry().exists()
+    handlers::is_enabled(handler)
 }
 
 pub fn set_handler_enabled(state: &AppState, handler: Handler, enabled: bool) {
-    if enabled {
-        if let Err(error) = handler.entry().add() {
-            state.report_error(&format!("{error:#}"));
-        }
-    } else if let Err(error) = handler.entry().remove() {
+    let result = if enabled {
+        handlers::enable(handler)
+    } else {
+        handlers::disable(handler)
+    };
+    if let Err(error) = result {
         state.report_error(&format!("{error:#}"));
     }
 }
 
 pub fn mangohud_is_installed() -> bool {
-    std::process::Command::new("mangohud")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
+    mangohud::is_installed()
 }
 
 pub fn stop(state: &AppState) {
@@ -514,99 +486,43 @@ pub fn stop(state: &AppState) {
     }
 }
 
-pub fn use_custom_runner(state: &AppState, executable: &std::path::Path) {
-    state.set_runner("Custom".to_owned());
+pub fn use_custom_runner(state: &AppState, executable: &Path) {
+    if !is_executable_file(executable) {
+        state.report_error(&format!(
+            "{} isn't an executable file, so it can't be used as a runner.",
+            executable.display()
+        ));
+        return;
+    }
+
     state.set_custom_runner_path(executable.display().to_string());
+    refresh(state);
+    state.set_runner(runners::custom_runner_name(executable));
 }
 
-pub fn install_darwin_base(state: &AppState) {
-    if state.busy() {
-        return;
+fn refresh_selected_runner_status(state: &AppState) {
+    let selected_runner_is_installed =
+        selected_runner(state).is_some_and(|runner| runner.is_installed());
+    state.set_rosemary_installed(selected_runner_is_installed);
+
+    let installed_rosemary = selected_runner(state).filter(Runner::is_installed);
+    state.set_vr_status(vr::status(
+        installed_rosemary
+            .as_ref()
+            .map(|runner| runner.executable.as_path()),
+    ));
+    look_for_newer_darwin_base(state);
+}
+
+fn prefer_an_installed_runner(state: &AppState) {
+    let quadra_rosemary_is_missing = !quadra_rosemary::executable().is_file();
+    let other_installed_runner = runners::discover(&state.custom_runner_path())
+        .into_iter()
+        .find(|runner| !runner.is_quadra() && runner.is_installed());
+
+    if quadra_rosemary_is_missing && let Some(runner) = other_installed_runner {
+        state.set_runner(runner.name);
     }
-    let Some(runner) = selected_runner(state) else {
-        state.report_error("The selected runner can't be found. Choose another one in Settings.");
-        return;
-    };
-    run_task(
-        state,
-        move |progress| {
-            prefix::install_darwin_base(&runner.executable, &paths::quadra_prefix_directory())?;
-            Ok(())
-        },
-        |state, ()| refresh(state),
-    );
-}
-
-pub fn update_darwin_base(state: &AppState) {
-    if state.busy() {
-        return;
-    }
-    let Some(runner) = selected_runner(state) else {
-        state.report_error("The selected runner can't be found. Choose another one in Settings.");
-        return;
-    };
-    run_task(
-        state,
-        move |progress| {
-            prefix::update_darwin_base(&runner.executable, &paths::quadra_prefix_directory())?;
-            Ok(())
-        },
-        |state, ()| refresh(state),
-    );
-}
-
-pub fn repair_prefix(state: &AppState) {
-    if state.busy() {
-        return;
-    }
-    let Some(runner) = selected_runner(state) else {
-        state.report_error("The selected runner can't be found. Choose another one in Settings.");
-        return;
-    };
-    run_task(
-        state,
-        move |progress| {
-            prefix::repair(&runner.executable, &paths::quadra_prefix_directory())?;
-            Ok(())
-        },
-        |state, ()| refresh(state),
-    );
-}
-
-pub fn update_quadra_rosemary(state: &AppState) {
-    if state.busy() {
-        return;
-    }
-    let Some(runner) = selected_runner(state) else {
-        state.report_error("The selected runner can't be found. Choose another one in Settings.");
-        return;
-    };
-    if !runner.is_quadra() {
-        state.report_error("Only the Quadra runner can be updated from here.");
-        return;
-    }
-    run_task(
-        state,
-        move |progress| {
-            let rosemary = runner.executable.clone();
-            quadra_rosemary::update_before_launch(&rosemary, progress)
-        },
-        |state, ()| refresh(state),
-    );
-}
-
-pub fn installed_quadra_rosemary_version() -> Option<String> {
-    let runner = runners::find(&QUADRA_RUNNER, &"");
-    runner.and_then(|runner| quadra_rosemary::installed_version())
-}
-
-pub fn game_link(place_id: u64, job_id: &str) -> String {
-    format!("roblox://placeId={place_id}&gameInstanceId={job_id}")
-}
-
-pub fn launch_command() -> Vec<String> {
-    let runner = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("quadra-rewrite"));
-    vec![runner.to_string_lossy().to_string()]
 }
 
 fn refresh_desktop_entries() {
@@ -619,4 +535,31 @@ fn refresh_desktop_entries() {
             eprintln!("Couldn't update {}: {error:#}", entry.file_name);
         }
     }
+}
+
+fn selected_runner(state: &AppState) -> Option<Runner> {
+    runners::find(&state.runner(), &state.custom_runner_path())
+}
+
+fn run_prefix_task(
+    state: &AppState,
+    description: &'static str,
+    action: fn(&Path, &Path) -> anyhow::Result<()>,
+) {
+    if state.busy() {
+        return;
+    }
+    let Some(runner) = selected_runner(state).filter(Runner::is_installed) else {
+        state.report_error("The selected runner isn't installed. Install it first.");
+        return;
+    };
+
+    run_task(
+        state,
+        move |progress| {
+            progress.step(description);
+            action(&runner.executable, &paths::quadra_prefix_directory())
+        },
+        |state, ()| refresh(state),
+    );
 }

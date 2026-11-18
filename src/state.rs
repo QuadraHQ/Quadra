@@ -359,10 +359,6 @@ mod imp {
         #[property(get, set)]
         advanced_settings_visible: Cell<bool>,
         #[property(get, set)]
-        in_game: Cell<bool>,
-        #[property(get, set)]
-        session_started_at: Cell<i64>,
-        #[property(get, set)]
         available_update: RefCell<String>,
         #[property(get, set)]
         update_status: RefCell<String>,

@@ -15,7 +15,8 @@ use gtk::glib;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{self, Write};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -29,7 +30,7 @@ const VULKAN_DRIVERS_VARIABLE: &str = "VK_DRIVER_FILES";
 const GIO_MODULES_VARIABLE: &str = "GIO_EXTRA_MODULES";
 
 struct RunningRoblox {
-    child_pid: u32,
+    process_group: i32,
     rosemary: PathBuf,
     prefix_directory: Option<PathBuf>,
 }
@@ -97,16 +98,17 @@ fn run(
     command
         .stdin(Stdio::null())
         .stdout(log.try_clone()?)
-        .stderr(log);
+        .stderr(log)
+        .process_group(0);
     cpu_limit::limit(&mut command, state.cpu_core_limit());
+    end_when_quadra_ends(&mut command);
     let started_at = Instant::now();
 
     let mut child = command
         .spawn()
         .with_context(|| format!("Couldn't start {}", command.get_program().display()))?;
-    let child_pid = child.id();
     RUNNING_ROBLOX.replace(Some(RunningRoblox {
-        child_pid,
+        process_group: child.id() as i32,
         rosemary: runner.executable.clone(),
         prefix_directory: prefix::directory_for(&state.prefix()),
     }));
@@ -159,11 +161,11 @@ pub fn stop_roblox() {
             return;
         };
 
-        let child_pid = running_roblox.child_pid;
-        signal_pid(child_pid, libc::SIGTERM);
+        let process_group = running_roblox.process_group;
+        signal_process_group(process_group, libc::SIGTERM);
         glib::timeout_add_local_once(FORCE_STOP_DELAY, move || {
-            if is_still_running(child_pid) {
-                signal_pid(child_pid, libc::SIGKILL);
+            if is_still_running(process_group) {
+                signal_process_group(process_group, libc::SIGKILL);
             }
         });
 
@@ -182,17 +184,17 @@ pub fn stop_roblox() {
     });
 }
 
-fn is_still_running(child_pid: u32) -> bool {
+fn is_still_running(process_group: i32) -> bool {
     RUNNING_ROBLOX.with_borrow(|running_roblox| {
         running_roblox
             .as_ref()
-            .is_some_and(|running_roblox| running_roblox.child_pid == child_pid)
+            .is_some_and(|running_roblox| running_roblox.process_group == process_group)
     })
 }
 
-fn signal_pid(pid: u32, signal: libc::c_int) {
+fn signal_process_group(process_group: i32, signal: libc::c_int) {
     unsafe {
-        libc::kill(pid as libc::pid_t, signal);
+        libc::kill(-process_group, signal);
     }
 }
 
@@ -231,64 +233,76 @@ fn launch_wrapper_words(wrapper: &str) -> anyhow::Result<Vec<String>> {
     shlex::split(wrapper).context("The launch wrapper has a quote that's never closed.")
 }
 
+fn end_when_quadra_ends(command: &mut Command) {
+    let quadra = std::process::id() as libc::pid_t;
+    unsafe {
+        command.pre_exec(move || {
+            if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM as libc::c_ulong) == -1 {
+                return Err(io::Error::last_os_error());
+            }
+            if libc::getppid() != quadra {
+                libc::raise(libc::SIGTERM);
+            }
+            Ok(())
+        });
+    }
+}
+
 fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec<(String, String)> {
-    let mut environment = Vec::with_capacity(20);
+    let mut environment: Vec<(&str, String)> = Vec::new();
 
     if let Some(prefix_directory) = prefix::directory_for(&state.prefix()) {
-        environment.push(("ROSEMARY_PREFIX".to_owned(), prefix_directory.display().to_string()));
-        environment.push(("ROSEMARY_PREFIX_SETUP".to_owned(), "download".to_owned()));
+        environment.push(("ROSEMARY_PREFIX", prefix_directory.display().to_string()));
+        environment.push(("ROSEMARY_PREFIX_SETUP", "download".to_owned()));
     }
 
     if state.renderer() == Renderer::OpenGl {
-        environment.push((VULKAN_DRIVERS_VARIABLE.to_owned(), "/dev/null".to_owned()));
+        environment.push((VULKAN_DRIVERS_VARIABLE, "/dev/null".to_owned()));
         if let Some(swap_interval) = swap_interval_value(state.opengl_swap_interval()) {
-            environment.push(("ROSEMARY_SWAP_INTERVAL".to_owned(), swap_interval.to_owned()));
+            environment.push(("ROSEMARY_SWAP_INTERVAL", swap_interval.to_owned()));
         }
     } else if let Some(presentation_mode) = presentation_mode_value(state.presentation_mode()) {
         environment.push((
-            "ROSEMARY_METAL_PRESENTATION_MODE".to_owned(),
+            "ROSEMARY_METAL_PRESENTATION_MODE",
             presentation_mode.to_owned(),
         ));
     }
 
     if state.mangohud() {
-        environment.push(("MANGOHUD".to_owned(), "1".to_owned()));
+        environment.push(("MANGOHUD", "1".to_owned()));
     }
 
     if state.refresh_rate() != USE_MONITOR_REFRESH_RATE {
         environment.push((
-            "ROSEMARY_SCREEN_REFRESH_RATE".to_owned(),
+            "ROSEMARY_SCREEN_REFRESH_RATE",
             state.refresh_rate().to_string(),
         ));
     }
 
-    // Stutter reduction: enable Metal shader cache
-    environment.push(("MTL_SHADER_CACHE".to_owned(), "1".to_owned()));
-    // Reduce Metal driver overhead
-    environment.push(("MTL_HUD_ENABLED".to_owned(), "0".to_owned()));
-    // Disable Metal debug layer
-    environment.push(("MTL_DEBUG_LAYER".to_owned(), "0".to_owned()));
-
     if state.block_telemetry() {
-        environment.push((telemetry::BLOCK_HOST_VARIABLE.to_owned(), telemetry::blocked_hosts()));
+        environment.push((telemetry::BLOCK_HOST_VARIABLE, telemetry::blocked_hosts()));
     }
 
     environment.push((
-        "ROSEMARY_DECORATIONS".to_owned(),
+        "ROSEMARY_DECORATIONS",
         decorations_value(state.title_bar()).to_owned(),
     ));
+    if let Some(menu) = menu_value(state.show_menu_bar()) {
+        environment.push(("ROSEMARY_MENU", menu.to_owned()));
+    }
     environment.push((
-        "ROSEMARY_MENU".to_owned(),
-        menu_value(state.title_bar(), state.show_menu_bar()).to_owned(),
-    ));
-    environment.push((
-        "ROSEMARY_COMMAND_KEY".to_owned(),
+        "ROSEMARY_COMMAND_KEY",
         command_key_value(state.command_key(), state.ctrl_for_edit_shortcuts()),
     ));
     environment.push((
-        "ROSEMARY_PLAIN_CTRL_CLICK".to_owned(),
-        if state.plain_ctrl_click() { "1".to_owned() } else { "0".to_owned() },
+        "ROSEMARY_PLAIN_CTRL_CLICK",
+        if state.plain_ctrl_click() { "1" } else { "0" }.to_owned(),
     ));
+
+    let mut environment: Vec<(String, String)> = environment
+        .into_iter()
+        .map(|(name, value)| (name.to_owned(), value))
+        .collect();
 
     environment.extend(
         state
@@ -357,12 +371,8 @@ fn decorations_value(title_bar: TitleBar) -> &'static str {
     }
 }
 
-fn menu_value(title_bar: TitleBar, show_menu_bar: bool) -> &'static str {
-    match (title_bar, show_menu_bar) {
-        (_, false) => "none",
-        (TitleBar::MacStyle, true) => "titlebar",
-        (TitleBar::System, true) => "strip",
-    }
+fn menu_value(show_menu_bar: bool) -> Option<&'static str> {
+    (!show_menu_bar).then_some("none")
 }
 
 fn command_key_value(command_key: CommandKey, ctrl_for_edit_shortcuts: bool) -> String {
@@ -383,11 +393,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_hidden_menu_bar_wins_over_the_title_bar() {
-        assert_eq!(menu_value(TitleBar::MacStyle, true), "titlebar");
-        assert_eq!(menu_value(TitleBar::System, true), "strip");
-        assert_eq!(menu_value(TitleBar::MacStyle, false), "none");
-        assert_eq!(menu_value(TitleBar::System, false), "none");
+    fn only_a_hidden_menu_bar_sets_the_rosemary_menu() {
+        assert_eq!(menu_value(true), None);
+        assert_eq!(menu_value(false), Some("none"));
     }
 
     #[test]
