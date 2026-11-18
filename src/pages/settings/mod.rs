@@ -4,10 +4,10 @@ mod bound_rows;
 mod butter_access;
 mod custom_flags;
 mod discord_access;
-mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
+mod general;
 mod integration;
 mod launch_wrapper;
 mod mangohud;
@@ -25,8 +25,8 @@ use crate::utils::{
     is_running_in_flatpak, scrollable, show_only_while_roblox_is_selected, unfocus_on_outside_click,
 };
 use adw::prelude::*;
-use environment::env_section;
 use fast_flags::fast_flags_section;
+use general::general_section;
 use integration::integration_section;
 use mods::mods_section;
 use vr::vr_section;
@@ -36,9 +36,9 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
     stack.set_vexpand(true);
 
     stack.add_titled_with_icon(
-        &scrollable(&env_section(state)),
-        Some("environment"),
-        "Environment",
+        &scrollable(&general_section(state)),
+        Some("general"),
+        "General",
         "emblem-system-symbolic",
     );
     let fast_flags = stack.add_titled_with_icon(

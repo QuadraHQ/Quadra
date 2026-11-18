@@ -12,7 +12,7 @@ use super::updates::launcher_version_row;
 use crate::state::{AppState, LaunchMode, Runtime, Theme};
 use adw::prelude::*;
 
-pub fn env_section(state: &AppState) -> gtk::Box {
+pub fn general_section(state: &AppState) -> gtk::Box {
     // Quadra group
     let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
     launch_mode_row.set_subtitle("Settings stay available from the system tray");
