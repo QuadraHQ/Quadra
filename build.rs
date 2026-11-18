@@ -38,30 +38,30 @@ fn build_vr_library(out_directory: &Path, library: &Path) -> Result<(), String> 
     // Check if library is already up to date
     if library.exists()
         && let Ok(lib_meta) = library.metadata()
-            && let Ok(lib_time) = lib_meta.modified()
-        {
-            let mut sources_newer = false;
-            for source in VR_SOURCES {
-                let source_path = Path::new("vr").join(source);
-                if let Ok(src_meta) = source_path.metadata()
-                    && let Ok(src_time) = src_meta.modified()
-                    && src_time > lib_time
-                {
-                    sources_newer = true;
-                    break;
-                }
-            }
-            let tbd_path = Path::new("vr").join("libSystem.tbd");
-            if let Ok(tbd_meta) = tbd_path.metadata()
-                && let Ok(tbd_time) = tbd_meta.modified()
-                && tbd_time > lib_time
+        && let Ok(lib_time) = lib_meta.modified()
+    {
+        let mut sources_newer = false;
+        for source in VR_SOURCES {
+            let source_path = Path::new("vr").join(source);
+            if let Ok(src_meta) = source_path.metadata()
+                && let Ok(src_time) = src_meta.modified()
+                && src_time > lib_time
             {
                 sources_newer = true;
-            }
-            if !sources_newer {
-                return Ok(()); // Library is up to date, skip rebuild
+                break;
             }
         }
+        let tbd_path = Path::new("vr").join("libSystem.tbd");
+        if let Ok(tbd_meta) = tbd_path.metadata()
+            && let Ok(tbd_time) = tbd_meta.modified()
+            && tbd_time > lib_time
+        {
+            sources_newer = true;
+        }
+        if !sources_newer {
+            return Ok(()); // Library is up to date, skip rebuild
+        }
+    }
 
     let compiler = env::var(COMPILER_ENV).unwrap_or_else(|_| "clang".to_owned());
     let mut linker = linker_command(&compiler)
