@@ -722,6 +722,7 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let Ok(table) = toml::from_str::<toml::Table>(contents) else {
         return (SavedSettings::default(), Some(SettingsProblem::Unparsable));
     };
+    let table = hidden_title_bar_as_hidden_menu_bar(table);
     if let Ok(settings) = table.clone().try_into::<SavedSettings>() {
         return (settings, None);
     }
@@ -735,6 +736,16 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let settings = readable.try_into().unwrap_or_default();
     let names = unreadable.keys().cloned().collect();
     (settings, Some(SettingsProblem::InvalidValues(names)))
+}
+
+fn hidden_title_bar_as_hidden_menu_bar(mut table: toml::Table) -> toml::Table {
+    let title_bar_is_hidden =
+        table.get("title_bar").and_then(toml::Value::as_str) == Some("hidden");
+    if title_bar_is_hidden {
+        table.insert("title_bar".to_owned(), "system".into());
+        table.insert("show_menu_bar".to_owned(), false.into());
+    }
+    table
 }
 
 struct LoadedSettings {
@@ -878,6 +889,14 @@ mod tests {
         assert!(matches!(problem, Some(SettingsProblem::Unparsable)));
         assert_eq!(settings.runner, QUADRA_RUNNER);
         assert!(!settings.mangohud);
+    }
+
+    #[test]
+    fn a_hidden_title_bar_becomes_a_system_title_bar_without_menus() {
+        let (settings, problem) = parse_settings("title_bar = \"hidden\"\n");
+        assert!(problem.is_none());
+        assert_eq!(settings.title_bar, TitleBar::System);
+        assert!(!settings.show_menu_bar);
     }
 
     #[test]

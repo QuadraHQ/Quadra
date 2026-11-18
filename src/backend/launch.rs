@@ -354,13 +354,12 @@ fn decorations_value(title_bar: TitleBar) -> &'static str {
     match title_bar {
         TitleBar::MacStyle => "client",
         TitleBar::System => "server",
-        TitleBar::Hidden => "server",
     }
 }
 
 fn menu_value(title_bar: TitleBar, show_menu_bar: bool) -> &'static str {
     match (title_bar, show_menu_bar) {
-        (TitleBar::Hidden, _) | (_, false) => "none",
+        (_, false) => "none",
         (TitleBar::MacStyle, true) => "titlebar",
         (TitleBar::System, true) => "strip",
     }
@@ -384,11 +383,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn either_a_hidden_title_bar_or_menu_bar_hides_the_menus() {
+    fn a_hidden_menu_bar_wins_over_the_title_bar() {
         assert_eq!(menu_value(TitleBar::MacStyle, true), "titlebar");
         assert_eq!(menu_value(TitleBar::System, true), "strip");
-        assert_eq!(menu_value(TitleBar::Hidden, true), "none");
         assert_eq!(menu_value(TitleBar::MacStyle, false), "none");
+        assert_eq!(menu_value(TitleBar::System, false), "none");
     }
 
     #[test]
