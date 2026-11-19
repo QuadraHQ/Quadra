@@ -48,9 +48,9 @@ fn register_font(
     Ok(())
 }
 
-pub fn show_only_while_roblox_is_selected(page: &adw::ViewStackPage, state: &AppState) {
+pub fn show_only_while_roblox_is_selected(target: &impl IsA<gtk::glib::Object>, state: &AppState) {
     state
-        .bind_property("selected-client", page, "visible")
+        .bind_property("selected-client", target, "visible")
         .transform_to(|_, client: Client| Some(client == Client::Player))
         .sync_create()
         .build();

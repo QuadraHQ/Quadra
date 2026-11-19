@@ -1,6 +1,9 @@
 mod account;
 mod background;
+mod bloxstrap_rpc;
 mod butter_access;
+mod cache;
+mod controller_access;
 mod cpu_limit;
 mod desktop_entries;
 mod destination;
@@ -38,6 +41,9 @@ mod vr;
 mod vr_access;
 
 pub use butter_access::missing as missing_butter_access;
+pub use controller_access::{
+    command_to_change as controller_access_command, is_granted as controller_access_is_granted,
+};
 pub use desktop_entries::Shortcut;
 pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
 pub use handlers::Handler;
@@ -323,6 +329,10 @@ pub fn hardware_report() -> String {
 
 pub fn sign_out(state: &AppState) {
     account::sign_out(state);
+}
+
+pub fn clear_roblox_cache(state: &AppState, when_finished: impl FnOnce(u64) + 'static) {
+    cache::clear(state, when_finished);
 }
 
 pub fn diagnostics_directory() -> std::path::PathBuf {

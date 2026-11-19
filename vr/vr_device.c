@@ -19,11 +19,11 @@
  * methods fill that state from OpenXR and submit the eyes (vr_xr.c).
  *
  *   QUADRA_VR=openxr  present on the host OpenXR runtime (WiVRn, Monado...)
- *                       and mirror both eyes into the game window
+ *                       and mirror the left eye into the game window
  *   QUADRA_VR=openxr-headset  the headset only; the window is not presented
  *   ...-lag0            (development) submit the views the frame opened with,
  *                       instead of the previous frame's (see vr_xr.c)
- *   QUADRA_VR=1       emulated head only, eyes mirrored into the window
+ *   QUADRA_VR=1       emulated head only, left eye mirrored into the window
  *   QUADRA_VR=debug   also the client's own emulator mirror
  *                       (FFlagDebugEnableVREmulator)
  *
@@ -51,19 +51,23 @@ extern void *pthread_self(void);
 extern uint64_t mach_absolute_time(void);
 extern int mach_timebase_info(unsigned int info[2]);
 
-#define VR_SLOTS 42
+static int vr_slot_shift;
+#define VR_SLOTS_BEFORE_0748 42
+#define VR_SLOT_SHIFT_MAX 3
+#define VR_SLOTS (VR_SLOTS_BEFORE_0748 + vr_slot_shift)
 #define VR_SLOT_DELETE 1
 #define VR_SLOT_UPDATE 2
 #define VR_SLOT_HAPTICS 3
 #define VR_SLOT_RECENTER 4
 #define VR_SLOT_GET_STATE 5
 #define VR_SLOT_EYE_FRAMEBUFFER 9
-#define VR_SLOT_CREATE_RESOURCES 26
-#define VR_SLOT_BEGIN_FRAME 27
-#define VR_SLOT_END_FRAME 28
-#define VR_SLOT_PRESENT_WINDOW 31
-#define VR_SLOT_DISPLAY_RATE 37
-#define VR_SLOT_SET_DISPLAY_RATE 38
+#define VR_SLOT_CREATE_RESOURCES (26 + vr_slot_shift)
+#define VR_SLOT_BEGIN_FRAME (27 + vr_slot_shift)
+#define VR_SLOT_END_FRAME (28 + vr_slot_shift)
+#define VR_SLOT_PRESENT_WINDOW (31 + vr_slot_shift)
+#define VR_SLOT_DISPLAY_RATE (37 + vr_slot_shift)
+#define VR_SLOT_SET_DISPLAY_RATE (38 + vr_slot_shift)
+#define VR_MIRROR_EYE 0 /* the left eye is what the window shows */
 #define GL_SLOT_BEGIN_FRAME 13
 #define GL_SLOT_MAIN_FRAMEBUFFER 15
 /* getVR and setVR sit next to each other; they moved from slots 17 and 18 to
@@ -147,12 +151,12 @@ static void vr_report_timing(void) {
     vr_timing.window_start = vr_timing.submit_end;
 }
 static int vr_state; /* 0 idle, 1 creating, 2 attached, 3 failed */
-static void *vr_table[2 + VR_SLOTS]; /* offset-to-top, typeinfo, methods */
+static void *vr_table[2 + VR_SLOTS_BEFORE_0748 + VR_SLOT_SHIFT_MAX]; /* offset-to-top, typeinfo, methods */
 static unsigned long vr_frames, vr_begins, vr_ends, vr_eye_requests;
 static void *vr_graphics_device;
 static int vr_mirror_ready;
 
-/* Window mirror: both eyes side by side, blitted before DeviceGL presents. */
+/* Window mirror: one eye, blitted before DeviceGL presents. */
 static void (*vr_glBindFramebuffer)(unsigned int, unsigned int);
 static void (*vr_glBlitFramebuffer)(int, int, int, int, int, int, int, int, unsigned int, unsigned int);
 static void (*vr_glGetIntegerv)(unsigned int, int *);
@@ -323,17 +327,32 @@ static int vr_check_gl_device(const VrImage *image) {
     vr_enabled_offset = vr_u32(get + 20);
     if (vr_device_offset > 0x10000 || vr_enabled_offset > 0x10000) return 0;
     /* beginFrame must be the method that calls vr->beginFrame:
-     * mov rdi, [rbx + device]; ...; call [rax + 0xd8]. */
+     * mov rdi, [rbx + device]; ...; call [rax + 8 * VR_SLOT_BEGIN_FRAME]. */
     const unsigned char *begin = vr_gl_vtable[GL_SLOT_BEGIN_FRAME];
     unsigned char load[] = {0x48, 0x8b, 0xbb, 0, 0, 0, 0};
-    static const unsigned char call[] = {0xff, 0x90, 0xd8, 0x00, 0x00, 0x00};
+    static const struct {
+        unsigned char begin_frame_call[6];
+        int begin_frame_scan_length, slot_shift;
+    } layouts_newest_last[] = {
+        {{0xff, 0x90, 0xd8, 0x00, 0x00, 0x00}, 0x60, 0},
+        {{0xff, 0x90, 0xf0, 0x00, 0x00, 0x00}, 0x100, VR_SLOT_SHIFT_MAX},
+    };
     __builtin_memcpy(load + 3, &vr_device_offset, 4);
-    int loads = 0, calls = 0;
-    for (int index = 0; index < 0x60; ++index) {
-        if (vr_bytes(begin + index, load, sizeof load)) loads = 1;
-        if (loads && vr_bytes(begin + index, call, sizeof call)) calls = 1;
+    for (unsigned layout = 0; layout < sizeof layouts_newest_last / sizeof layouts_newest_last[0]; ++layout) {
+        const unsigned char *call = layouts_newest_last[layout].begin_frame_call;
+        int scan_length = layouts_newest_last[layout].begin_frame_scan_length;
+        if (!vr_inside(&image->text, begin, (unsigned long)scan_length + sizeof layouts_newest_last[layout].begin_frame_call))
+            continue;
+        int loads = 0;
+        for (int index = 0; index < scan_length; ++index) {
+            if (vr_bytes(begin + index, load, sizeof load)) loads = 1;
+            if (loads && vr_bytes(begin + index, call, sizeof layouts_newest_last[layout].begin_frame_call)) {
+                vr_slot_shift = layouts_newest_last[layout].slot_shift;
+                return 1;
+            }
+        }
     }
-    return calls;
+    return 0;
 }
 
 /* DeviceGL::getMainFramebuffer is a plain member load, and FramebufferGL's
@@ -429,20 +448,18 @@ static void vr_mirror(void *self) {
     unsigned char scissor = vr_glIsEnabled(0x0C11);
     if (scissor) vr_glDisable(0x0C11);
     vr_glColorMask(1, 1, 1, 1);
-    vr_glBindFramebuffer(0x8CA9, window_name); /* GL_DRAW_FRAMEBUFFER */
-    for (long eye = 0; eye < 2; ++eye) {
-        const unsigned char *framebuffer =
-            ((const unsigned char *(*)(void *, long))vr_debug_vtable[VR_SLOT_EYE_FRAMEBUFFER])(self, eye);
-        if (!vr_framebuffer(framebuffer, &eye_name, &eye_width, &eye_height)) continue;
-        /* Fit each eye into its half of the window, keeping its aspect. */
-        int half = window_width / 2;
-        int width = half, height = (int)((long)half * eye_height / eye_width);
+    const unsigned char *framebuffer =
+        ((const unsigned char *(*)(void *, long))vr_debug_vtable[VR_SLOT_EYE_FRAMEBUFFER])(self, VR_MIRROR_EYE);
+    if (vr_framebuffer(framebuffer, &eye_name, &eye_width, &eye_height)) {
+        /* Fit the eye into the window, keeping its aspect. */
+        int width = window_width, height = (int)((long)window_width * eye_height / eye_width);
         if (height > window_height) {
             height = window_height;
             width = (int)((long)window_height * eye_width / eye_height);
         }
-        int x = (int)eye * half + (half - width) / 2, y = (window_height - height) / 2;
-        vr_glBindFramebuffer(0x8CA8, eye_name); /* GL_READ_FRAMEBUFFER */
+        int x = (window_width - width) / 2, y = (window_height - height) / 2;
+        vr_glBindFramebuffer(0x8CA9, window_name); /* GL_DRAW_FRAMEBUFFER */
+        vr_glBindFramebuffer(0x8CA8, eye_name);    /* GL_READ_FRAMEBUFFER */
         vr_glBlitFramebuffer(0, 0, eye_width, eye_height, x, y, x + width, y + height,
                              0x4000 /* GL_COLOR_BUFFER_BIT */, 0x2601 /* GL_LINEAR */);
     }
@@ -813,7 +830,7 @@ __attribute__((constructor)) static void vr_install(void) {
         vr_log("[Quadra VR] Unavailable: graphics or VR device class not found in this client\n");
         return;
     }
-    for (int index = 0; index < VR_SLOTS; ++index)
+    for (int index = 0; index < VR_SLOTS_BEFORE_0748; ++index)
         if (!vr_inside(&image.text, vr_debug_vtable[index], 1)) {
             vr_log("[Quadra VR] Unavailable: unexpected VR device method table\n");
             return;
@@ -829,6 +846,13 @@ __attribute__((constructor)) static void vr_install(void) {
         vr_log("[Quadra VR] Unavailable: unsupported client graphics device or VR emulator\n");
         return;
     }
+    for (int index = VR_SLOTS_BEFORE_0748; index < VR_SLOTS; ++index)
+        if (!vr_inside(&image.text, vr_debug_vtable[index], 1)) {
+            vr_log("[Quadra VR] Unavailable: unexpected VR device method table\n");
+            return;
+        }
+    vr_logf2("[Quadra VR] VR device layout: %lu methods, beginFrame in slot %lu\n", (unsigned long)VR_SLOTS,
+             (unsigned long)VR_SLOT_BEGIN_FRAME);
     vr_mirror_ready = vr_check_mirror(&image);
     if (!vr_mirror_ready) vr_log("[Quadra VR] Window mirror unavailable: unexpected framebuffer layout\n");
     if (debug) {

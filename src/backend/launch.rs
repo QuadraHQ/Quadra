@@ -287,6 +287,9 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
         "ROSEMARY_DECORATIONS",
         decorations_value(state.title_bar()).to_owned(),
     ));
+    if let Some(menu) = menu_value(state.show_menu_bar()) {
+        environment.push(("ROSEMARY_MENU", menu.to_owned()));
+    }
     environment.push((
         "ROSEMARY_COMMAND_KEY",
         command_key_value(state.command_key(), state.ctrl_for_edit_shortcuts()),
@@ -368,6 +371,10 @@ fn decorations_value(title_bar: TitleBar) -> &'static str {
     }
 }
 
+fn menu_value(show_menu_bar: bool) -> Option<&'static str> {
+    (!show_menu_bar).then_some("none")
+}
+
 fn command_key_value(command_key: CommandKey, ctrl_for_edit_shortcuts: bool) -> String {
     let key = match command_key {
         CommandKey::Super => "super",
@@ -384,6 +391,12 @@ fn command_key_value(command_key: CommandKey, ctrl_for_edit_shortcuts: bool) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_hidden_menu_bar_sets_the_rosemary_menu() {
+        assert_eq!(menu_value(true), None);
+        assert_eq!(menu_value(false), Some("none"));
+    }
 
     #[test]
     fn splits_the_wrapper_like_a_shell() {

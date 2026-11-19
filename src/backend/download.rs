@@ -7,7 +7,10 @@ use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-const CHUNK_SIZE: usize = 64 * 1024;
+// Larger chunk size for better download throughput (1MB)
+const CHUNK_SIZE: usize = 1024 * 1024;
+// Smaller chunk for hashing to reduce memory pressure
+const HASH_CHUNK_SIZE: usize = 64 * 1024;
 
 pub fn download_file(url: &str, destination: &Path, progress: &Progress) -> anyhow::Result<()> {
     if let Some(directory) = destination.parent() {
@@ -61,7 +64,7 @@ pub fn checksum_listed_for(checksums: &str, file_name: &str) -> Option<String> {
 pub fn sha256_of_file(path: &Path) -> anyhow::Result<String> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut chunk = vec![0; CHUNK_SIZE];
+    let mut chunk = vec![0; HASH_CHUNK_SIZE];
 
     loop {
         let read_size = file.read(&mut chunk)?;
@@ -91,21 +94,32 @@ pub fn replace_directory(new_contents: &Path, destination: &Path) -> anyhow::Res
 pub fn stop_others_from_writing(directory: &Path) -> anyhow::Result<()> {
     const GROUP_AND_OTHERS_WRITE: u32 = 0o022;
 
-    for entry in fs::read_dir(directory)? {
-        let path = entry?.path();
-        let metadata = fs::symlink_metadata(&path)?;
-        if metadata.is_symlink() {
+    // Use an explicit stack instead of recursion to avoid stack overflow
+    // and reduce function call overhead
+    let mut stack = vec![directory.to_path_buf()];
+
+    while let Some(current_dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&current_dir) else {
             continue;
-        }
-        let mode = metadata.permissions().mode();
-        if mode & GROUP_AND_OTHERS_WRITE != 0 {
-            fs::set_permissions(
-                &path,
-                fs::Permissions::from_mode(mode & !GROUP_AND_OTHERS_WRITE),
-            )?;
-        }
-        if metadata.is_dir() {
-            stop_others_from_writing(&path)?;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(metadata) = fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.is_symlink() {
+                continue;
+            }
+            let mode = metadata.permissions().mode();
+            if mode & GROUP_AND_OTHERS_WRITE != 0 {
+                let _ = fs::set_permissions(
+                    &path,
+                    fs::Permissions::from_mode(mode & !GROUP_AND_OTHERS_WRITE),
+                );
+            }
+            if metadata.is_dir() {
+                stack.push(path);
+            }
         }
     }
     Ok(())

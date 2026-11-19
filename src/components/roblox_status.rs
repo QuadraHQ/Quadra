@@ -20,11 +20,17 @@ pub fn status_text(state: &AppState, client: Client) -> String {
     let is_opening = state.is_running(client) && !state.roblox_graphics_started();
 
     if state.busy() {
+        let desc = state.task_description();
+        let desc = if desc.is_empty() {
+            "Starting…"
+        } else {
+            &desc
+        };
         let percent = (state.task_progress() * 100.0).round();
         if percent > 0.0 {
-            format!("{} ({percent}%)", state.task_description())
+            format!("{} ({percent}%)", desc)
         } else {
-            format!("{}…", state.task_description())
+            format!("{}…", desc)
         }
     } else if is_opening {
         format!("Opening {}…", client.name())

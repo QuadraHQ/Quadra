@@ -79,10 +79,21 @@ fn icon_url(universe_id: u64) -> anyhow::Result<Option<String>> {
     let icons: Listing<Icon> = get_json(&format!(
         "https://thumbnails.roblox.com/v1/games/icons?universeIds={universe_id}&size=512x512&format=Png&isCircular=false"
     ))?;
-    Ok(icons
+    Ok(completed_image_url(icons))
+}
+
+pub fn asset_image_url(asset_id: u64) -> anyhow::Result<Option<String>> {
+    let images: Listing<Icon> = get_json(&format!(
+        "https://thumbnails.roblox.com/v1/assets?assetIds={asset_id}&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false"
+    ))?;
+    Ok(completed_image_url(images))
+}
+
+fn completed_image_url(images: Listing<Icon>) -> Option<String> {
+    images
         .data
         .into_iter()
-        .find(|icon| icon.state == ICON_IS_READY)
-        .and_then(|icon| icon.image_url)
-        .filter(|url| !url.is_empty()))
+        .find(|image| image.state == ICON_IS_READY)
+        .and_then(|image| image.image_url)
+        .filter(|url| !url.is_empty())
 }
