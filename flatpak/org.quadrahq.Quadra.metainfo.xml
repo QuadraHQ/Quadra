@@ -59,6 +59,15 @@
     <display_length compare="ge">768</display_length>
   </supports>
   <releases>
+    <release version="0.50.4" date="2026-11-19">
+      <description>
+        <ul>
+          <li>Added controller support</li>
+          <li>Added VR support</li>
+          <li>Reworked settings UI</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.50.3" date="2026-11-17">
       <description>
         <p>Added clear cache button</p>

@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "quadra"
-version = "0.50.3"
+version = "0.50.4"
 dependencies = [
  "anyhow",
  "async-channel",
