@@ -15,7 +15,6 @@ mod launch_wrapper;
 mod mangohud;
 mod mods;
 mod network;
-mod performance;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
