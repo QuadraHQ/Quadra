@@ -1,4 +1,5 @@
 use super::bound_rows::switch_row;
+use super::vr_access::ask_for_vr_access_when_turned_on;
 use crate::state::{AppState, VR_RENDER_SCALE_RANGE};
 use adw::prelude::*;
 
@@ -10,6 +11,7 @@ pub fn vr_section(state: &AppState) -> gtk::Box {
         .bind_property("vr-status", &vr_row, "subtitle")
         .sync_create()
         .build();
+    ask_for_vr_access_when_turned_on(&vr_row);
 
     let mirror_row = switch_row(state, "vr-mirror", "Show the game in its window too");
     mirror_row.set_subtitle("Mirrors what the headset shows into Roblox's window");

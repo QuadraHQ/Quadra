@@ -1,13 +1,11 @@
 use super::account::account_group;
 use super::bound_rows::{choice_row, switch_row};
 use super::discord_access::ask_for_discord_access_when_turned_on;
-use super::performance::performance_group;
 use super::runtime::runtime_section;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
 use crate::state::{AppState, LaunchMode, Theme};
-use crate::utils::show_only_while_roblox_is_selected;
 use adw::prelude::*;
 
 pub fn general_section(state: &AppState) -> gtk::Box {
@@ -44,10 +42,6 @@ pub fn general_section(state: &AppState) -> gtk::Box {
     section.append(&group);
     section.append(&discord_group);
     section.append(&runtime_section(state));
-
-    let performance = performance_group(state);
-    show_only_while_roblox_is_selected(&performance, state);
-    section.append(&performance);
 
     section.append(&session_group(state));
     section.append(&super::privacy::privacy_group(state));

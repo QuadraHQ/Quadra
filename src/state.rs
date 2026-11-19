@@ -504,6 +504,7 @@ impl AppState {
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
+        state.follow_properties(&["vr"], Self::use_opengl_while_in_vr);
 
         if state.first_launch() || save_repaired_settings {
             state.schedule_save();
@@ -617,6 +618,12 @@ impl AppState {
             self.running_client()
         } else {
             self.selected_client()
+        }
+    }
+
+    fn use_opengl_while_in_vr(&self) {
+        if self.vr() && self.renderer() != Renderer::OpenGl {
+            self.set_renderer(Renderer::OpenGl);
         }
     }
 

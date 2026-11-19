@@ -9,8 +9,18 @@ use adw::prelude::*;
 
 pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
     let renderer_row = choice_row::<Renderer>(state, "renderer", "Renderer");
-    renderer_row
-        .set_subtitle("The graphics API used for Rosemary. Use OpenGL if you have older hardware.");
+
+    state
+        .bind_property("vr", &renderer_row, "sensitive")
+        .invert_boolean()
+        .sync_create()
+        .build();
+
+    state
+        .bind_property("vr", &renderer_row, "subtitle")
+        .transform_to(|_, vr: bool| Some(renderer_subtitle(vr)))
+        .sync_create()
+        .build();
 
     let presentation_mode_row =
         choice_row::<PresentationMode>(state, "presentation-mode", "Vulkan presentation mode");
@@ -45,6 +55,14 @@ pub fn graphics_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&mangohud_row(state));
 
     group
+}
+
+fn renderer_subtitle(vr: bool) -> &'static str {
+    if vr {
+        "VR needs OpenGL. Turn off Play in VR to change this."
+    } else {
+        "The graphics API used for Rosemary. Use OpenGL if you have older hardware."
+    }
 }
 
 pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
