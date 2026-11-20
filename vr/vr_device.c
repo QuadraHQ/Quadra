@@ -10,7 +10,7 @@
  *     void setVR(bool on) { vrEnabled = on; }
  *
  * and its beginFrame and present already call the device's beginFrame and
- * endFrame. DeviceVR has 42 virtual methods, the same table in the macOS
+ * endFrame. DeviceVR's virtual methods are the same table in the macOS
  * DebugDeviceVR and the Quest OpenXrDevice of the same release.
  *
  * Quadra attaches the client's own DebugDeviceVR there, with a copy of its
@@ -27,15 +27,15 @@
  *   QUADRA_VR=debug   also the client's own emulator mirror
  *                       (FFlagDebugEnableVREmulator)
  *
- * Classes are found by their RTTI names, and every patched function must
- * contain the instructions this file expects. Any other client leaves VR off.
+ * Quadra finds the classes, slots and offsets by disassembling RobloxPlayer
+ * (src/backend/vr/layout.rs) and passes them in QUADRA_VR_LAYOUT, tied to the
+ * binary's UUID. Any other client leaves VR off.
  */
 #include <stddef.h>
 #include <stdint.h>
 #include "vr_xr.h"
 
 extern const void *_dyld_get_image_header(unsigned int);
-extern intptr_t _dyld_get_image_vmaddr_slide(unsigned int);
 extern const char *_dyld_get_image_name(unsigned int);
 extern char *getenv(const char *);
 extern long write(int, const void *, unsigned long);
@@ -51,32 +51,63 @@ extern void *pthread_self(void);
 extern uint64_t mach_absolute_time(void);
 extern int mach_timebase_info(unsigned int info[2]);
 
-static int vr_slot_shift;
-#define VR_SLOTS_BEFORE_0748 42
-#define VR_SLOT_SHIFT_MAX 3
-#define VR_SLOTS (VR_SLOTS_BEFORE_0748 + vr_slot_shift)
+typedef struct {
+    unsigned char uuid[16];
+    unsigned long gl_vtable, debug_vtable, debug_constructor, emulator_flag, debug_methods;
+    unsigned long gl_begin_frame_slot, gl_main_framebuffer_slot, gl_get_vr_slot, gl_set_vr_slot;
+    unsigned long device_offset, enabled_offset, state_offset;
+    unsigned long create_resources_slot, begin_frame_slot, end_frame_slot, present_window_slot;
+    unsigned long display_rate_slot, set_display_rate_slot, mirror;
+} VrLayout;
+
+typedef struct {
+    const char *name;
+    unsigned long offset;
+    int required;
+} VrLayoutField;
+
+static const VrLayoutField vr_layout_fields[] = {
+    {"gl_vtable", offsetof(VrLayout, gl_vtable), 1},
+    {"debug_vtable", offsetof(VrLayout, debug_vtable), 1},
+    {"debug_constructor", offsetof(VrLayout, debug_constructor), 1},
+    {"emulator_flag", offsetof(VrLayout, emulator_flag), 0},
+    {"debug_methods", offsetof(VrLayout, debug_methods), 1},
+    {"gl_begin_frame_slot", offsetof(VrLayout, gl_begin_frame_slot), 1},
+    {"gl_main_framebuffer_slot", offsetof(VrLayout, gl_main_framebuffer_slot), 1},
+    {"gl_get_vr_slot", offsetof(VrLayout, gl_get_vr_slot), 1},
+    {"gl_set_vr_slot", offsetof(VrLayout, gl_set_vr_slot), 1},
+    {"device_offset", offsetof(VrLayout, device_offset), 1},
+    {"enabled_offset", offsetof(VrLayout, enabled_offset), 1},
+    {"state_offset", offsetof(VrLayout, state_offset), 1},
+    {"create_resources_slot", offsetof(VrLayout, create_resources_slot), 1},
+    {"begin_frame_slot", offsetof(VrLayout, begin_frame_slot), 1},
+    {"end_frame_slot", offsetof(VrLayout, end_frame_slot), 1},
+    {"present_window_slot", offsetof(VrLayout, present_window_slot), 1},
+    {"display_rate_slot", offsetof(VrLayout, display_rate_slot), 1},
+    {"set_display_rate_slot", offsetof(VrLayout, set_display_rate_slot), 1},
+    {"mirror", offsetof(VrLayout, mirror), 1},
+};
+#define VR_LAYOUT_FIELDS (sizeof vr_layout_fields / sizeof vr_layout_fields[0])
+
+static VrLayout vr_layout;
+#define VR_SLOTS_MAX 64
 #define VR_SLOT_DELETE 1
 #define VR_SLOT_UPDATE 2
 #define VR_SLOT_HAPTICS 3
 #define VR_SLOT_RECENTER 4
 #define VR_SLOT_GET_STATE 5
 #define VR_SLOT_EYE_FRAMEBUFFER 9
-#define VR_SLOT_CREATE_RESOURCES (26 + vr_slot_shift)
-#define VR_SLOT_BEGIN_FRAME (27 + vr_slot_shift)
-#define VR_SLOT_END_FRAME (28 + vr_slot_shift)
-#define VR_SLOT_PRESENT_WINDOW (31 + vr_slot_shift)
-#define VR_SLOT_DISPLAY_RATE (37 + vr_slot_shift)
-#define VR_SLOT_SET_DISPLAY_RATE (38 + vr_slot_shift)
+#define VR_SLOT_CREATE_RESOURCES (vr_layout.create_resources_slot)
+#define VR_SLOT_BEGIN_FRAME (vr_layout.begin_frame_slot)
+#define VR_SLOT_END_FRAME (vr_layout.end_frame_slot)
+#define VR_SLOT_PRESENT_WINDOW (vr_layout.present_window_slot)
+#define VR_SLOT_DISPLAY_RATE (vr_layout.display_rate_slot)
+#define VR_SLOT_SET_DISPLAY_RATE (vr_layout.set_display_rate_slot)
 #define VR_MIRROR_EYE 0 /* the left eye is what the window shows */
-#define GL_SLOT_BEGIN_FRAME 13
-#define GL_SLOT_MAIN_FRAMEBUFFER 15
-/* getVR and setVR sit next to each other; they moved from slots 17 and 18 to
- * 19 and 20 in 0.746, so they are found by their code within this range. */
-#define GL_SLOT_VR_FIRST 16
-#define GL_SLOT_VR_LAST 40
+#define GL_SLOT_BEGIN_FRAME (vr_layout.gl_begin_frame_slot)
+#define GL_SLOT_MAIN_FRAMEBUFFER (vr_layout.gl_main_framebuffer_slot)
 /* DeviceVR state (getState copies 0x138 bytes), as filled by the Quest
  * OpenXrDevice of the same release: */
-#define STATE_SIZE 0x138
 #define STATE_HEAD 0x00          /* u8 valid, float position[3] at +4, quaternion xyzw at +0x10 */
 #define STATE_FLOOR 0x20         /* VRService UserCFrame.Floor, same layout */
 #define STATE_HANDS 0x40         /* left, right: poses like the head, 0x20 apart */
@@ -94,12 +125,8 @@ static int vr_slot_shift;
 #define FRAMEBUFFER_GL_NAME 0x8c
 
 typedef struct {
-    const unsigned char *begin;
-    unsigned long size;
-} VrSection;
-
-typedef struct {
-    VrSection text, text_const, cstring, data_const;
+    const unsigned char *header;
+    unsigned char uuid[16];
     unsigned int data_protection;
 } VrImage;
 
@@ -108,12 +135,9 @@ static void **vr_debug_vtable;
 static void (*vr_debug_construct)(void *, int, int, void *);
 static void *(*vr_gl_begin_frame)(void *); /* returns the frame's DeviceContext */
 static void (*vr_gl_set_vr)(void *, int);
-static unsigned int vr_device_offset, vr_enabled_offset;
-static int vr_gl_get_vr_slot; /* setVR is the next slot */
 static volatile unsigned char *vr_emulator_flag;
 static int vr_eye_size = 1024;
 static int vr_openxr;
-static unsigned int vr_state_offset;
 static unsigned long vr_next_start;
 static void *vr_render_thread;
 static int vr_frame_open;
@@ -151,7 +175,7 @@ static void vr_report_timing(void) {
     vr_timing.window_start = vr_timing.submit_end;
 }
 static int vr_state; /* 0 idle, 1 creating, 2 attached, 3 failed */
-static void *vr_table[2 + VR_SLOTS_BEFORE_0748 + VR_SLOT_SHIFT_MAX]; /* offset-to-top, typeinfo, methods */
+static void *vr_table[2 + VR_SLOTS_MAX]; /* offset-to-top, typeinfo, methods */
 static unsigned long vr_frames, vr_begins, vr_ends, vr_eye_requests;
 static void *vr_graphics_device;
 static int vr_mirror_ready;
@@ -182,22 +206,10 @@ static unsigned int vr_u32(const void *pointer) {
     return value;
 }
 
-static const unsigned char *vr_relative(const unsigned char *displacement) {
-    int value;
-    __builtin_memcpy(&value, displacement, sizeof value);
-    return displacement + 4 + value;
-}
-
 static int vr_bytes(const unsigned char *pointer, const unsigned char *expected, unsigned long size) {
     for (unsigned long index = 0; index < size; ++index)
         if (pointer[index] != expected[index]) return 0;
     return 1;
-}
-
-static int vr_inside(const VrSection *section, const void *pointer, unsigned long length) {
-    const unsigned char *address = pointer;
-    return address >= section->begin && length <= section->size &&
-           (unsigned long)(address - section->begin) <= section->size - length;
 }
 
 static int vr_section_name(const unsigned char *field, const char *name) {
@@ -220,198 +232,93 @@ static int vr_image(VrImage *image) {
     if (!header || vr_u32(header) != 0xfeedfacf || vr_u32(header + 4) != 0x01000007) return 0;
     unsigned int count = vr_u32(header + 16), commands = vr_u32(header + 20);
     if (count > 512 || commands > 1048576) return 0;
-    unsigned long slide = (unsigned long)_dyld_get_image_vmaddr_slide(0);
+    image->header = header;
+    int has_uuid = 0;
     unsigned int position = 32;
     for (unsigned int index = 0; index < count; ++index) {
         if (position - 32 + 8 > commands) return 0;
         const unsigned char *command = header + position;
         unsigned int type = vr_u32(command), size = vr_u32(command + 4);
         if (size < 8 || size > commands - (position - 32)) return 0;
-        if (type == 0x19 && size >= 72) { /* LC_SEGMENT_64 */
-            unsigned int sections = vr_u32(command + 64);
-            if (sections > (size - 72) / 80) return 0;
-            int data = vr_section_name(command + 8, "__DATA");
-            if (data) image->data_protection = vr_u32(command + 60);
-            for (unsigned int item = 0; item < sections; ++item) {
-                const unsigned char *section = command + 72 + item * 80;
-                unsigned long address, length;
-                __builtin_memcpy(&address, section + 32, 8);
-                __builtin_memcpy(&length, section + 40, 8);
-                VrSection found = {(const unsigned char *)(address + slide), length};
-                if (vr_section_name(section + 16, "__TEXT")) {
-                    if (vr_section_name(section, "__text")) image->text = found;
-                    else if (vr_section_name(section, "__const")) image->text_const = found;
-                    else if (vr_section_name(section, "__cstring")) image->cstring = found;
-                } else if (data && vr_section_name(section, "__const")) {
-                    image->data_const = found;
-                }
-            }
+        if (type == 0x19 && size >= 72 && vr_section_name(command + 8, "__DATA")) /* LC_SEGMENT_64 */
+            image->data_protection = vr_u32(command + 60);
+        if (type == 0x1b && size >= 24) { /* LC_UUID */
+            __builtin_memcpy(image->uuid, command + 8, sizeof image->uuid);
+            has_uuid = 1;
         }
         position += size;
     }
-    return image->text.size && image->text_const.size && image->cstring.size && image->data_const.size;
+    return has_uuid;
 }
 
-static const unsigned char *vr_find_string_from(const VrSection *section, const unsigned char *cursor,
-                                                const char *text) {
-    unsigned long length = strlen(text) + 1;
-    const unsigned char *end = section->begin + section->size;
-    while (cursor < end) {
-        const unsigned char *found = memmem(cursor, (unsigned long)(end - cursor), text, length);
-        if (!found) return 0;
-        unsigned char previous = found > section->begin ? found[-1] : 0;
-        /* A whole name, not the tail of a longer mangled name. */
-        if (!((previous >= '0' && previous <= '9') || (previous >= 'A' && previous <= 'Z') ||
-              (previous >= 'a' && previous <= 'z') || previous == '_'))
-            return found;
-        cursor = found + 1;
+static int vr_named(const char *name, unsigned long length, const char *expected) {
+    return strlen(expected) == length && vr_bytes((const unsigned char *)name, (const unsigned char *)expected, length);
+}
+
+static int vr_hex_digit(char digit) {
+    if (digit >= '0' && digit <= '9') return digit - '0';
+    if (digit >= 'a' && digit <= 'f') return digit - 'a' + 10;
+    return -1;
+}
+
+static int vr_read_hex(const char *text, unsigned long length, unsigned long *value) {
+    if (!length || length > 2 * sizeof *value) return 0;
+    *value = 0;
+    for (unsigned long index = 0; index < length; ++index) {
+        int digit = vr_hex_digit(text[index]);
+        if (digit < 0) return 0;
+        *value = *value << 4 | (unsigned long)digit;
     }
-    return 0;
+    return 1;
 }
 
-static const unsigned char *vr_find_string(const VrSection *section, const char *text) {
-    return vr_find_string_from(section, section->begin, text);
-}
-
-/* Itanium RTTI: typeinfo = {class vtable, name, ...} and a primary vtable is
- * {0, typeinfo, methods...}. Returns the address objects store as vptr. */
-static void **vr_rtti_vtable_for(const VrImage *image, const unsigned char *name) {
-    const uintptr_t *words = (const uintptr_t *)image->data_const.begin;
-    unsigned long count = image->data_const.size / sizeof(uintptr_t);
-    for (unsigned long index = 1; index < count; ++index) {
-        if (words[index] != (uintptr_t)name) continue;
-        uintptr_t typeinfo = (uintptr_t)&words[index - 1];
-        for (unsigned long slot = 1; slot + 1 < count; ++slot)
-            if (words[slot] == typeinfo && words[slot - 1] == 0)
-                return (void **)&words[slot + 1];
+static int vr_read_uuid(const char *text, unsigned long length, unsigned char uuid[16]) {
+    if (length != 32) return 0;
+    for (int index = 0; index < 16; ++index) {
+        int high = vr_hex_digit(text[2 * index]), low = vr_hex_digit(text[2 * index + 1]);
+        if (high < 0 || low < 0) return 0;
+        uuid[index] = (unsigned char)(high << 4 | low);
     }
-    return 0;
+    return 1;
 }
 
-static void **vr_rtti_vtable(const VrImage *image, const char *mangled) {
-    const VrSection *sections[] = {&image->text_const, &image->cstring};
-    for (int index = 0; index < 2; ++index) {
-        const VrSection *section = sections[index];
-        const unsigned char *name = vr_find_string_from(section, section->begin, mangled);
-        while (name) {
-            void **vtable = vr_rtti_vtable_for(image, name);
-            if (vtable) return vtable;
-            name = vr_find_string_from(section, name + 1, mangled);
+static int vr_read_layout(const char *text, VrLayout *layout) {
+    unsigned long found = 0;
+    int has_uuid = 0;
+    while (*text) {
+        const char *name = text;
+        while (*text && *text != '=' && *text != ',') ++text;
+        unsigned long name_length = (unsigned long)(text - name);
+        if (*text != '=') return 0;
+        const char *value = ++text;
+        while (*text && *text != ',') ++text;
+        unsigned long value_length = (unsigned long)(text - value);
+        if (*text == ',') ++text;
+        if (vr_named(name, name_length, "uuid")) {
+            if (!vr_read_uuid(value, value_length, layout->uuid)) return 0;
+            has_uuid = 1;
+        }
+        for (unsigned long index = 0; index < VR_LAYOUT_FIELDS; ++index) {
+            if (!vr_named(name, name_length, vr_layout_fields[index].name)) continue;
+            unsigned long *field = (unsigned long *)((unsigned char *)layout + vr_layout_fields[index].offset);
+            if (!vr_read_hex(value, value_length, field)) return 0;
+            found |= 1ul << index;
         }
     }
-    return 0;
+    for (unsigned long index = 0; index < VR_LAYOUT_FIELDS; ++index)
+        if (vr_layout_fields[index].required && !(found & (1ul << index))) return 0;
+    return has_uuid;
 }
 
-/* DeviceGL::getVR and setVR as described above; read the member offsets
- * from the instructions instead of assuming them. */
-static int vr_check_gl_device(const VrImage *image) {
-    static const unsigned char get_head[] = {0x55, 0x48, 0x89, 0xe5, 0x48, 0x8b, 0x8f};
-    static const unsigned char get_mid[] = {0x31, 0xc0, 0x48, 0x85, 0xc9, 0x74, 0x0b, 0x80, 0xbf};
-    static const unsigned char get_tail[] = {0x00, 0x48, 0x0f, 0x45, 0xc1, 0x5d, 0xc3};
-    static const unsigned char set_head[] = {0x55, 0x48, 0x89, 0xe5, 0x40, 0x88, 0xb7};
-    static const unsigned char set_tail[] = {0x5d, 0xc3};
-    const unsigned char *get = 0;
-    for (int slot = GL_SLOT_VR_FIRST; slot < GL_SLOT_VR_LAST && !get; ++slot) {
-        const unsigned char *candidate = vr_gl_vtable[slot], *set = vr_gl_vtable[slot + 1];
-        if (!vr_inside(&image->text, candidate, 31) || !vr_inside(&image->text, set, 13) ||
-            !vr_bytes(candidate, get_head, sizeof get_head) || !vr_bytes(candidate + 11, get_mid, sizeof get_mid) ||
-            !vr_bytes(candidate + 24, get_tail, sizeof get_tail) ||
-            !vr_bytes(set, set_head, sizeof set_head) || !vr_bytes(set + 11, set_tail, sizeof set_tail) ||
-            vr_u32(set + 7) != vr_u32(candidate + 20))
-            continue;
-        get = candidate;
-        vr_gl_get_vr_slot = slot;
-    }
-    if (!get) return 0;
-    vr_device_offset = vr_u32(get + 7);
-    vr_enabled_offset = vr_u32(get + 20);
-    if (vr_device_offset > 0x10000 || vr_enabled_offset > 0x10000) return 0;
-    /* beginFrame must be the method that calls vr->beginFrame:
-     * mov rdi, [rbx + device]; ...; call [rax + 8 * VR_SLOT_BEGIN_FRAME]. */
-    const unsigned char *begin = vr_gl_vtable[GL_SLOT_BEGIN_FRAME];
-    unsigned char load[] = {0x48, 0x8b, 0xbb, 0, 0, 0, 0};
-    static const struct {
-        unsigned char begin_frame_call[6];
-        int begin_frame_scan_length, slot_shift;
-    } layouts_newest_last[] = {
-        {{0xff, 0x90, 0xd8, 0x00, 0x00, 0x00}, 0x60, 0},
-        {{0xff, 0x90, 0xf0, 0x00, 0x00, 0x00}, 0x100, VR_SLOT_SHIFT_MAX},
-    };
-    __builtin_memcpy(load + 3, &vr_device_offset, 4);
-    for (unsigned layout = 0; layout < sizeof layouts_newest_last / sizeof layouts_newest_last[0]; ++layout) {
-        const unsigned char *call = layouts_newest_last[layout].begin_frame_call;
-        int scan_length = layouts_newest_last[layout].begin_frame_scan_length;
-        if (!vr_inside(&image->text, begin, (unsigned long)scan_length + sizeof layouts_newest_last[layout].begin_frame_call))
-            continue;
-        int loads = 0;
-        for (int index = 0; index < scan_length; ++index) {
-            if (vr_bytes(begin + index, load, sizeof load)) loads = 1;
-            if (loads && vr_bytes(begin + index, call, sizeof layouts_newest_last[layout].begin_frame_call)) {
-                vr_slot_shift = layouts_newest_last[layout].slot_shift;
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
-/* DeviceGL::getMainFramebuffer is a plain member load, and FramebufferGL's
- * destructor releases the GL framebuffer name at FRAMEBUFFER_GL_NAME. */
-static int vr_check_mirror(const VrImage *image) {
-    static const unsigned char main_head[] = {0x55, 0x48, 0x89, 0xe5, 0x48, 0x8b, 0x87};
-    static const unsigned char main_tail[] = {0x5d, 0xc3};
-    static const unsigned char jump_head[] = {0x55, 0x48, 0x89, 0xe5, 0x5d, 0xe9};
-    static const unsigned char name_load[] = {0x8b, 0x83, FRAMEBUFFER_GL_NAME, 0x00, 0x00, 0x00};
-    const unsigned char *main = vr_gl_vtable[GL_SLOT_MAIN_FRAMEBUFFER];
-    if (!vr_bytes(main, main_head, sizeof main_head) || !vr_bytes(main + 11, main_tail, sizeof main_tail))
-        return 0;
-    void **framebuffer = vr_rtti_vtable(image, "N3RBX8Graphics13FramebufferGLE");
-    if (!framebuffer || !vr_inside(&image->text, framebuffer[0], 10)) return 0;
-    const unsigned char *destructor = framebuffer[0];
-    if (vr_bytes(destructor, jump_head, sizeof jump_head)) destructor = vr_relative(destructor + 6);
-    if (!vr_inside(&image->text, destructor, 0x60)) return 0;
-    for (int index = 0; index < 0x50; ++index)
-        if (vr_bytes(destructor + index, name_load, sizeof name_load)) return 1;
-    return 0;
-}
-
-/* DebugDeviceVR(this, width, height, device): its prologue and the store of
- * its own vtable. */
-static int vr_find_debug_constructor(const VrImage *image) {
-    static const unsigned char prologue[] = {
-        0x55, 0x48, 0x89, 0xe5, 0x41, 0x57, 0x41, 0x56, 0x41, 0x55, 0x41, 0x54, 0x53,
-        0x48, 0x83, 0xec, 0x18, 0x49, 0x89, 0xcf, 0x41, 0x89, 0xd4, 0x41, 0x89, 0xf5,
-        0x48, 0x89, 0xfb, 0x48, 0x8d, 0x05};
-    const unsigned char *cursor = image->text.begin, *end = image->text.begin + image->text.size;
-    while (cursor < end) {
-        const unsigned char *found = memmem(cursor, (unsigned long)(end - cursor), prologue, sizeof prologue);
-        if (!found || !vr_inside(&image->text, found, sizeof prologue + 7)) return 0;
-        if ((const void *)vr_relative(found + sizeof prologue) == (const void *)vr_debug_vtable &&
-            found[sizeof prologue + 4] == 0x48 && found[sizeof prologue + 5] == 0x89 &&
-            found[sizeof prologue + 6] == 0x07) { /* mov [rdi], rax */
-            vr_debug_construct = (void (*)(void *, int, int, void *))found;
-            return 1;
-        }
-        cursor = found + 1;
-    }
-    return 0;
-}
-
-/* The flag registration stub: lea rdi, name; lea rsi, flag; mov edx, 1. */
-static volatile unsigned char *vr_find_flag(const VrImage *image, const char *flag) {
-    const unsigned char *name = vr_find_string(&image->cstring, flag);
-    static const unsigned char stub[] = {0x55, 0x48, 0x89, 0xe5, 0x48, 0x8d, 0x3d};
-    if (!name) return 0;
-    const unsigned char *cursor = image->text.begin, *end = image->text.begin + image->text.size;
-    while (cursor < end) {
-        const unsigned char *found = memmem(cursor, (unsigned long)(end - cursor), stub, sizeof stub);
-        if (!found || !vr_inside(&image->text, found, 23)) return 0;
-        if (vr_relative(found + 7) == name && found[11] == 0x48 && found[12] == 0x8d && found[13] == 0x35 &&
-            found[18] == 0xba)
-            return (volatile unsigned char *)vr_relative(found + 14);
-        cursor = found + 1;
-    }
-    return 0;
+static int vr_layout_fits(const VrLayout *layout) {
+    const unsigned long slots[] = {VR_SLOT_EYE_FRAMEBUFFER,     layout->create_resources_slot,
+                                   layout->begin_frame_slot,    layout->end_frame_slot,
+                                   layout->present_window_slot, layout->display_rate_slot,
+                                   layout->set_display_rate_slot};
+    if (layout->debug_methods >= VR_SLOTS_MAX) return 0;
+    for (unsigned long index = 0; index < sizeof slots / sizeof slots[0]; ++index)
+        if (slots[index] >= layout->debug_methods) return 0;
+    return 1;
 }
 
 /* Counting copies of the engine-facing methods; they forward first, so
@@ -535,7 +442,7 @@ static int vr_prepare_host(void) {
 }
 
 static void vr_write_state(void *self, const VrXrViews *views) {
-    unsigned char *state = (unsigned char *)self + vr_state_offset;
+    unsigned char *state = (unsigned char *)self + vr_layout.state_offset;
     if (views->head_valid) {
         state[STATE_HEAD] = 1;
         __builtin_memcpy(state + STATE_HEAD + 4, views->head.position, 12);
@@ -584,7 +491,7 @@ static void vr_open_frame(void *self) {
     /* RenderView's VR update hands HapticService's motors to the controllers
      * only while the session is focused. */
     unsigned int session = (unsigned int)vr_xr_session_state();
-    __builtin_memcpy((unsigned char *)self + vr_state_offset + STATE_SESSION, &session, 4);
+    __builtin_memcpy((unsigned char *)self + vr_layout.state_offset + STATE_SESSION, &session, 4);
     if (opened) {
         vr_frame_open = 1;
         vr_timing.open_end = vr_timing.draw_start = vr_now();
@@ -699,7 +606,7 @@ static void vr_attach(void *device, int width, int height) {
         return;
     }
     vr_debug_construct(object, width, height, device);
-    for (int index = 0; index < 2 + VR_SLOTS; ++index) vr_table[index] = vr_debug_vtable[index - 2];
+    for (unsigned long index = 0; index < 2 + vr_layout.debug_methods; ++index) vr_table[index] = vr_debug_vtable[index - 2];
     vr_table[2 + VR_SLOT_DELETE] = (void *)vr_delete;
     vr_table[2 + VR_SLOT_EYE_FRAMEBUFFER] = (void *)vr_eye_framebuffer;
     vr_table[2 + VR_SLOT_BEGIN_FRAME] = (void *)vr_begin_frame;
@@ -728,9 +635,9 @@ static void vr_attach(void *device, int width, int height) {
         vr_mirror_ready = 0;
         vr_log("[Quadra VR] Window mirror unavailable: OpenGL blit functions missing\n");
     }
-    *(void **)((unsigned char *)device + vr_device_offset) = object;
-    *((unsigned char *)device + vr_enabled_offset) = 1;
-    void *reported = ((void *(*)(void *))vr_gl_vtable[vr_gl_get_vr_slot])(device);
+    *(void **)((unsigned char *)device + vr_layout.device_offset) = object;
+    *((unsigned char *)device + vr_layout.enabled_offset) = 1;
+    void *reported = ((void *(*)(void *))vr_gl_vtable[vr_layout.gl_get_vr_slot])(device);
     vr_logf2("[Quadra VR] Attached the client's DebugDeviceVR (%lux%lu per eye)\n",
              (unsigned long)width, (unsigned long)height);
     vr_log(reported == object ? "[Quadra VR] Graphics device reports the VR device\n"
@@ -824,49 +731,40 @@ __attribute__((constructor)) static void vr_install(void) {
     vr_xr_set_render_scale(percent / 100.0f);
     const char *follow = getenv("QUADRA_VR_FOLLOW_RATE");
     vr_xr_follow_requested_rate(follow && follow[0] == '1');
-    vr_gl_vtable = vr_rtti_vtable(&image, "N3RBX8Graphics8DeviceGLE");
-    vr_debug_vtable = vr_rtti_vtable(&image, "N3RBX8Graphics13DebugDeviceVRE");
-    if (!vr_gl_vtable || !vr_debug_vtable) {
-        vr_log("[Quadra VR] Unavailable: graphics or VR device class not found in this client\n");
+    const char *layout = getenv("QUADRA_VR_LAYOUT");
+    if (!layout || !vr_read_layout(layout, &vr_layout)) {
+        vr_log("[Quadra VR] Unavailable: Quadra didn't pass a usable VR layout (QUADRA_VR_LAYOUT)\n");
         return;
     }
-    for (int index = 0; index < VR_SLOTS_BEFORE_0748; ++index)
-        if (!vr_inside(&image.text, vr_debug_vtable[index], 1)) {
-            vr_log("[Quadra VR] Unavailable: unexpected VR device method table\n");
-            return;
-        }
-    /* getState: add rsi, state; mov edx, STATE_SIZE; call memcpy. */
-    static const unsigned char get_state[] = {0x48, 0x83, 0xc6};
-    static const unsigned char get_state_size[] = {0xba, STATE_SIZE & 0xff, STATE_SIZE >> 8, 0, 0};
-    const unsigned char *state_copy = vr_debug_vtable[VR_SLOT_GET_STATE];
-    if (vr_bytes(state_copy + 9, get_state, sizeof get_state) &&
-        vr_bytes(state_copy + 13, get_state_size, sizeof get_state_size))
-        vr_state_offset = state_copy[12];
-    if (!vr_state_offset || !vr_check_gl_device(&image) || !vr_find_debug_constructor(&image)) {
-        vr_log("[Quadra VR] Unavailable: unsupported client graphics device or VR emulator\n");
+    if (!vr_bytes(vr_layout.uuid, image.uuid, sizeof image.uuid)) {
+        vr_log("[Quadra VR] Unavailable: the VR layout is for a different Roblox build\n");
         return;
     }
-    for (int index = VR_SLOTS_BEFORE_0748; index < VR_SLOTS; ++index)
-        if (!vr_inside(&image.text, vr_debug_vtable[index], 1)) {
-            vr_log("[Quadra VR] Unavailable: unexpected VR device method table\n");
-            return;
-        }
-    vr_logf2("[Quadra VR] VR device layout: %lu methods, beginFrame in slot %lu\n", (unsigned long)VR_SLOTS,
-             (unsigned long)VR_SLOT_BEGIN_FRAME);
-    vr_mirror_ready = vr_check_mirror(&image);
+    if (!vr_layout_fits(&vr_layout)) {
+        vr_log("[Quadra VR] Unavailable: unexpected VR device method table\n");
+        return;
+    }
+    vr_gl_vtable = (void **)(image.header + vr_layout.gl_vtable);
+    vr_debug_vtable = (void **)(image.header + vr_layout.debug_vtable);
+    vr_debug_construct = (void (*)(void *, int, int, void *))(image.header + vr_layout.debug_constructor);
+    vr_logf2("[Quadra VR] VR device layout: %lu methods, beginFrame in slot %lu\n", vr_layout.debug_methods,
+             VR_SLOT_BEGIN_FRAME);
+    vr_mirror_ready = vr_layout.mirror != 0;
     if (!vr_mirror_ready) vr_log("[Quadra VR] Window mirror unavailable: unexpected framebuffer layout\n");
     if (debug) {
-        vr_emulator_flag = vr_find_flag(&image, "DebugEnableVREmulator");
-        if (!vr_emulator_flag) vr_log("[Quadra VR] Emulator mirror flag not found; continuing without it\n");
+        if (vr_layout.emulator_flag)
+            vr_emulator_flag = (volatile unsigned char *)(image.header + vr_layout.emulator_flag);
+        else
+            vr_log("[Quadra VR] Emulator mirror flag not found; continuing without it\n");
     }
     vr_gl_begin_frame = (void *(*)(void *))vr_gl_vtable[GL_SLOT_BEGIN_FRAME];
-    vr_gl_set_vr = (void (*)(void *, int))vr_gl_vtable[vr_gl_get_vr_slot + 1];
+    vr_gl_set_vr = (void (*)(void *, int))vr_gl_vtable[vr_layout.gl_set_vr_slot];
     if (!vr_patch_slot(&image, &vr_gl_vtable[GL_SLOT_BEGIN_FRAME], (void *)vr_gl_begin_frame_hook) ||
-        !vr_patch_slot(&image, &vr_gl_vtable[vr_gl_get_vr_slot + 1], (void *)vr_gl_set_vr_hook)) {
+        !vr_patch_slot(&image, &vr_gl_vtable[vr_layout.gl_set_vr_slot], (void *)vr_gl_set_vr_hook)) {
         vr_log("[Quadra VR] Unavailable: graphics vtable is not writable\n");
         return;
     }
     vr_log(vr_openxr ? "[Quadra VR] OpenXR mode: waiting for the first graphics frame\n"
                      : "[Quadra VR] Emulated head mode\n");
-    vr_logf2("[Quadra VR] Graphics device VR slot +0x%lx, enabled flag +0x%lx\n", vr_device_offset, vr_enabled_offset);
+    vr_logf2("[Quadra VR] Graphics device VR slot +0x%lx, enabled flag +0x%lx\n", vr_layout.device_offset, vr_layout.enabled_offset);
 }
