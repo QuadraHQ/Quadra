@@ -26,17 +26,18 @@ fn first_cores(count: usize) -> Option<CpuSet> {
         return None;
     }
 
-    let mut cpu_set = sched_getaffinity(Pid::from_raw(0)).unwrap();
+    let allowed = sched_getaffinity(Pid::from_raw(0)).ok()?;
+    let mut limited = CpuSet::new();
 
     let mut taken = 0;
     for cpu in 0..nix::libc::CPU_SETSIZE as usize {
         if taken == count {
             break;
         }
-        if cpu_set.is_set(cpu).unwrap() {
-            _ = cpu_set.set(cpu);
+        if allowed.is_set(cpu).ok()? {
+            limited.set(cpu).ok()?;
             taken += 1;
         }
     }
-    (taken == count).then_some(cpu_set)
+    (taken == count).then_some(limited)
 }
