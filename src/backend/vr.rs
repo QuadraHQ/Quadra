@@ -1,5 +1,8 @@
-use super::paths;
-use crate::state::{AppState, FastFlagValue, FastFlags};
+mod layout;
+mod mach_o;
+
+use super::{paths, roblox};
+use crate::state::{AppState, Client, FastFlagValue, FastFlags};
 use crate::utils::is_running_in_flatpak;
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -70,6 +73,7 @@ impl VrSettings {
 
 pub struct VrSession {
     library: PathBuf,
+    layout: layout::VrLayout,
     runtime: OpenXrRuntime,
     runtime_manifest: PathBuf,
     settings: VrSettings,
@@ -110,6 +114,7 @@ impl VrSession {
             format!("QUADRA_VR={mode}"),
             format!("QUADRA_VR_SCALE={}", self.settings.render_scale),
             format!("QUADRA_XR_RUNTIME_JSON={}", self.runtime_manifest.display()),
+            format!("QUADRA_VR_LAYOUT={}", self.layout.environment_value()),
         ]
         .join("\n");
 
@@ -164,6 +169,8 @@ pub fn with_opengl_renderer(flags: FastFlags) -> FastFlags {
 
 pub fn prepare(settings: VrSettings, rosemary: &Path) -> Result<VrSession, String> {
     let runtime = check_requirements(rosemary)?;
+    let layout = layout::of(&roblox::executable_path(Client::Player))
+        .map_err(|reason| format!("VR doesn't support this Roblox version yet: {reason}."))?;
     let mesa_egl_vendor =
         if settings.zink {
             Some(mesa_egl_vendor().ok_or(
@@ -179,11 +186,16 @@ pub fn prepare(settings: VrSettings, rosemary: &Path) -> Result<VrSession, Strin
 
     Ok(VrSession {
         library,
+        layout,
         runtime,
         runtime_manifest,
         settings,
         mesa_egl_vendor,
     })
+}
+
+pub fn layout_environment_value(executable: &Path) -> Result<String, String> {
+    layout::of(executable).map(|layout| layout.environment_value())
 }
 
 pub fn status(rosemary: Option<&Path>) -> String {
