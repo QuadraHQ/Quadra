@@ -2962,6 +2962,7 @@ dependencies = [
  "async-channel",
  "async-io",
  "async-task",
+ "bytemuck",
  "dirs",
  "discord-rich-presence",
  "flate2",

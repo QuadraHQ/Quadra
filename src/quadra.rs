@@ -628,7 +628,7 @@ impl Quadra {
 
         let backdrop: Option<Element<'_, Message>> = match state.theme() {
             Theme::Grid => Some(self.grid_backdrop.view()),
-            Theme::Monochrome => self.line_field.as_ref().and_then(LineField::view),
+            Theme::Monochrome => self.line_field.as_ref().map(LineField::view),
             Theme::Adwaita => None,
         };
 
@@ -670,7 +670,7 @@ impl Quadra {
             && self
                 .line_field
                 .as_ref()
-                .is_some_and(|line_field| !line_field.is_settled());
+                .is_some_and(|line_field| !line_field.is_drawn());
         if is_drawing_line_field {
             subscriptions.push(
                 Subscription::run_with(line_field_backdrop::TICK_INTERVAL, main_loop::ticks)

@@ -172,7 +172,10 @@ impl PresetChoice {
 
 impl std::fmt::Display for PresetChoice {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(self.preset().map_or(CUSTOM_PRESET_LABEL, |preset| preset.name))
+        formatter.write_str(
+            self.preset()
+                .map_or(CUSTOM_PRESET_LABEL, |preset| preset.name),
+        )
     }
 }
 
@@ -185,10 +188,9 @@ pub fn choose_preset(state: &AppState, choice: PresetChoice) -> ChosenPreset {
     if let Some(preset) = choice.preset() {
         let flags = state.fast_flags();
         if !is_applied(preset, &flags) {
-            let applied = preset
-                .flags
-                .iter()
-                .fold(flags, |flags, (name, value)| flags.with(name, Some(value.clone())));
+            let applied = preset.flags.iter().fold(flags, |flags, (name, value)| {
+                flags.with(name, Some(value.clone()))
+            });
             state.set_fast_flags(applied);
         }
     }

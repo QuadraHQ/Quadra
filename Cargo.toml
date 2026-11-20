@@ -8,6 +8,7 @@ anyhow = "1.0.104"
 async-channel = "2.5.0"
 async-io = "2.6.0"
 async-task = "4.7.1"
+bytemuck = "1"
 dirs = "6"
 discord-rich-presence = "1.1.0"
 iced = { version = "0.14.0", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "thread-pool", "linux-theme-detection", "x11", "wayland", "image-without-codecs", "svg", "canvas", "advanced"] }

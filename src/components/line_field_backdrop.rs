@@ -1,9 +1,12 @@
 use crate::quadra::Message;
 use iced::mouse::Cursor;
-use iced::widget::canvas::{self, Cache, Geometry};
-use iced::widget::image;
-use iced::{Element, Length, Point, Rectangle, Renderer, Size, Theme};
+use iced::wgpu;
+use iced::widget::shader::{self, Viewport};
+use iced::{Element, Length, Rectangle};
 use std::f64::consts::TAU;
+use std::fmt;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const WIDTH: usize = 1280;
@@ -15,10 +18,13 @@ const STEP_LENGTH: f64 = 1.15;
 pub const TICK_INTERVAL: Duration = Duration::from_millis(40);
 const TICKS_UNTIL_DRAWN: u32 = 190;
 const STEPS_PER_TICK: u32 = 3;
-const BRIGHTNESS_PER_VISIT: u8 = 15;
-const BRIGHTEST_LINE: u8 = 112;
+const BRIGHTNESS_PER_VISIT: f32 = 15.0;
+const BRIGHTEST_LINE: f32 = 112.0;
 const FLOW_CELL_SIZE: f64 = 150.0;
 const FLOW_TURNS: f64 = 2.0;
+const FIRST_VISIT_CAPACITY: u64 = 64 * 1024;
+
+static NEXT_FIELD: AtomicU64 = AtomicU64::new(1);
 
 struct Random(u64);
 
@@ -27,7 +33,7 @@ impl Random {
         let nanoseconds = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |elapsed| elapsed.as_nanos() as u64);
-        Self(nanoseconds ^ u64::from(std::process::id()) << 32)
+        Self(nanoseconds ^ (u64::from(std::process::id()) << 32))
     }
 
     fn fraction(&mut self) -> f64 {
@@ -101,79 +107,62 @@ fn lerp(from: f64, to: f64, t: f64) -> f64 {
 }
 
 pub struct LineField {
-    pixels: Vec<u8>,
+    id: u64,
     flow: FlowField,
     wanderers: Vec<Wanderer>,
     random: Random,
     ticks: u32,
-    shown: Option<image::Handle>,
-    uploading: Option<image::Handle>,
-    drawing: Cache,
+    visits: Arc<Vec<u32>>,
 }
 
 impl Default for LineField {
     fn default() -> Self {
         let mut random = Random::seeded_by_clock();
         Self {
-            pixels: vec![0; WIDTH * HEIGHT],
+            id: NEXT_FIELD.fetch_add(1, Ordering::Relaxed),
             flow: FlowField::random(&mut random),
             wanderers: (0..WANDERERS)
                 .map(|_| Wanderer::spawn(&mut random))
                 .collect(),
             random,
             ticks: 0,
-            shown: None,
-            uploading: None,
-            drawing: Cache::default(),
+            visits: Arc::default(),
         }
     }
 }
 
 impl LineField {
-    fn is_drawn(&self) -> bool {
+    pub fn is_drawn(&self) -> bool {
         self.ticks >= TICKS_UNTIL_DRAWN
     }
 
-    pub fn is_settled(&self) -> bool {
-        self.is_drawn() && self.uploading.is_none()
-    }
-
     pub fn tick(&mut self) {
-        if self.is_settled() {
+        if self.is_drawn() {
             return;
         }
-        if let Some(uploaded) = self.uploading.take() {
-            self.shown = Some(uploaded);
+        self.advance();
+        if self.is_drawn() {
+            self.wanderers = Vec::new();
+            self.flow.lattice = Vec::new();
         }
-        if !self.is_drawn() {
-            self.advance();
-            self.uploading = Some(self.image());
-            if self.is_drawn() {
-                self.pixels = Vec::new();
-                self.wanderers = Vec::new();
-            }
-        }
-        self.drawing.clear();
     }
 
-    pub fn view(&self) -> Option<Element<'_, Message>> {
-        self.shown.as_ref().or(self.uploading.as_ref())?;
-        Some(
-            canvas::Canvas::new(self)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
-        )
+    pub fn view(&self) -> Element<'_, Message> {
+        shader::Shader::new(self)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     fn advance(&mut self) {
         let Self {
-            pixels,
             flow,
             wanderers,
             random,
+            visits,
             ..
         } = self;
+        let visits = Arc::make_mut(visits);
         for wanderer in wanderers {
             for _ in 0..STEPS_PER_TICK {
                 let angle = flow.angle_at(wanderer.x, wanderer.y);
@@ -184,55 +173,362 @@ impl LineField {
                     *wanderer = Wanderer::spawn(random);
                     continue;
                 }
-
-                let pixel = &mut pixels[wanderer.y as usize * WIDTH + wanderer.x as usize];
-                *pixel = pixel
-                    .saturating_add(BRIGHTNESS_PER_VISIT)
-                    .min(BRIGHTEST_LINE);
+                visits.push(wanderer.x as u32 | ((wanderer.y as u32) << 16));
             }
         }
         self.ticks += 1;
     }
-
-    fn image(&self) -> image::Handle {
-        let rgba = self
-            .pixels
-            .iter()
-            .flat_map(|&brightness| [brightness, brightness, brightness, u8::MAX])
-            .collect::<Vec<u8>>();
-        image::Handle::from_rgba(WIDTH as u32, HEIGHT as u32, rgba)
-    }
 }
 
-impl canvas::Program<Message> for LineField {
+impl shader::Program<Message> for LineField {
     type State = ();
+    type Primitive = LineFieldFrame;
 
-    fn draw(
-        &self,
-        _state: &(),
-        renderer: &Renderer,
-        _theme: &Theme,
-        bounds: Rectangle,
-        _cursor: Cursor,
-    ) -> Vec<Geometry> {
-        let drawing = self.drawing.draw(renderer, bounds.size(), |frame| {
-            let covering = covering(frame.size());
-            frame.with_clip(Rectangle::with_size(frame.size()), |frame| {
-                for image in [&self.uploading, &self.shown].into_iter().flatten() {
-                    frame.draw_image(covering, image);
-                }
-            });
-        });
-        vec![drawing]
+    fn draw(&self, _state: &(), _cursor: Cursor, _bounds: Rectangle) -> LineFieldFrame {
+        LineFieldFrame {
+            field: self.id,
+            visits: self.visits.clone(),
+        }
     }
 }
 
-fn covering(area: Size) -> Rectangle {
-    let scale = f32::max(area.width / WIDTH as f32, area.height / HEIGHT as f32);
-    let size = Size::new(WIDTH as f32 * scale, HEIGHT as f32 * scale);
-    let position = Point::new(
-        (area.width - size.width) / 2.0,
-        (area.height - size.height) / 2.0,
-    );
-    Rectangle::new(position, size)
+pub struct LineFieldFrame {
+    field: u64,
+    visits: Arc<Vec<u32>>,
+}
+
+impl fmt::Debug for LineFieldFrame {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("LineFieldFrame")
+            .field("field", &self.field)
+            .field("visits", &self.visits.len())
+            .finish()
+    }
+}
+
+impl shader::Primitive for LineFieldFrame {
+    type Pipeline = LineFieldPipeline;
+
+    fn prepare(
+        &self,
+        pipeline: &mut LineFieldPipeline,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        bounds: &Rectangle,
+        _viewport: &Viewport,
+    ) {
+        let is_new_field = pipeline.field != self.field;
+        if is_new_field {
+            pipeline.field = self.field;
+            pipeline.drawn_visits = 0;
+        }
+
+        let new_visits = &self.visits[pipeline.drawn_visits.min(self.visits.len())..];
+        if is_new_field || !new_visits.is_empty() {
+            pipeline.draw_visits(device, queue, new_visits, is_new_field);
+            pipeline.drawn_visits = self.visits.len();
+        }
+
+        pipeline.fit_to(queue, bounds.width / bounds.height);
+    }
+
+    fn draw(&self, pipeline: &LineFieldPipeline, render_pass: &mut wgpu::RenderPass<'_>) -> bool {
+        render_pass.set_pipeline(&pipeline.show);
+        render_pass.set_bind_group(0, &pipeline.showing, &[]);
+        render_pass.draw(0..3, 0..1);
+        true
+    }
+}
+
+pub struct LineFieldPipeline {
+    field: u64,
+    drawn_visits: usize,
+    fitted_aspect: f32,
+    accumulate: wgpu::RenderPipeline,
+    show: wgpu::RenderPipeline,
+    lines: wgpu::TextureView,
+    showing: wgpu::BindGroup,
+    fit: wgpu::Buffer,
+    visits: wgpu::Buffer,
+}
+
+impl LineFieldPipeline {
+    fn draw_visits(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        visits: &[u32],
+        clear_first: bool,
+    ) {
+        let needed = std::mem::size_of_val(visits) as u64;
+        if needed > self.visits.size() {
+            self.visits = visit_buffer(device, needed.next_power_of_two());
+        }
+        if needed > 0 {
+            queue.write_buffer(&self.visits, 0, bytemuck::cast_slice(visits));
+        }
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("line field visits"),
+        });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("line field visits"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.lines,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: if clear_first {
+                            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            if needed > 0 {
+                pass.set_pipeline(&self.accumulate);
+                pass.set_vertex_buffer(0, self.visits.slice(..needed));
+                pass.draw(0..visits.len() as u32, 0..1);
+            }
+        }
+        queue.submit([encoder.finish()]);
+    }
+
+    fn fit_to(&mut self, queue: &wgpu::Queue, aspect: f32) {
+        if !aspect.is_finite() || aspect == self.fitted_aspect {
+            return;
+        }
+        self.fitted_aspect = aspect;
+
+        let field_aspect = WIDTH as f32 / HEIGHT as f32;
+        let (scale_x, scale_y) = if aspect > field_aspect {
+            (1.0, field_aspect / aspect)
+        } else {
+            (aspect / field_aspect, 1.0)
+        };
+        let fit = [
+            scale_x,
+            scale_y,
+            (1.0 - scale_x) / 2.0,
+            (1.0 - scale_y) / 2.0,
+        ];
+        queue.write_buffer(&self.fit, 0, bytemuck::cast_slice(&fit));
+    }
+}
+
+impl shader::Pipeline for LineFieldPipeline {
+    fn new(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat) -> Self {
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("line field"),
+            source: wgpu::ShaderSource::Wgsl(shader_source().into()),
+        });
+
+        let lines = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("line field"),
+                size: wgpu::Extent3d {
+                    width: WIDTH as u32,
+                    height: HEIGHT as u32,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::R8Unorm,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let accumulate = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("line field visits"),
+            layout: None,
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("visit"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<u32>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Uint32],
+                }],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::PointList,
+                ..wgpu::PrimitiveState::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("brighten"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R8Unorm,
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::One,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
+                    write_mask: wgpu::ColorWrites::RED,
+                })],
+            }),
+            multiview: None,
+            cache: None,
+        });
+
+        let show = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("line field"),
+            layout: None,
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("cover"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[],
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: if format.is_srgb() {
+                    Some("show_on_srgb")
+                } else {
+                    Some("show")
+                },
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+            cache: None,
+        });
+
+        let fit = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("line field fit"),
+            size: std::mem::size_of::<[f32; 4]>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&fit, 0, bytemuck::cast_slice(&[1.0f32, 1.0, 0.0, 0.0]));
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("line field"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..wgpu::SamplerDescriptor::default()
+        });
+        let showing = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("line field"),
+            layout: &show.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&lines),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: fit.as_entire_binding(),
+                },
+            ],
+        });
+
+        Self {
+            field: 0,
+            drawn_visits: 0,
+            fitted_aspect: f32::NAN,
+            accumulate,
+            show,
+            lines,
+            showing,
+            fit,
+            visits: visit_buffer(device, FIRST_VISIT_CAPACITY),
+        }
+    }
+}
+
+fn visit_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("line field visits"),
+        size,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+fn shader_source() -> String {
+    let width = WIDTH as f32;
+    let height = HEIGHT as f32;
+    let step = BRIGHTNESS_PER_VISIT / BRIGHTEST_LINE;
+    let brightest = BRIGHTEST_LINE / 255.0;
+    format!(
+        "
+struct Fit {{ scale_and_offset: vec4<f32> }}
+
+@group(0) @binding(0) var lines: texture_2d<f32>;
+@group(0) @binding(1) var smoothly: sampler;
+@group(0) @binding(2) var<uniform> fit: Fit;
+
+@vertex
+fn visit(@location(0) packed: u32) -> @builtin(position) vec4<f32> {{
+    let x = f32(packed & 0xffffu) + 0.5;
+    let y = f32(packed >> 16u) + 0.5;
+    return vec4<f32>(x / {width:.1} * 2.0 - 1.0, 1.0 - y / {height:.1} * 2.0, 0.0, 1.0);
+}}
+
+@fragment
+fn brighten() -> @location(0) vec4<f32> {{
+    return vec4<f32>({step:.8}, 0.0, 0.0, 0.0);
+}}
+
+struct Covering {{
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}}
+
+@vertex
+fn cover(@builtin(vertex_index) corner: u32) -> Covering {{
+    let spot = vec2<f32>(f32((corner << 1u) & 2u), f32(corner & 2u));
+    var covering: Covering;
+    covering.position = vec4<f32>(spot.x * 2.0 - 1.0, 1.0 - spot.y * 2.0, 0.0, 1.0);
+    covering.uv = fit.scale_and_offset.zw + spot * fit.scale_and_offset.xy;
+    return covering;
+}}
+
+fn brightness(uv: vec2<f32>) -> f32 {{
+    return textureSample(lines, smoothly, uv).r * {brightest:.8};
+}}
+
+@fragment
+fn show(covering: Covering) -> @location(0) vec4<f32> {{
+    let level = brightness(covering.uv);
+    return vec4<f32>(level, level, level, 1.0);
+}}
+
+@fragment
+fn show_on_srgb(covering: Covering) -> @location(0) vec4<f32> {{
+    let level = brightness(covering.uv);
+    let linear = select(pow((level + 0.055) / 1.055, 2.4), level / 12.92, level <= 0.04045);
+    return vec4<f32>(linear, linear, linear, 1.0);
+}}
+"
+    )
 }

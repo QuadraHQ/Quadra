@@ -1,7 +1,7 @@
 use super::SettingsMessage;
 use super::bound_rows::{SpinRange, spin_row, switch, switch_row_when};
-use crate::components::preferences::preference_row;
 use crate::components::preferences::preference_group;
+use crate::components::preferences::preference_row;
 use crate::components::style::Look;
 use crate::quadra::Message;
 use crate::state::{AppState, VR_RENDER_SCALE_RANGE};
