@@ -17,33 +17,29 @@
   </description>
   <launchable type="desktop-id">org.quadrahq.Quadra.desktop</launchable>
   <screenshots>
-    <screenshot type="default">
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/roblox.png</image>
-      <caption>Roblox running through Quadra</caption>
-    </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play.png</image>
+      <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/home-menu.png</image>
       <caption>The launcher</caption>
     </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play-grid.png</image>
-      <caption>The launcher with the Grid theme</caption>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/roblox-home.png</image>
+      <caption>Roblox running through Quadra</caption>
+    </screenshot>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/roblox-nullscapes.png</image>
+      <caption>The "Nullscape" experience in Roblox</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-play-monochrome.png</image>
-      <caption>The launcher with the Monochrome theme</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-servers.png</image>
+      <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/servers-menu.png</image>
       <caption>Joining by region and rejoining past servers</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/frolleks/org.quadrahq.Quadra/e816b77312f16b83dd13af0a4ec6334622686732/screenshots/launcher-settings.png</image>
+      <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/settings-menu.png</image>
       <caption>Settings</caption>
     </screenshot>
   </screenshots>
   <url type="homepage">https://quadrahq.org</url>
-  <url type="bugtracker">https://github.com/QuadraHQ/quadra/issues</url>
+  <url type="bugtracker">https://github.com/QuadraHQ/Quadra/issues</url>
   <branding>
     <color type="primary" scheme_preference="light">#c4b5fd</color>
     <color type="primary" scheme_preference="dark">#3b2a7a</color>
