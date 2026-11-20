@@ -1,23 +1,28 @@
 mod account;
+mod advanced;
 mod bound_rows;
 mod butter_access;
+mod controller_access;
 mod custom_flags;
 mod discord_access;
-mod environment;
 mod environment_variables;
 mod fast_flag_allowlist;
 mod fast_flags;
+mod general;
 mod integration;
 mod launch_wrapper;
 mod mangohud;
 mod mods;
+mod network;
 mod privacy;
 mod rosemary_options;
 mod rosemary_runtime;
+mod runtime;
 mod session;
 mod support;
 mod updates;
 mod vr;
+mod vr_access;
 
 use crate::backend::{self, Handler, Shortcut};
 use crate::components::file_dialog;
@@ -43,29 +48,30 @@ pub const SCROLLER: &str = "settings-scroller";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Tab {
     #[default]
-    Environment,
-    FastFlags,
+    General,
     Mods,
     Vr,
     Integration,
+    Advanced,
 }
 
 impl Tab {
     fn title(self) -> &'static str {
         match self {
-            Self::Environment => "Environment",
-            Self::FastFlags => "FastFlags",
+            Self::General => "General",
             Self::Mods => "Mods",
             Self::Vr => "VR",
             Self::Integration => "Integration",
+            Self::Advanced => "Advanced",
         }
     }
 
     fn is_shown(self, state: &AppState) -> bool {
         match self {
-            Self::Environment => true,
-            Self::FastFlags | Self::Mods | Self::Vr => state.selected_client() == Client::Player,
+            Self::General => true,
+            Self::Mods | Self::Vr => state.selected_client() == Client::Player,
             Self::Integration => !is_running_in_flatpak(),
+            Self::Advanced => state.advanced_settings_visible(),
         }
     }
 }
@@ -86,6 +92,9 @@ pub enum SettingsMessage {
     ReenableMod(String),
     ToggleShortcut(Shortcut),
     ToggleHandler(Handler, bool),
+    VrToggled(bool),
+    ControllerAccessToggled(bool),
+    PresetChosen(fast_flags::PresetChoice),
 }
 
 pub struct Settings {
@@ -101,6 +110,8 @@ pub struct Settings {
     added_shortcuts: Vec<Shortcut>,
     enabled_handlers: Vec<Handler>,
     butter_access_command: Option<String>,
+    allows_controllers: bool,
+    chosen_preset: Option<fast_flags::ChosenPreset>,
 }
 
 impl Settings {
@@ -118,6 +129,8 @@ impl Settings {
             added_shortcuts: Vec::new(),
             enabled_handlers: Vec::new(),
             butter_access_command: backend::missing_butter_access(),
+            allows_controllers: backend::controller_access_is_granted(),
+            chosen_preset: None,
         }
     }
 
@@ -129,7 +142,7 @@ impl Settings {
         if self.tab.is_shown(state) {
             self.tab
         } else {
-            Tab::Environment
+            Tab::General
         }
     }
 
@@ -140,7 +153,7 @@ impl Settings {
                 match tab {
                     Tab::Mods => self.refresh_set_aside_mods(),
                     Tab::Integration => self.refresh_integration(),
-                    Tab::Environment | Tab::FastFlags | Tab::Vr => {}
+                    Tab::General | Tab::Vr | Tab::Advanced => {}
                 }
             }
             SettingsMessage::DiscordPresenceToggled(on) => {
@@ -210,6 +223,21 @@ impl Settings {
                 }
                 self.refresh_integration();
             }
+            SettingsMessage::VrToggled(on) => {
+                state.set_vr(on);
+                if let Some(dialog) = on.then(vr_access::dialog_if_needed).flatten() {
+                    return Task::done(Message::Alert(dialog));
+                }
+            }
+            SettingsMessage::ControllerAccessToggled(allow) => {
+                self.allows_controllers = allow;
+                if let Some(dialog) = controller_access::dialog_if_needed(allow) {
+                    return Task::done(Message::Alert(dialog));
+                }
+            }
+            SettingsMessage::PresetChosen(choice) => {
+                self.chosen_preset = Some(fast_flags::choose_preset(state, choice));
+            }
             SettingsMessage::ToggleHandler(handler, enabled) => {
                 if enabled != backend::handler_is_enabled(handler) {
                     backend::set_handler_enabled(state, handler, enabled);
@@ -238,11 +266,11 @@ impl Settings {
     pub fn view<'a>(&'a self, state: &AppState, look: Look) -> Element<'a, Message> {
         let shown_tab = self.shown_tab(state);
         let tabs = [
-            Tab::Environment,
-            Tab::FastFlags,
+            Tab::General,
             Tab::Mods,
             Tab::Vr,
             Tab::Integration,
+            Tab::Advanced,
         ]
         .into_iter()
         .filter(|tab| tab.is_shown(state))
@@ -262,11 +290,11 @@ impl Settings {
         .padding(iced::padding::top(12));
 
         let sections = match shown_tab {
-            Tab::Environment => environment::env_section(self, state, look),
-            Tab::FastFlags => fast_flags::fast_flags_section(self, state, look),
+            Tab::General => general::general_section(self, state, look),
             Tab::Mods => mods::mods_section(self, state, look),
             Tab::Vr => vr::vr_section(state, look),
             Tab::Integration => integration::integration_section(self, look),
+            Tab::Advanced => advanced::advanced_section(self, state, look),
         };
 
         column![

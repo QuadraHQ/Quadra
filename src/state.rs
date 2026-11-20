@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 41] = [
+const SAVED_PROPERTIES: [&str; 42] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -81,6 +81,7 @@ const SAVED_PROPERTIES: [&str; 41] = [
     "block-telemetry",
     "force-raknet",
     "theme",
+    "advanced-settings-visible",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -181,6 +182,7 @@ struct SavedSettings {
     block_telemetry: bool,
     force_raknet: bool,
     theme: Theme,
+    advanced_settings_visible: bool,
 }
 
 impl Default for SavedSettings {
@@ -229,6 +231,7 @@ impl Default for SavedSettings {
             block_telemetry: false,
             force_raknet: false,
             theme: Theme::default(),
+            advanced_settings_visible: false,
         }
     }
 }
@@ -314,6 +317,7 @@ properties! {
     signed_in set_signed_in: bool = "signed-in",
     block_telemetry set_block_telemetry: bool = "block-telemetry",
     force_raknet set_force_raknet: bool = "force-raknet",
+    advanced_settings_visible set_advanced_settings_visible: bool = "advanced-settings-visible",
     available_update set_available_update: String = "available-update",
     update_status set_update_status: String = "update-status",
     vr_status set_vr_status: String = "vr-status",
@@ -466,11 +470,15 @@ impl AppState {
         properties.cpu_core_limit.replace(settings.cpu_core_limit);
         properties.block_telemetry.replace(settings.block_telemetry);
         properties.force_raknet.replace(settings.force_raknet);
+        properties
+            .advanced_settings_visible
+            .replace(settings.advanced_settings_visible);
         properties.first_launch.replace(first_launch);
         properties.theme.replace(settings.theme);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
+        state.follow_properties(&["vr"], Self::use_opengl_while_in_vr);
 
         if state.first_launch() || save_repaired_settings {
             state.schedule_save();
@@ -635,6 +643,12 @@ impl AppState {
         }
     }
 
+    fn use_opengl_while_in_vr(&self) {
+        if self.vr() && self.renderer() != Renderer::OpenGl {
+            self.set_renderer(Renderer::OpenGl);
+        }
+    }
+
     fn update_can_play(&self) {
         let runner_will_be_installed_on_play = self.runner() == QUADRA_RUNNER;
         let runner_is_ready = self.rosemary_installed() || runner_will_be_installed_on_play;
@@ -709,6 +723,7 @@ impl AppState {
             block_telemetry: self.block_telemetry(),
             force_raknet: self.force_raknet(),
             theme: self.theme(),
+            advanced_settings_visible: self.advanced_settings_visible(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
@@ -733,6 +748,7 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let Ok(table) = toml::from_str::<toml::Table>(contents) else {
         return (SavedSettings::default(), Some(SettingsProblem::Unparsable));
     };
+    let table = hidden_title_bar_as_hidden_menu_bar(table);
     if let Ok(settings) = table.clone().try_into::<SavedSettings>() {
         return (settings, None);
     }
@@ -746,6 +762,16 @@ fn parse_settings(contents: &str) -> (SavedSettings, Option<SettingsProblem>) {
     let settings = readable.try_into().unwrap_or_default();
     let names = unreadable.keys().cloned().collect();
     (settings, Some(SettingsProblem::InvalidValues(names)))
+}
+
+fn hidden_title_bar_as_hidden_menu_bar(mut table: toml::Table) -> toml::Table {
+    let title_bar_is_hidden =
+        table.get("title_bar").and_then(toml::Value::as_str) == Some("hidden");
+    if title_bar_is_hidden {
+        table.insert("title_bar".to_owned(), "system".into());
+        table.insert("show_menu_bar".to_owned(), false.into());
+    }
+    table
 }
 
 struct LoadedSettings {
@@ -889,6 +915,14 @@ mod tests {
         assert!(matches!(problem, Some(SettingsProblem::Unparsable)));
         assert_eq!(settings.runner, QUADRA_RUNNER);
         assert!(!settings.mangohud);
+    }
+
+    #[test]
+    fn a_hidden_title_bar_becomes_a_system_title_bar_without_menus() {
+        let (settings, problem) = parse_settings("title_bar = \"hidden\"\n");
+        assert!(problem.is_none());
+        assert_eq!(settings.title_bar, TitleBar::System);
+        assert!(!settings.show_menu_bar);
     }
 
     #[test]

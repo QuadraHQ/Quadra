@@ -3,6 +3,7 @@ mod background;
 mod bloxstrap_rpc;
 mod butter_access;
 mod cache;
+mod controller_access;
 mod cpu_limit;
 mod desktop_entries;
 mod destination;
@@ -38,8 +39,12 @@ mod telemetry;
 mod transport_patch;
 mod updater;
 mod vr;
+mod vr_access;
 
 pub use butter_access::missing as missing_butter_access;
+pub use controller_access::{
+    command_to_change as controller_access_command, is_granted as controller_access_is_granted,
+};
 pub use desktop_entries::Shortcut;
 pub use discord_access::missing as missing_discord_access;
 pub use handlers::Handler;
@@ -47,6 +52,7 @@ pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
+pub use vr_access::missing as missing_vr_access;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::{documents_directory, is_executable_file, open_with_default_app};

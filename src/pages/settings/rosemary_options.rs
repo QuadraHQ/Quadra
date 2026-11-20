@@ -1,4 +1,5 @@
 use super::bound_rows::{choice_row, choice_row_when, switch_row, switch_row_when};
+use super::controller_access::controller_access_row;
 use super::mangohud::mangohud_row;
 use super::{Settings, SettingsMessage};
 use crate::components::preferences::{preference_group, preference_row};
@@ -21,10 +22,14 @@ pub fn graphics_group<'a>(
         .title("Graphics")
         .description("Rosemary options for how Roblox draws to the screen.")
         .push(
-            choice_row(look, "Renderer", renderer, |state, renderer| {
-                state.set_renderer(renderer)
-            })
-            .subtitle("The graphics API used for Rosemary. Use OpenGL if you have older hardware."),
+            choice_row_when(
+                look,
+                "Renderer",
+                renderer,
+                |state, renderer| state.set_renderer(renderer),
+                !state.vr(),
+            )
+            .subtitle(renderer_subtitle(state.vr())),
         )
         .push(
             choice_row_when(
@@ -51,7 +56,15 @@ pub fn graphics_group<'a>(
         .into()
 }
 
-pub fn input_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+fn renderer_subtitle(vr: bool) -> &'static str {
+    if vr {
+        "VR needs OpenGL. Turn off Play in VR to change this."
+    } else {
+        "The graphics API used for Rosemary. Use OpenGL if you have older hardware."
+    }
+}
+
+pub fn input_group<'a>(settings: &Settings, state: &AppState, look: Look) -> Element<'a, Message> {
     preference_group(look)
         .title("Input & windows")
         .description("Rosemary options for the keyboard, mouse and window.")
@@ -97,6 +110,7 @@ pub fn input_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
             )
             .subtitle("Treat Ctrl+left click as a left click instead of a right click."),
         )
+        .push_maybe(controller_access_row(settings.allows_controllers, look))
         .into()
 }
 

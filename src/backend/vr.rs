@@ -1,5 +1,6 @@
 use super::paths;
 use crate::state::{AppState, FastFlagValue, FastFlags};
+use crate::utils::is_running_in_flatpak;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -25,7 +26,10 @@ const ACTIVE_RUNTIME_MANIFEST: &str = "openxr/1/active_runtime.json";
 const SYSTEM_ACTIVE_RUNTIME_MANIFEST: &str = "/etc/openxr/1/active_runtime.json";
 const DEFAULT_XDG_CONFIG_DIRS: &str = "/etc/xdg";
 const OPENXR_LOADER: &str = "libopenxr_loader.so.1";
-const LIBRARY_DIRECTORIES: [&str; 4] = [
+const SANDBOX_RUNTIME_MANIFEST_NAME: &str = "openxr_runtime.json";
+const RUNTIME_MANIFEST_FORMAT_VERSION: &str = "1.0.0";
+const LIBRARY_DIRECTORIES: [&str; 5] = [
+    "/app/lib",
     "/usr/lib",
     "/usr/lib64",
     "/usr/lib/x86_64-linux-gnu",
@@ -67,6 +71,7 @@ impl VrSettings {
 pub struct VrSession {
     library: PathBuf,
     runtime: OpenXrRuntime,
+    runtime_manifest: PathBuf,
     settings: VrSettings,
     mesa_egl_vendor: Option<PathBuf>,
 }
@@ -74,6 +79,12 @@ pub struct VrSession {
 pub struct OpenXrRuntime {
     manifest: PathBuf,
     name: String,
+    library: RuntimeLibrary,
+}
+
+enum RuntimeLibrary {
+    WhereTheManifestSays,
+    ElsewhereInTheSandbox(PathBuf),
 }
 
 #[derive(Deserialize)]
@@ -98,7 +109,7 @@ impl VrSession {
         let guest_environment = [
             format!("QUADRA_VR={mode}"),
             format!("QUADRA_VR_SCALE={}", self.settings.render_scale),
-            format!("QUADRA_XR_RUNTIME_JSON={}", self.runtime.manifest.display()),
+            format!("QUADRA_XR_RUNTIME_JSON={}", self.runtime_manifest.display()),
         ]
         .join("\n");
 
@@ -163,10 +174,13 @@ pub fn prepare(settings: VrSettings, rosemary: &Path) -> Result<VrSession, Strin
         };
     let library =
         write_library().map_err(|error| format!("Couldn't save the VR library: {error}"))?;
+    let runtime_manifest = manifest_for_the_loader(&runtime)
+        .map_err(|error| format!("Couldn't save the OpenXR runtime manifest: {error}"))?;
 
     Ok(VrSession {
         library,
         runtime,
+        runtime_manifest,
         settings,
         mesa_egl_vendor,
     })
@@ -216,6 +230,23 @@ fn write_library() -> std::io::Result<PathBuf> {
         fs::set_permissions(&unfinished_path, fs::Permissions::from_mode(0o755))?;
         fs::rename(&unfinished_path, &path)?;
     }
+    Ok(path)
+}
+
+fn manifest_for_the_loader(runtime: &OpenXrRuntime) -> std::io::Result<PathBuf> {
+    let RuntimeLibrary::ElsewhereInTheSandbox(library) = &runtime.library else {
+        return Ok(runtime.manifest.clone());
+    };
+    let manifest = serde_json::json!({
+        "file_format_version": RUNTIME_MANIFEST_FORMAT_VERSION,
+        "runtime": {
+            "name": runtime.name,
+            "library_path": library.display().to_string(),
+        },
+    });
+    let path = paths::vr_directory().join(SANDBOX_RUNTIME_MANIFEST_NAME);
+    fs::create_dir_all(paths::vr_directory())?;
+    fs::write(&path, manifest.to_string())?;
     Ok(path)
 }
 
@@ -294,7 +325,6 @@ fn openxr_loader_is_installed() -> bool {
 fn active_runtime() -> Option<OpenXrRuntime> {
     runtime_manifest_candidates()
         .into_iter()
-        .filter(|candidate| candidate.is_file())
         .find_map(|candidate| usable_runtime(&candidate))
 }
 
@@ -320,31 +350,52 @@ fn runtime_manifest_candidates() -> Vec<PathBuf> {
 }
 
 fn usable_runtime(manifest: &Path) -> Option<OpenXrRuntime> {
-    let contents = fs::read_to_string(manifest).ok()?;
+    let manifest = paths::resolved_on_host_os(manifest)?;
+    let contents = fs::read_to_string(&manifest).ok()?;
     let description = serde_json::from_str::<RuntimeManifest>(&contents)
         .ok()?
         .runtime;
-    let library_path = Path::new(&description.library_path);
-    let manifest = manifest.canonicalize().ok()?;
-
-    let library_exists = if description.library_path.is_empty() {
-        false
-    } else if !description.library_path.contains('/') {
-        true
-    } else if library_path.is_absolute() {
-        library_path.is_file()
-    } else {
-        manifest.parent()?.join(library_path).is_file()
-    };
-    if !library_exists {
-        return None;
-    }
+    let library = runtime_library(&manifest, &description.library_path)?;
 
     let name = description
         .name
         .filter(|name| !name.is_empty())
         .or_else(|| Some(manifest.file_stem()?.to_string_lossy().into_owned()))?;
-    Some(OpenXrRuntime { manifest, name })
+    Some(OpenXrRuntime {
+        manifest,
+        name,
+        library,
+    })
+}
+
+fn runtime_library(manifest: &Path, written_library_path: &str) -> Option<RuntimeLibrary> {
+    let written_library = Path::new(written_library_path);
+    let is_only_a_file_name = !written_library_path.contains('/');
+
+    if written_library_path.is_empty() {
+        None
+    } else if written_library.is_absolute() {
+        let library = existing_library(written_library)?;
+        Some(if is_running_in_flatpak() {
+            RuntimeLibrary::ElsewhereInTheSandbox(library)
+        } else {
+            RuntimeLibrary::WhereTheManifestSays
+        })
+    } else if !is_only_a_file_name {
+        existing_library(&manifest.parent()?.join(written_library))
+            .map(|_| RuntimeLibrary::WhereTheManifestSays)
+    } else if is_running_in_flatpak() {
+        LIBRARY_DIRECTORIES
+            .iter()
+            .find_map(|directory| existing_library(&Path::new(directory).join(written_library)))
+            .map(RuntimeLibrary::ElsewhereInTheSandbox)
+    } else {
+        Some(RuntimeLibrary::WhereTheManifestSays)
+    }
+}
+
+fn existing_library(library: &Path) -> Option<PathBuf> {
+    paths::resolved_on_host_os(library).filter(|library| library.is_file())
 }
 
 fn mesa_egl_vendor() -> Option<PathBuf> {

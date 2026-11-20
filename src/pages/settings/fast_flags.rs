@@ -11,10 +11,248 @@ use crate::components::style::{self, Emphasis, Look};
 use crate::quadra::{Message, act};
 use crate::state::{AppState, Choice, FastFlagValue, FastFlags};
 use iced::Element;
-use iced::widget::text_input;
+use iced::widget::{pick_list, text_input};
 use std::collections::HashMap;
 
 const NUMBER_INPUT_WIDTH: f32 = 110.0;
+const CUSTOM_PRESET_LABEL: &str = "Custom";
+const CUSTOM_PRESET_DESCRIPTION: &str = "Your own mix of flags, set below.";
+
+struct PerformancePreset {
+    name: &'static str,
+    description: &'static str,
+    flags: &'static [(&'static str, FastFlagValue)],
+}
+
+const PERFORMANCE_PRESETS: &[PerformancePreset] = &[
+    PerformancePreset {
+        name: "Maximum Performance",
+        description: "All performance flags enabled. Lowest visual quality, highest FPS.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            (
+                "FFlagDebugDisableClusterCulling",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagDebugGraphicsDisableComputeShaders",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(999)),
+            ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(500)),
+            ("FFlagRenderFontResolution", FastFlagValue::Number(1)),
+            (
+                "FFlagDebugGraphicsPreferOpenGL",
+                FastFlagValue::Toggle(true),
+            ),
+            (
+                "FFlagDebugGraphicsPreferVulkan",
+                FastFlagValue::Toggle(true),
+            ),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            (
+                "FFlagLuaAppEnableLowMemoryMode",
+                FastFlagValue::Toggle(true),
+            ),
+            ("FFlagDisableShadows", FastFlagValue::Toggle(true)),
+            ("FFlagDisableBloom", FastFlagValue::Toggle(true)),
+            ("FFlagDisableDepthOfField", FastFlagValue::Toggle(true)),
+            ("FFlagDisableGlobalShadows", FastFlagValue::Toggle(true)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(1400)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+        ],
+    },
+    PerformancePreset {
+        name: "Balanced",
+        description: "Moderate performance gains with acceptable visuals.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+        ],
+    },
+    PerformancePreset {
+        name: "Low Latency / Anti-Stutter",
+        description: "Optimized for reducing lag spikes and input latency. Keeps visuals decent.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(true)),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(false),
+            ),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(144)),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(250)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(1)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(true)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(1400)),
+        ],
+    },
+    PerformancePreset {
+        name: "Reset to Defaults",
+        description: "Clears all performance flags, uses Roblox defaults.",
+        flags: &[
+            ("FFlagDebugDisablePostFx", FastFlagValue::Toggle(false)),
+            (
+                "FFlagDebugDisableClusterCulling",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagDebugGraphicsDisableComputeShaders",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagTaskSchedulerLimitFrequency",
+                FastFlagValue::Toggle(true),
+            ),
+            ("DFIntTaskSchedulerTargetFps", FastFlagValue::Number(60)),
+            ("FIntRenderMaxDrawCallsPerFrame", FastFlagValue::Number(0)),
+            ("FFlagRenderFontResolution", FastFlagValue::Number(0)),
+            (
+                "FFlagDebugGraphicsPreferOpenGL",
+                FastFlagValue::Toggle(false),
+            ),
+            (
+                "FFlagDebugGraphicsPreferVulkan",
+                FastFlagValue::Toggle(false),
+            ),
+            ("DFIntGCJobFrequencyMs", FastFlagValue::Number(0)),
+            ("DFIntPhysicsStepsPerFrame", FastFlagValue::Number(0)),
+            (
+                "FFlagLuaAppEnableLowMemoryMode",
+                FastFlagValue::Toggle(false),
+            ),
+            ("FFlagDisableShadows", FastFlagValue::Toggle(false)),
+            ("FFlagDisableBloom", FastFlagValue::Toggle(false)),
+            ("FFlagDisableDepthOfField", FastFlagValue::Toggle(false)),
+            ("FFlagDisableGlobalShadows", FastFlagValue::Toggle(false)),
+            ("DFIntConnectionMTUSize", FastFlagValue::Number(0)),
+            ("FFlagEnableReducedLatency", FastFlagValue::Toggle(false)),
+        ],
+    },
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresetChoice {
+    Custom,
+    Preset(usize),
+}
+
+impl PresetChoice {
+    const ALL: [Self; 5] = [
+        Self::Custom,
+        Self::Preset(0),
+        Self::Preset(1),
+        Self::Preset(2),
+        Self::Preset(3),
+    ];
+
+    fn preset(self) -> Option<&'static PerformancePreset> {
+        match self {
+            Self::Custom => None,
+            Self::Preset(position) => PERFORMANCE_PRESETS.get(position),
+        }
+    }
+
+    fn description(self) -> &'static str {
+        self.preset()
+            .map_or(CUSTOM_PRESET_DESCRIPTION, |preset| preset.description)
+    }
+}
+
+impl std::fmt::Display for PresetChoice {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.preset().map_or(CUSTOM_PRESET_LABEL, |preset| preset.name))
+    }
+}
+
+pub struct ChosenPreset {
+    choice: PresetChoice,
+    flags_when_chosen: FastFlags,
+}
+
+pub fn choose_preset(state: &AppState, choice: PresetChoice) -> ChosenPreset {
+    if let Some(preset) = choice.preset() {
+        let flags = state.fast_flags();
+        if !is_applied(preset, &flags) {
+            let applied = preset
+                .flags
+                .iter()
+                .fold(flags, |flags, (name, value)| flags.with(name, Some(value.clone())));
+            state.set_fast_flags(applied);
+        }
+    }
+    ChosenPreset {
+        choice,
+        flags_when_chosen: state.fast_flags(),
+    }
+}
+
+fn shown_preset(chosen: Option<&ChosenPreset>, flags: &FastFlags) -> PresetChoice {
+    if let Some(chosen) = chosen {
+        let flags_are_unchanged = chosen.flags_when_chosen == *flags;
+        let preset_is_still_applied = chosen
+            .choice
+            .preset()
+            .is_some_and(|preset| is_applied(preset, flags));
+        if flags_are_unchanged || preset_is_still_applied {
+            return chosen.choice;
+        }
+    }
+
+    PERFORMANCE_PRESETS
+        .iter()
+        .enumerate()
+        .filter(|(_, preset)| is_applied(preset, flags))
+        .max_by_key(|(_, preset)| preset.flags.len())
+        .map_or(PresetChoice::Custom, |(position, _)| {
+            PresetChoice::Preset(position)
+        })
+}
+
+fn is_applied(preset: &PerformancePreset, flags: &FastFlags) -> bool {
+    preset
+        .flags
+        .iter()
+        .all(|(name, value)| flags.get(name).as_ref() == Some(value))
+}
+
+fn presets_group<'a>(
+    chosen: Option<&ChosenPreset>,
+    flags: &FastFlags,
+    look: Look,
+) -> Element<'a, Message> {
+    let shown = shown_preset(chosen, flags);
+    let picker = pick_list(PresetChoice::ALL, Some(shown), |choice| {
+        Message::Settings(SettingsMessage::PresetChosen(choice))
+    })
+    .font(look.font)
+    .text_size(14)
+    .style(style::choice(look))
+    .menu_style(style::menu(look));
+
+    preference_group(look)
+        .title("Performance Presets")
+        .description(
+            "Quick-apply flag combinations for FPS gains. These are client-side only and not bannable.",
+        )
+        .push(
+            preference_row(look, "Preset")
+                .subtitle(shown.description())
+                .suffix(picker),
+        )
+        .into()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ToggleSetting {
@@ -69,7 +307,10 @@ pub fn fast_flags_section<'a>(
         );
 
     let flags = state.fast_flags();
-    let mut sections = vec![about_group.into()];
+    let mut sections = vec![
+        about_group.into(),
+        presets_group(settings.chosen_preset.as_ref(), &flags, look),
+    ];
     sections.extend(
         ALLOWLIST
             .iter()

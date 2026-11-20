@@ -1,4 +1,6 @@
-use super::bound_rows::{SpinRange, spin_row, switch_row, switch_row_when};
+use super::SettingsMessage;
+use super::bound_rows::{SpinRange, spin_row, switch, switch_row_when};
+use crate::components::preferences::preference_row;
 use crate::components::preferences::preference_group;
 use crate::components::style::Look;
 use crate::quadra::Message;
@@ -17,8 +19,11 @@ pub fn vr_section<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>>
              like WiVRn or Monado. VR uses Roblox's OpenGL renderer.",
         )
         .push(
-            switch_row(look, "Play in VR", vr_enabled, |state, on| state.set_vr(on))
-                .subtitle(state.vr_status()),
+            preference_row(look, "Play in VR")
+                .subtitle(state.vr_status())
+                .suffix(switch(look, vr_enabled, true, |on| {
+                    Message::Settings(SettingsMessage::VrToggled(on))
+                })),
         )
         .push(
             switch_row_when(

@@ -1,10 +1,7 @@
 use super::account::account_group;
 use super::bound_rows::{choice_row, switch, switch_row};
-use super::environment_variables::environment_variables_group;
-use super::launch_wrapper::launch_wrapper_group;
 use super::privacy::privacy_group;
-use super::rosemary_options::{graphics_group, input_group};
-use super::rosemary_runtime::rosemary_runtime_group;
+use super::runtime::runtime_section;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
@@ -15,7 +12,7 @@ use crate::quadra::Message;
 use crate::state::AppState;
 use iced::Element;
 
-pub fn env_section<'a>(
+pub fn general_section<'a>(
     settings: &'a Settings,
     state: &AppState,
     look: Look,
@@ -42,10 +39,19 @@ pub fn env_section<'a>(
             .subtitle("Keep Quadra in the system tray after its window closes"),
         )
         .push(
-            choice_row(look, "The app theme.", state.theme(), |state, theme| {
+            choice_row(look, "App theme", state.theme(), |state, theme| {
                 state.set_theme(theme)
             })
             .subtitle("Change the theme to what you like."),
+        )
+        .push(
+            switch_row(
+                look,
+                "Advanced settings",
+                state.advanced_settings_visible(),
+                |state, visible| state.set_advanced_settings_visible(visible),
+            )
+            .subtitle("Only enable if you know what you're doing."),
         );
 
     let discord_group = preference_group(look).title("Discord").push(
@@ -56,28 +62,13 @@ pub fn env_section<'a>(
             })),
     );
 
-    let runtime_group = preference_group(look)
-        .title("Runtime")
-        .description("Which compatibility layer the macOS Roblox client runs on.")
-        .push(choice_row(
-            look,
-            "Run Roblox with",
-            state.runtime(),
-            |state, runtime| state.set_runtime(runtime),
-        ));
-
-    vec![
-        quadra_group.into(),
-        discord_group.into(),
+    let mut sections = vec![quadra_group.into(), discord_group.into()];
+    sections.extend(runtime_section(settings, state, look));
+    sections.extend([
         session_group(state, look),
         privacy_group(state, look),
-        runtime_group.into(),
-        rosemary_runtime_group(settings, state, look),
-        graphics_group(settings, state, look),
-        input_group(state, look),
-        launch_wrapper_group(settings, state, look),
-        environment_variables_group(&settings.variables, look),
         account_group(state, look),
         support_group(settings, state, look),
-    ]
+    ]);
+    sections
 }

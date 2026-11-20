@@ -13,7 +13,7 @@ concurrency:
 jobs:
   check:
     name: Format, lint and test
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     container:
       image: debian:trixie
     steps:

@@ -1,7 +1,12 @@
 use crate::utils::{
     cache_directory, config_directory, data_directory, home_directory, is_running_in_flatpak,
 };
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+const HOST_OS_MOUNT: &str = "/run/host";
+const HOST_OS_DIRECTORIES: [&str; 4] = ["/usr", "/lib", "/lib64", "/etc/alternatives"];
+const LONGEST_LINK_CHAIN: usize = 16;
 
 pub fn quadra_data_directory() -> PathBuf {
     data_directory().join("quadra")
@@ -49,6 +54,28 @@ fn host_data_directory() -> PathBuf {
     } else {
         data_directory()
     }
+}
+
+pub fn on_host_os(path: &Path) -> PathBuf {
+    let belongs_to_host_os = HOST_OS_DIRECTORIES
+        .iter()
+        .any(|directory| path.starts_with(directory));
+    if is_running_in_flatpak() && belongs_to_host_os {
+        Path::new(HOST_OS_MOUNT).join(path.strip_prefix("/").unwrap_or(path))
+    } else {
+        path.to_owned()
+    }
+}
+
+pub fn resolved_on_host_os(path: &Path) -> Option<PathBuf> {
+    let mut path = on_host_os(path);
+    for _ in 0..LONGEST_LINK_CHAIN {
+        let Ok(link_target) = fs::read_link(&path) else {
+            return path.canonicalize().ok();
+        };
+        path = on_host_os(&path.parent()?.join(link_target));
+    }
+    None
 }
 
 pub fn desktop_entry_icon_file() -> PathBuf {
