@@ -2,9 +2,7 @@ use super::release::{self, AppImageUpdate};
 use crate::backend::background::Progress;
 use crate::backend::download::{checksum_listed_for, download_file, sha256_of_file};
 use anyhow::{Context, bail, ensure};
-use std::ffi::CString;
 use std::fs;
-use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
@@ -72,9 +70,10 @@ fn staged_path(running_appimage: &Path) -> PathBuf {
     running_appimage.with_file_name(format!(".{name}.update"))
 }
 
-fn is_writable(directory: &Path) -> bool {
-    CString::new(directory.as_os_str().as_bytes())
-        .is_ok_and(|path| unsafe { libc::access(path.as_ptr(), libc::W_OK) == 0 })
+fn is_writable(dir: &Path) -> bool {
+    dir.metadata()
+        .map(|m| !m.permissions().readonly())
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
