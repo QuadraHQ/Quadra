@@ -27,3 +27,6 @@ toml = "1.2.0"
 ureq = { version = "3.5.1", features = ["json"] }
 zbus = { version = "5", default-features = false, features = ["async-io"] }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+naga = { version = "27", features = ["wgsl-in"] }

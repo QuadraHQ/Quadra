@@ -2981,6 +2981,7 @@ dependencies = [
  "iced",
  "image",
  "ksni",
+ "naga",
  "nix 0.32.0",
  "notify-rust",
  "rfd",

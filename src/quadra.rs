@@ -5,6 +5,7 @@ use crate::components::dialog::{self, Alert, Dialog};
 use crate::components::error_dialog::error_dialog;
 use crate::components::file_dialog;
 use crate::components::file_row::{ChosenPath, Pick};
+use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::{self, gradient_backdrop};
 use crate::components::grid_backdrop::GridBackdrop;
 use crate::components::header::bar;
@@ -14,6 +15,7 @@ use crate::components::line_field_backdrop::{self, LineField};
 use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
 use crate::components::scanline_backdrop::ScanlineBackdrop;
+use crate::components::scene_backdrop::Scene;
 use crate::components::style::Look;
 use crate::components::title_bar::{self, ButtonLayout, TitleBar};
 use crate::components::tray::{TrayIcon, TrayRequest};
@@ -754,10 +756,20 @@ impl Quadra {
         match self.state.theme() {
             Theme::Grid => Some(self.grid_backdrop.view()),
             Theme::Monochrome => self.line_field.as_ref().map(LineField::view),
-            Theme::Aurora => Some(gradient_backdrop(&gradient_backdrop::AURORA)),
-            Theme::Ember => Some(gradient_backdrop(&gradient_backdrop::EMBER)),
-            Theme::Phosphor => Some(self.scanline_backdrop.view()),
-            Theme::Adwaita | Theme::Paper => None,
+            Theme::Aurora => Some(gpu_or(
+                Scene::Aurora.view(),
+                gradient_backdrop(&gradient_backdrop::AURORA),
+            )),
+            Theme::Ember => Some(gpu_or(
+                Scene::Ember.view(),
+                gradient_backdrop(&gradient_backdrop::EMBER),
+            )),
+            Theme::Paper => Some(gpu_or(Scene::Paper.view(), space())),
+            Theme::Phosphor => Some(gpu_or(
+                Scene::Phosphor.view(),
+                self.scanline_backdrop.view(),
+            )),
+            Theme::Adwaita => None,
         }
     }
 
