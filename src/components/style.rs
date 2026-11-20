@@ -397,11 +397,7 @@ pub fn window_button(look: Look) -> impl Fn(&iced::Theme, button::Status) -> but
 
 pub fn outline(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
     move |_| container::Style {
-        border: Border {
-            color: look.strong_border,
-            width: 1.0,
-            radius: 0.0.into(),
-        },
+        background: Some(Background::Color(look.strong_border)),
         ..container::Style::default()
     }
 }

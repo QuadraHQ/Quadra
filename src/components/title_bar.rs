@@ -7,7 +7,8 @@ use iced::widget::{
     Row, button, column, container, mouse_area, responsive, row, rule, space, stack,
 };
 use iced::window::{self, Direction};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Event, Length, Size, Subscription, event};
+use std::sync::Mutex;
 
 pub const HEIGHT: f32 = 46.0;
 const COMPACT_BELOW: f32 = 560.0;
@@ -15,6 +16,9 @@ const EDGE: f32 = 5.0;
 const CORNER: f32 = 12.0;
 const BUTTON_SPACING: f32 = 6.0;
 const DEFAULT_LAYOUT: &str = ":minimize,maximize,close";
+const SIZE_JUMP: f32 = 64.0;
+
+static LAST_SIZES: Mutex<Vec<(window::Id, Size)>> = Mutex::new(Vec::new());
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WindowButton {
@@ -247,10 +251,56 @@ pub fn resize_edges<'a>(window: window::Id) -> Element<'a, Message> {
     .into()
 }
 
+pub fn size_jumps() -> Subscription<window::Id> {
+    event::listen_with(|event, _status, window| match event {
+        Event::Window(window::Event::Resized(size)) => jumped(window, size).then_some(window),
+        Event::Window(window::Event::Closed) => {
+            forget(window);
+            None
+        }
+        _ => None,
+    })
+}
+
+fn jumped(window: window::Id, size: Size) -> bool {
+    let Ok(mut last_sizes) = LAST_SIZES.lock() else {
+        return true;
+    };
+    let previous = match last_sizes.iter_mut().find(|(known, _)| *known == window) {
+        Some((_, last_size)) => Some(std::mem::replace(last_size, size)),
+        None => {
+            last_sizes.push((window, size));
+            None
+        }
+    };
+    previous.is_none_or(|previous| {
+        (previous.width - size.width).abs() > SIZE_JUMP
+            || (previous.height - size.height).abs() > SIZE_JUMP
+    })
+}
+
+fn forget(window: window::Id) {
+    if let Ok(mut last_sizes) = LAST_SIZES.lock() {
+        last_sizes.retain(|(known, _)| *known != window);
+    }
+}
+
 pub fn outline<'a>(look: Look) -> Element<'a, Message> {
-    container(space().width(Length::Fill).height(Length::Fill))
-        .style(style::outline(look))
-        .into()
+    let strip = |width: Length, height: Length| {
+        container(space().width(width).height(height)).style(style::outline(look))
+    };
+    let line = Length::Fixed(1.0);
+    column![
+        strip(Length::Fill, line),
+        row![
+            strip(line, Length::Fill),
+            space().width(Length::Fill),
+            strip(line, Length::Fill)
+        ]
+        .height(Length::Fill),
+        strip(Length::Fill, line),
+    ]
+    .into()
 }
 
 #[cfg(test)]

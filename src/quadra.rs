@@ -106,7 +106,7 @@ pub enum Message {
     CloseRequested(window::Id),
     WindowClosed(window::Id),
     Window(window::Id, WindowAction),
-    WindowResized(window::Id),
+    WindowSizeJumped(window::Id),
     WindowMaximized(window::Id, bool),
     ShowPage(Page),
     Alert(Alert),
@@ -285,7 +285,7 @@ impl Quadra {
             }
             Message::CloseRequested(id) => window::close(id),
             Message::Window(id, action) => self.act_on_window(id, action),
-            Message::WindowResized(id) => window::is_maximized(id)
+            Message::WindowSizeJumped(id) => window::is_maximized(id)
                 .map(move |maximized| Message::WindowMaximized(id, maximized)),
             Message::WindowMaximized(id, maximized) => {
                 if Some(id) == self.main_window {
@@ -784,7 +784,7 @@ impl Quadra {
         ];
 
         if self.uses_own_title_bar() {
-            subscriptions.push(window::resize_events().map(|(id, _)| Message::WindowResized(id)));
+            subscriptions.push(title_bar::size_jumps().map(Message::WindowSizeJumped));
         }
 
         if !self.dialogs.is_empty() {
