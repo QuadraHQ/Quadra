@@ -11,7 +11,6 @@ discord-rich-presence = "1.1.0"
 flate2 = "1.1.10"
 gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
 ksni = { version = "0.3.7", default-features = false, features = ["blocking", "async-io"] }
-libc = "0.2.191"
 pango = { version = "0.22.9", features = ["v1_56"] }
 pangocairo = "0.22.9"
 serde = { version = "1.0.229", features = ["derive"] }
@@ -22,3 +21,4 @@ tar = "0.4.46"
 toml = "1.2.0"
 ureq = { version = "3.5.1", features = ["json"] }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
+nix = { version = "0.32.0", features = ["process", "signal"] }
