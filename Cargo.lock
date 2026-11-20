@@ -914,6 +914,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced-x86"
+version = "1.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c23ad4d19dca41180e835ef6fbd2c1ee655777eca086ad80dd517e0513322879"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "icu_collections"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1063,6 +1072,12 @@ dependencies = [
  "task-local",
  "zbus",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "libadwaita"
@@ -1328,6 +1343,7 @@ dependencies = [
  "discord-rich-presence",
  "flate2",
  "gtk4",
+ "iced-x86",
  "ksni",
  "libadwaita",
  "libc",
