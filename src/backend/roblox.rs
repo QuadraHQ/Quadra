@@ -53,6 +53,14 @@ pub fn app_path(client: Client) -> PathBuf {
     files.directory.join(files.app_name)
 }
 
+pub fn executable_path(client: Client) -> PathBuf {
+    let files = files_of(client);
+    files
+        .directory
+        .join(files.app_name)
+        .join(files.executable_inside_app)
+}
+
 pub fn installed_release(client: Client) -> Option<RobloxRelease> {
     let files = files_of(client);
     if !app_path(client).join(files.executable_inside_app).is_file() {
