@@ -2953,6 +2953,19 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/nix/nix-0.32.0.crate",
+        "sha256": "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc",
+        "dest": "cargo/vendor/nix-0.32.0"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc\", \"files\": {}}",
+        "dest": "cargo/vendor/nix-0.32.0",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/notify-rust/notify-rust-4.18.0.crate",
         "sha256": "c5b4c1b4f2aa9f25f63a7a49d3dd0ed567b3670da15330a66b29434be899b891",
         "dest": "cargo/vendor/notify-rust-4.18.0"

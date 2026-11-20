@@ -15,7 +15,7 @@ flate2 = "1.1.10"
 iced = { version = "0.14.0", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "thread-pool", "linux-theme-detection", "x11", "wayland", "image-without-codecs", "svg", "canvas", "advanced"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 ksni = { version = "0.3.7", default-features = false, features = ["blocking", "async-io"] }
-libc = "0.2.191"
+nix = { version = "0.32.0", features = ["process", "signal", "sched"] }
 notify-rust = { version = "~4.18", default-features = false, features = ["z"] }
 rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal", "wayland"] }
 serde = { version = "1.0.229", features = ["derive"] }

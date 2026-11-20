@@ -223,7 +223,7 @@ impl Default for SavedSettings {
             show_menu_bar: true,
             command_key: CommandKey::default(),
             ctrl_for_edit_shortcuts: false,
-            plain_ctrl_click: false,
+            plain_ctrl_click: true,
             opened_before: false,
             environment_variables: EnvironmentVariables::default(),
             launch_wrapper: String::new(),
