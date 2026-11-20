@@ -32,6 +32,7 @@ pub struct Look {
     pub field: Color,
     pub dialog: Color,
     pub shade: Color,
+    pub bar: Color,
     pub destructive: Color,
     pub success: Color,
     pub warning: Color,
@@ -51,6 +52,10 @@ impl Look {
             Theme::Adwaita => ADWAITA_LIGHT,
             Theme::Grid => GRID,
             Theme::Monochrome => MONOCHROME,
+            Theme::Aurora => AURORA,
+            Theme::Ember => EMBER,
+            Theme::Paper => PAPER,
+            Theme::Phosphor => PHOSPHOR,
         }
     }
 
@@ -106,6 +111,7 @@ const ADWAITA_LIGHT: Look = Look {
     field: Color::from_rgba(0.0, 0.0, 0.024, 0.06),
     dialog: color!(0xffffff),
     shade: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
+    bar: color!(0xebebed),
     destructive: color!(0xe01b24),
     success: color!(0x2ec27e),
     warning: color!(0xe5a50a),
@@ -131,6 +137,7 @@ const ADWAITA_DARK: Look = Look {
     field: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
     dialog: color!(0x36363a),
     shade: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
+    bar: color!(0x2e2e32),
     destructive: color!(0xc01c28),
     success: color!(0x26a269),
     warning: color!(0xcd9309),
@@ -156,6 +163,7 @@ const GRID: Look = Look {
     field: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
     dialog: color!(0x18212c),
     shade: Color::from_rgba(0.0, 0.0, 0.0, 0.7),
+    bar: Color::from_rgba(16.0 / 255.0, 20.0 / 255.0, 27.0 / 255.0, 0.86),
     destructive: color!(0xedf2f8),
     success: color!(0xa6c8ff),
     warning: color!(0xb0c3de),
@@ -181,11 +189,116 @@ const MONOCHROME: Look = Look {
     field: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
     dialog: color!(0x121212),
     shade: Color::from_rgba(0.0, 0.0, 0.0, 0.7),
+    bar: Color::from_rgba(0.0, 0.0, 0.0, 0.86),
     destructive: color!(0xe8e8e8),
     success: color!(0xf0f0f0),
     warning: color!(0xbdbdbd),
     radius: 0.0,
     font: ARCHIVO,
+    mono: JETBRAINS_MONO,
+};
+
+const AURORA: Look = Look {
+    dark: true,
+    window: color!(0x140d24),
+    card: Color::from_rgba(1.0, 1.0, 1.0, 0.06),
+    border: Color::from_rgba(196.0 / 255.0, 160.0 / 255.0, 1.0, 0.16),
+    strong_border: Color::from_rgba(196.0 / 255.0, 160.0 / 255.0, 1.0, 0.3),
+    text: color!(0xf4eefe),
+    dimmed: color!(0xb5a8d2),
+    accent: color!(0xff5fa2),
+    on_accent: color!(0x24081c),
+    accent_text: color!(0xff9ccb),
+    raised: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.13),
+    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.2),
+    field: Color::from_rgba(0.0, 0.0, 0.0, 0.25),
+    dialog: color!(0x1e1535),
+    shade: Color::from_rgba(5.0 / 255.0, 2.0 / 255.0, 12.0 / 255.0, 0.6),
+    bar: Color::from_rgba(20.0 / 255.0, 13.0 / 255.0, 36.0 / 255.0, 0.55),
+    destructive: color!(0xff7a7a),
+    success: color!(0x7ee8b8),
+    warning: color!(0xffd36e),
+    radius: 12.0,
+    font: Font::DEFAULT,
+    mono: JETBRAINS_MONO,
+};
+
+const EMBER: Look = Look {
+    dark: true,
+    window: color!(0x16110e),
+    card: color!(0x211913),
+    border: color!(0x2f251e),
+    strong_border: color!(0x403228),
+    text: color!(0xf5ebe3),
+    dimmed: color!(0xb4a597),
+    accent: color!(0xff8a3d),
+    on_accent: color!(0x1f0f04),
+    accent_text: color!(0xffae75),
+    raised: color!(0x2b2119),
+    hovered: color!(0x352920),
+    pressed: color!(0x403128),
+    field: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
+    dialog: color!(0x221a14),
+    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.6),
+    bar: Color::from_rgba(22.0 / 255.0, 17.0 / 255.0, 14.0 / 255.0, 0.7),
+    destructive: color!(0xff6d5a),
+    success: color!(0x9ad48f),
+    warning: color!(0xf2c14e),
+    radius: 10.0,
+    font: Font::DEFAULT,
+    mono: JETBRAINS_MONO,
+};
+
+const PAPER: Look = Look {
+    dark: false,
+    window: color!(0xf5f0e6),
+    card: color!(0xfffcf6),
+    border: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.12),
+    strong_border: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.24),
+    text: color!(0x2b2620),
+    dimmed: color!(0x6f6558),
+    accent: color!(0x1f6f6b),
+    on_accent: color!(0xffffff),
+    accent_text: color!(0x1a5c58),
+    raised: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.07),
+    hovered: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.11),
+    pressed: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.17),
+    field: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.05),
+    dialog: color!(0xfffcf6),
+    shade: Color::from_rgba(40.0 / 255.0, 30.0 / 255.0, 15.0 / 255.0, 0.25),
+    bar: color!(0xede6d8),
+    destructive: color!(0xb3261e),
+    success: color!(0x2e7d4f),
+    warning: color!(0xb7791f),
+    radius: 6.0,
+    font: ARCHIVO,
+    mono: JETBRAINS_MONO,
+};
+
+const PHOSPHOR: Look = Look {
+    dark: true,
+    window: color!(0x030805),
+    card: Color::from_rgba(10.0 / 255.0, 30.0 / 255.0, 16.0 / 255.0, 0.78),
+    border: color!(0x12361d),
+    strong_border: color!(0x1d5a30),
+    text: color!(0xa6ffbf),
+    dimmed: color!(0x52a86b),
+    accent: color!(0x39ff7a),
+    on_accent: color!(0x001a08),
+    accent_text: color!(0x6dff9c),
+    raised: color!(0x0b2213),
+    hovered: color!(0x103019),
+    pressed: color!(0x174022),
+    field: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
+    dialog: color!(0x061309),
+    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.75),
+    bar: Color::from_rgba(3.0 / 255.0, 8.0 / 255.0, 5.0 / 255.0, 0.85),
+    destructive: color!(0xff6b6b),
+    success: color!(0x39ff7a),
+    warning: color!(0xe6ff5c),
+    radius: 0.0,
+    font: JETBRAINS_MONO,
     mono: JETBRAINS_MONO,
 };
 
@@ -354,19 +467,7 @@ pub fn shade(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
 
 pub fn bar(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
     move |_| container::Style {
-        background: Some(Background::Color(if look.radius == 0.0 {
-            Color {
-                a: 0.86,
-                ..look.window
-            }
-        } else {
-            darken(look.window, 0.03)
-        })),
-        border: Border {
-            color: look.border,
-            width: 0.0,
-            radius: 0.0.into(),
-        },
+        background: Some(Background::Color(look.bar)),
         ..container::Style::default()
     }
 }

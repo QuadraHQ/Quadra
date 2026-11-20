@@ -5,6 +5,7 @@ use crate::components::dialog::{self, Alert, Dialog};
 use crate::components::error_dialog::error_dialog;
 use crate::components::file_dialog;
 use crate::components::file_row::{ChosenPath, Pick};
+use crate::components::gradient_backdrop::{self, gradient_backdrop};
 use crate::components::grid_backdrop::GridBackdrop;
 use crate::components::header::bar;
 use crate::components::icon::app_icon_rgba;
@@ -12,6 +13,7 @@ use crate::components::launch_window::{self, Pulse};
 use crate::components::line_field_backdrop::{self, LineField};
 use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
+use crate::components::scanline_backdrop::ScanlineBackdrop;
 use crate::components::style::Look;
 use crate::components::title_bar::{self, ButtonLayout, TitleBar};
 use crate::components::tray::{TrayIcon, TrayRequest};
@@ -159,6 +161,7 @@ pub struct Quadra {
     look: Look,
     iced_theme: iced::Theme,
     grid_backdrop: GridBackdrop,
+    scanline_backdrop: ScanlineBackdrop,
     line_field: Option<LineField>,
     pulse: Pulse,
     tray_icon: Option<TrayIcon>,
@@ -208,6 +211,7 @@ impl Quadra {
             iced_theme: look.iced_theme(),
             look,
             grid_backdrop: GridBackdrop::default(),
+            scanline_backdrop: ScanlineBackdrop::default(),
             line_field: None,
             pulse: Pulse::default(),
             tray_icon: None,
@@ -750,7 +754,10 @@ impl Quadra {
         match self.state.theme() {
             Theme::Grid => Some(self.grid_backdrop.view()),
             Theme::Monochrome => self.line_field.as_ref().map(LineField::view),
-            Theme::Adwaita => None,
+            Theme::Aurora => Some(gradient_backdrop(&gradient_backdrop::AURORA)),
+            Theme::Ember => Some(gradient_backdrop(&gradient_backdrop::EMBER)),
+            Theme::Phosphor => Some(self.scanline_backdrop.view()),
+            Theme::Adwaita | Theme::Paper => None,
         }
     }
 
