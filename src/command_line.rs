@@ -7,6 +7,7 @@ const STUDIO_OPTION: &str = "studio";
 const STUDIO_LINK_SCHEME_PREFIX: &str = "roblox-studio";
 const HARDWARE_REPORT_OPTION: &str = "hardware-report";
 const COLLECT_DIAGNOSTICS_OPTION: &str = "collect-diagnostics";
+const VR_LAYOUT_OPTION: &str = "vr-layout";
 
 pub fn add_options(app: &adw::Application) {
     add_flag(
@@ -29,6 +30,11 @@ pub fn add_options(app: &adw::Application) {
         COLLECT_DIAGNOSTICS_OPTION,
         "Save a diagnostics archive (in the given folder, or Documents), then exit",
     );
+    add_flag(
+        app,
+        VR_LAYOUT_OPTION,
+        "Print the QUADRA_VR_LAYOUT value for the installed Roblox (or the given RobloxPlayer), then exit",
+    );
     app.add_main_option(
         glib::OPTION_REMAINING,
         glib::Char(0),
@@ -50,6 +56,23 @@ pub fn run_report_if_requested() -> Option<glib::ExitCode> {
     if is_requested(HARDWARE_REPORT_OPTION).is_some() {
         print!("{}", backend::hardware_report());
         return Some(glib::ExitCode::SUCCESS);
+    }
+
+    if let Some(position) = is_requested(VR_LAYOUT_OPTION) {
+        let roblox_player = arguments
+            .get(position + 1)
+            .filter(|argument| !argument.starts_with('-'))
+            .map(std::path::Path::new);
+        return Some(match backend::vr_layout(roblox_player) {
+            Ok(layout) => {
+                println!("{layout}");
+                glib::ExitCode::SUCCESS
+            }
+            Err(reason) => {
+                eprintln!("{reason}");
+                glib::ExitCode::FAILURE
+            }
+        });
     }
 
     let position = is_requested(COLLECT_DIAGNOSTICS_OPTION)?;

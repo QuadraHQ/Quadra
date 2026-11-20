@@ -327,6 +327,11 @@ pub fn hardware_report() -> String {
     diagnostics::hardware_report()
 }
 
+pub fn vr_layout(roblox_player: Option<&Path>) -> Result<String, String> {
+    let installed_player = roblox::executable_path(Client::Player);
+    vr::layout_environment_value(roblox_player.unwrap_or(&installed_player))
+}
+
 pub fn sign_out(state: &AppState) {
     account::sign_out(state);
 }
