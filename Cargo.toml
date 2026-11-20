@@ -21,4 +21,4 @@ tar = "0.4.46"
 toml = "1.2.0"
 ureq = { version = "3.5.1", features = ["json"] }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
-nix = { version = "0.32.0", features = ["process", "signal"] }
+nix = { version = "0.32.0", features = ["process", "signal", "sched"] }
