@@ -11,18 +11,19 @@ async-task = "4.7.1"
 bytemuck = "1"
 dirs = "6"
 discord-rich-presence = "1.1.0"
+flate2 = "1.1.10"
 iced = { version = "0.14.0", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "thread-pool", "linux-theme-detection", "x11", "wayland", "image-without-codecs", "svg", "canvas", "advanced"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
-flate2 = "1.1.10"
-rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal", "wayland"] }
 ksni = { version = "0.3.7", default-features = false, features = ["blocking", "async-io"] }
-notify-rust = { version = "4.19.0", default-features = false, features = ["z"] }
 libc = "0.2.191"
+notify-rust = { version = "~4.18", default-features = false, features = ["z"] }
+rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal", "wayland"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-shlex = "2.0.1"
 sha2 = "0.11.1"
+shlex = "2.0.1"
 tar = "0.4.46"
 toml = "1.2.0"
 ureq = { version = "3.5.1", features = ["json"] }
+zbus = { version = "5", default-features = false, features = ["async-io"] }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }

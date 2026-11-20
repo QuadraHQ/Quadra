@@ -49,6 +49,10 @@ pub enum Symbol {
     Update,
     Expand,
     Collapse,
+    WindowMinimize,
+    WindowMaximize,
+    WindowRestore,
+    WindowClose,
 }
 
 macro_rules! symbols {
@@ -93,6 +97,10 @@ symbols! {
     Update => r#"<circle cx="8" cy="8" r="6.25"/><path d="M8 11V5M5.5 7.5 8 5l2.5 2.5"/>"#,
     Expand => r#"<path d="m4 6 4 4 4-4"/>"#,
     Collapse => r#"<path d="m4 10 4-4 4 4"/>"#,
+    WindowMinimize => r#"<path d="M4.5 11.5h7"/>"#,
+    WindowMaximize => r#"<rect x="4.5" y="4.5" width="7" height="7" rx="1"/>"#,
+    WindowRestore => r#"<rect x="4" y="6" width="6" height="6" rx="1"/><path d="M6.5 6V4.5a.5.5 0 0 1 .5-.5h4.5a.5.5 0 0 1 .5.5V9a.5.5 0 0 1-.5.5H10"/>"#,
+    WindowClose => r#"<path d="m5 5 6 6M11 5l-6 6"/>"#,
 }
 
 pub fn symbol<'a>(symbol: Symbol, look: Look) -> Element<'a, Message> {

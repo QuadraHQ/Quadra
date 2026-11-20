@@ -47,6 +47,15 @@ pub fn general_section<'a>(
         .push(
             switch_row(
                 look,
+                "Use the system title bar",
+                state.system_title_bar(),
+                |state, on| state.set_system_title_bar(on),
+            )
+            .subtitle("Let your desktop draw the window's title bar and borders"),
+        )
+        .push(
+            switch_row(
+                look,
                 "Advanced settings",
                 state.advanced_settings_visible(),
                 |state, visible| state.set_advanced_settings_visible(visible),

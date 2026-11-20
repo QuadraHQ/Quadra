@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 42] = [
+const SAVED_PROPERTIES: [&str; 43] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -82,6 +82,7 @@ const SAVED_PROPERTIES: [&str; 42] = [
     "force-raknet",
     "theme",
     "advanced-settings-visible",
+    "system-title-bar",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -183,6 +184,7 @@ struct SavedSettings {
     force_raknet: bool,
     theme: Theme,
     advanced_settings_visible: bool,
+    system_title_bar: bool,
 }
 
 impl Default for SavedSettings {
@@ -232,6 +234,7 @@ impl Default for SavedSettings {
             force_raknet: false,
             theme: Theme::default(),
             advanced_settings_visible: false,
+            system_title_bar: false,
         }
     }
 }
@@ -340,6 +343,8 @@ properties! {
     can_open_studio set_can_open_studio: bool = "can-open-studio",
     theme set_theme: Theme = "theme",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
+    window_button_layout set_window_button_layout: String = "window-button-layout",
+    system_title_bar set_system_title_bar: bool = "system-title-bar",
 }
 
 pub type HandlerId = u64;
@@ -473,6 +478,9 @@ impl AppState {
         properties
             .advanced_settings_visible
             .replace(settings.advanced_settings_visible);
+        properties
+            .system_title_bar
+            .replace(settings.system_title_bar);
         properties.first_launch.replace(first_launch);
         properties.theme.replace(settings.theme);
 
@@ -724,6 +732,7 @@ impl AppState {
             force_raknet: self.force_raknet(),
             theme: self.theme(),
             advanced_settings_visible: self.advanced_settings_visible(),
+            system_title_bar: self.system_title_bar(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {

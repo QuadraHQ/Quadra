@@ -13,6 +13,7 @@ use crate::components::line_field_backdrop::{self, LineField};
 use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
 use crate::components::style::Look;
+use crate::components::title_bar::{self, ButtonLayout, TitleBar};
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
 use crate::main_loop;
@@ -23,7 +24,7 @@ use crate::single_instance;
 use crate::state::{AppState, Client, LaunchMode, LogChange, Theme};
 use crate::utils::{BUNDLED_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
-use iced::widget::{Column, space, stack, text_editor};
+use iced::widget::{Column, column, space, stack, text_editor};
 use iced::{Element, Size, Subscription, Task, keyboard, system, theme, window};
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -60,6 +61,18 @@ pub fn act(change: impl Fn(&AppState) + Send + Sync + 'static) -> Message {
     Message::Act(Act(Arc::new(change)))
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum WindowAction {
+    Grab,
+    Move,
+    Release,
+    ToggleMaximize,
+    Minimize,
+    ShowMenu,
+    Resize(window::Direction),
+    Close,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Page {
     Home,
@@ -90,6 +103,9 @@ pub enum Message {
     SystemTheme(theme::Mode),
     CloseRequested(window::Id),
     WindowClosed(window::Id),
+    Window(window::Id, WindowAction),
+    WindowResized(window::Id),
+    WindowMaximized(window::Id, bool),
     ShowPage(Page),
     Alert(Alert),
     Respond(usize),
@@ -122,6 +138,8 @@ enum Reaction {
     TrayIconMayBeWanted,
     LaunchProgressChanged,
     LookChanged,
+    TitleBarChanged,
+    ButtonLayoutChanged,
     Log(Option<String>),
     Tray(TrayRequest),
 }
@@ -146,6 +164,9 @@ pub struct Quadra {
     tray_icon: Option<TrayIcon>,
     launched_directly: bool,
     quits_once_roblox_exits: bool,
+    grabbed_window: Option<window::Id>,
+    main_window_is_maximized: bool,
+    button_layout: ButtonLayout,
 }
 
 pub fn run(invocation: Invocation) -> iced::Result {
@@ -169,6 +190,7 @@ impl Quadra {
         let state = AppState::load();
         let reactions = Reactions::default();
         backend::initialize(&state);
+        backend::load_window_button_layout(&state);
         settings::keep_choices_valid(&state);
         react_to_state(&state, &reactions);
 
@@ -191,6 +213,9 @@ impl Quadra {
             tray_icon: None,
             launched_directly: false,
             quits_once_roblox_exits: false,
+            grabbed_window: None,
+            main_window_is_maximized: false,
+            button_layout: ButtonLayout::parse(""),
         };
         quadra.restyle();
         quadra.show_tray_icon_when_wanted();
@@ -255,9 +280,19 @@ impl Quadra {
                 self.close_launch_window()
             }
             Message::CloseRequested(id) => window::close(id),
+            Message::Window(id, action) => self.act_on_window(id, action),
+            Message::WindowResized(id) => window::is_maximized(id)
+                .map(move |maximized| Message::WindowMaximized(id, maximized)),
+            Message::WindowMaximized(id, maximized) => {
+                if Some(id) == self.main_window {
+                    self.main_window_is_maximized = maximized;
+                }
+                Task::none()
+            }
             Message::WindowClosed(id) => {
                 if Some(id) == self.main_window {
                     self.main_window = None;
+                    self.main_window_is_maximized = false;
                     return Task::batch([self.quit_if_nothing_keeps_it_open(), self.react()]);
                 }
                 if Some(id) == self.launch_window {
@@ -407,6 +442,11 @@ impl Quadra {
                     self.restyle();
                     Task::none()
                 }
+                Reaction::TitleBarChanged => self.redecorate_windows(),
+                Reaction::ButtonLayoutChanged => {
+                    self.button_layout = ButtonLayout::parse(&self.state.window_button_layout());
+                    Task::none()
+                }
                 Reaction::Log(appended) => {
                     match &appended {
                         Some(text) => self.live_log.follow(LogChange::Appended(text)),
@@ -418,6 +458,47 @@ impl Quadra {
             });
         }
         Task::batch(tasks)
+    }
+
+    fn act_on_window(&mut self, id: window::Id, action: WindowAction) -> Task<Message> {
+        match action {
+            WindowAction::Grab => {
+                self.grabbed_window = Some(id);
+                Task::none()
+            }
+            WindowAction::Move => {
+                if self.grabbed_window.take() == Some(id) {
+                    window::drag(id)
+                } else {
+                    Task::none()
+                }
+            }
+            WindowAction::Release => {
+                self.grabbed_window = None;
+                Task::none()
+            }
+            WindowAction::ToggleMaximize => {
+                self.grabbed_window = None;
+                window::toggle_maximize(id)
+            }
+            WindowAction::Minimize => window::minimize(id, true),
+            WindowAction::ShowMenu => window::show_system_menu(id),
+            WindowAction::Resize(direction) => window::drag_resize(id, direction),
+            WindowAction::Close => self.update(Message::CloseRequested(id)),
+        }
+    }
+
+    fn redecorate_windows(&mut self) -> Task<Message> {
+        Task::batch(
+            [self.main_window, self.launch_window]
+                .into_iter()
+                .flatten()
+                .map(window::toggle_decorations),
+        )
+    }
+
+    fn uses_own_title_bar(&self) -> bool {
+        !self.state.system_title_bar()
     }
 
     fn restyle(&mut self) {
@@ -460,7 +541,11 @@ impl Quadra {
         if let Some(id) = self.main_window {
             return window::gain_focus(id);
         }
-        let (id, opened) = window::open(window_settings(MAIN_WINDOW_SIZE, true));
+        let (id, opened) = window::open(window_settings(
+            MAIN_WINDOW_SIZE,
+            true,
+            self.state.system_title_bar(),
+        ));
         self.main_window = Some(id);
         opened.discard()
     }
@@ -477,7 +562,11 @@ impl Quadra {
         if let Some(id) = self.launch_window {
             return window::gain_focus(id);
         }
-        let (id, opened) = window::open(window_settings(launch_window::SIZE, false));
+        let (id, opened) = window::open(window_settings(
+            launch_window::SIZE,
+            false,
+            self.state.system_title_bar(),
+        ));
         self.launch_window = Some(id);
         opened.discard()
     }
@@ -597,7 +686,7 @@ impl Quadra {
         if Some(id) == self.main_window {
             self.main_view()
         } else if Some(id) == self.launch_window {
-            launch_window::view(&self.state, self.pulse)
+            self.launch_view(id)
         } else {
             space().into()
         }
@@ -621,22 +710,61 @@ impl Quadra {
             Page::Servers => self.servers.view(state, look),
             Page::Settings => self.settings.view(state, look),
         };
-        let content = Column::new()
-            .push(bar(look, page, &pages))
-            .push(update_banner(state, look))
-            .push(page_content);
+        let mut below_title = stack![
+            Column::new()
+                .push(update_banner(state, look))
+                .push(page_content)
+        ];
+        if let Some(dialog) = self.dialogs.last() {
+            below_title = below_title.push(dialog::view(dialog, &self.live_log, look));
+        }
 
-        let backdrop: Option<Element<'_, Message>> = match state.theme() {
+        let Some(window) = self.main_window.filter(|_| self.uses_own_title_bar()) else {
+            return stack![]
+                .push(self.backdrop())
+                .push(column![bar(look, page, &pages), below_title])
+                .into();
+        };
+
+        let title_bar = TitleBar {
+            window,
+            look,
+            shown: page,
+            pages,
+            layout: &self.button_layout,
+            is_maximized: self.main_window_is_maximized,
+            is_grabbed: self.grabbed_window == Some(window),
+        };
+        let mut layers = stack![]
+            .push(self.backdrop())
+            .push(column![title_bar.view(), below_title]);
+        if !self.main_window_is_maximized {
+            layers = layers
+                .push(title_bar::outline(look))
+                .push(title_bar::resize_edges(window));
+        }
+        layers.into()
+    }
+
+    fn backdrop(&self) -> Option<Element<'_, Message>> {
+        match self.state.theme() {
             Theme::Grid => Some(self.grid_backdrop.view()),
             Theme::Monochrome => self.line_field.as_ref().map(LineField::view),
             Theme::Adwaita => None,
-        };
-
-        let mut layers = stack![].push(backdrop).push(content);
-        if let Some(dialog) = self.dialogs.last() {
-            layers = layers.push(dialog::view(dialog, &self.live_log, look));
         }
-        layers.into()
+    }
+
+    fn launch_view(&self, window: window::Id) -> Element<'_, Message> {
+        let content = launch_window::view(&self.state, self.pulse);
+        if !self.uses_own_title_bar() {
+            return content;
+        }
+        stack![
+            title_bar::grab_area(window, self.grabbed_window == Some(window), content),
+            title_bar::close_button(window, self.look),
+            title_bar::outline(self.look),
+        ]
+        .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -647,6 +775,10 @@ impl Quadra {
             window::close_events().map(Message::WindowClosed),
             system::theme_changes().map(Message::SystemTheme),
         ];
+
+        if self.uses_own_title_bar() {
+            subscriptions.push(window::resize_events().map(|(id, _)| Message::WindowResized(id)));
+        }
 
         if !self.dialogs.is_empty() {
             subscriptions.push(keyboard::listen().filter_map(|event| match event {
@@ -703,6 +835,11 @@ fn react_to_state(state: &AppState, reactions: &Reactions) {
         push(|| Reaction::LaunchProgressChanged),
     );
     state.connect_properties_notify(&PROPERTIES_THAT_DECIDE_LOOK, push(|| Reaction::LookChanged));
+    state.connect_property_notify("system-title-bar", push(|| Reaction::TitleBarChanged));
+    state.connect_property_notify(
+        "window-button-layout",
+        push(|| Reaction::ButtonLayoutChanged),
+    );
 
     let reactions = reactions.clone();
     state.connect_log_changed(move |_, change| {
@@ -714,11 +851,12 @@ fn react_to_state(state: &AppState, reactions: &Reactions) {
     });
 }
 
-fn window_settings(size: Size, resizable: bool) -> window::Settings {
+fn window_settings(size: Size, resizable: bool, decorations: bool) -> window::Settings {
     window::Settings {
         size,
         min_size: resizable.then_some(MAIN_WINDOW_MINIMUM_SIZE),
         resizable,
+        decorations,
         exit_on_close_request: false,
         icon: app_icon_rgba()
             .and_then(|(rgba, width, height)| window::icon::from_rgba(rgba, width, height).ok()),

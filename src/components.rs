@@ -15,5 +15,6 @@ pub mod play_action;
 pub mod preferences;
 pub mod roblox_status;
 pub mod style;
+pub mod title_bar;
 pub mod tray;
 pub mod update_banner;

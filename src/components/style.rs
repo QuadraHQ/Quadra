@@ -262,6 +262,37 @@ pub fn tab(look: Look, selected: bool) -> impl Fn(&iced::Theme, button::Status) 
     }
 }
 
+pub fn window_button(look: Look) -> impl Fn(&iced::Theme, button::Status) -> button::Style {
+    move |_, status| {
+        let background = match status {
+            button::Status::Hovered => look.hovered,
+            button::Status::Pressed => look.pressed,
+            _ => look.raised,
+        };
+        button::Style {
+            background: Some(Background::Color(background)),
+            text_color: look.text,
+            border: Border {
+                radius: if look.radius > 0.0 { 100.0 } else { 0.0 }.into(),
+                ..Border::default()
+            },
+            shadow: Shadow::default(),
+            snap: true,
+        }
+    }
+}
+
+pub fn outline(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
+    move |_| container::Style {
+        border: Border {
+            color: look.strong_border,
+            width: 1.0,
+            radius: 0.0.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
 pub fn card(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
     move |_| container::Style {
         background: Some(Background::Color(look.card)),
