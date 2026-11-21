@@ -4,7 +4,7 @@ use crate::components::icon::Symbol;
 use crate::components::imported_theme::{hex, parse_color};
 use crate::components::preferences::{icon_button, preference_row};
 use crate::components::style::{self, Look};
-use crate::components::theme_backdrop::chosen_scene;
+use crate::components::theme_backdrop::{chosen_scene, theme_colors_for};
 use crate::quadra::{Message, act};
 use crate::state::{AppState, Choice, Theme};
 use iced::widget::{container, pick_list, row, space, text_input};
@@ -102,7 +102,7 @@ fn color_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {
         return Vec::new();
     };
     let typed = state.animation_colors();
-    let defaults = scene.default_lights();
+    let defaults = theme_colors_for(state, scene);
     let names = scene.light_names();
     let anything_typed = typed.iter().any(|color| !color.is_empty());
 

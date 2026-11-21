@@ -82,18 +82,12 @@ pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
     };
 
     let picked = picked_colors(state);
-    let theme_colors = if Some(scene) == own.scene {
-        own.colors
-    } else {
-        Vec::new()
-    };
-    let colors: Vec<Option<Color>> = (0..scene.default_lights().len())
-        .map(|index| {
-            picked
-                .get(index)
-                .copied()
-                .flatten()
-                .or_else(|| theme_colors.get(index).copied())
+    let fallback = theme_lights(&own, scene);
+    let colors: Vec<Option<Color>> = fallback
+        .iter()
+        .enumerate()
+        .map(|(index, &theme_color)| {
+            Some(picked.get(index).copied().flatten().unwrap_or(theme_color))
         })
         .collect();
     let still = match own.still {
@@ -104,6 +98,23 @@ pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
         still,
         scene: Some((scene, scene.palette(look.window, &colors))),
     }
+}
+
+fn theme_lights(own: &ThemeOwn, scene: Scene) -> Vec<Color> {
+    let defaults = scene.default_lights();
+    (0..defaults.len())
+        .map(|index| {
+            own.colors
+                .get(index)
+                .filter(|_| own.scene == Some(scene))
+                .copied()
+                .unwrap_or(defaults[index])
+        })
+        .collect()
+}
+
+pub fn theme_colors_for(state: &AppState, scene: Scene) -> Vec<Color> {
+    theme_lights(&theme_own(state), scene)
 }
 
 pub fn picked_colors(state: &AppState) -> Vec<Option<Color>> {
