@@ -1,4 +1,4 @@
-const HORIZON = 0.6;
+const HORIZON = 0.5;
 const SUN_RADIUS = 0.2;
 
 fn light_at(covering: Covering) -> vec3<f32> {
@@ -19,9 +19,9 @@ fn light_at(covering: Covering) -> vec3<f32> {
         let gap = across > 0.45 && band < mix(0.0, 0.55, smoothstep(0.45, 1.0, across));
         let disc = (1.0 - smoothstep(SUN_RADIUS - 0.003, SUN_RADIUS + 0.003, distance)) * select(1.0, 0.0, gap);
         let face = mix(sun, grid, smoothstep(0.1, 1.0, across));
-        sky = mix(sky, face * 0.9, disc);
-        sky += sun * exp(-max(distance - SUN_RADIUS, 0.0) * 9.0) * 0.12;
-        return sky + haze * exp(-(HORIZON - place.y) * 14.0) * 0.18;
+        sky = mix(sky, face * 0.4, disc);
+        sky += sun * exp(-max(distance - SUN_RADIUS, 0.0) * 9.0) * 0.06;
+        return sky + haze * exp(-(HORIZON - place.y) * 14.0) * 0.1;
     }
 
     let below = place.y - HORIZON;
@@ -36,7 +36,7 @@ fn light_at(covering: Covering) -> vec3<f32> {
         1.0 - smoothstep(across_width * 0.5, across_width * 1.5, line_across),
         1.0 - smoothstep(along_width * 0.5, along_width * 1.5, line_along),
     );
-    let fade = smoothstep(0.0, 0.1, below);
+    let fade = smoothstep(0.0, 0.3, below);
     let floor_light = scene.base_light.rgb * 0.7 + haze * exp(-below * 10.0) * 0.12;
-    return floor_light + grid * lines * fade * 0.8;
+    return floor_light + grid * lines * fade * 0.45;
 }

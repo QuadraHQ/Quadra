@@ -22,7 +22,7 @@ fn glow(spot: vec2<f32>) -> vec3<f32> {
     let rim = smoothstep(0.45, 0.95, field) * (1.0 - wax);
     let heat = mix(tint(1u), tint(0u), smoothstep(0.1, 0.9, down));
     let lamp = mix(scene.base.rgb, mix(scene.base.rgb, tint(2u), 0.25), down);
-    return mix(lamp, heat * 0.85, wax) + heat * rim * 0.18;
+    return mix(lamp, heat * 0.85, wax * 0.4) + heat * rim * 0.1;
 }
 
 fn light_at(covering: Covering) -> vec3<f32> {

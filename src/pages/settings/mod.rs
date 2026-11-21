@@ -27,7 +27,7 @@ mod vr_access;
 
 use crate::backend::{self, Handler, Shortcut};
 use crate::components::file_dialog;
-use crate::components::preferences::{caption, page, searching};
+use crate::components::preferences::{MAXIMUM_CONTENT_WIDTH, caption, page, searching};
 use crate::components::style::{self, Look};
 use crate::quadra::Message;
 use crate::state::{AppState, Client, QUADRA_PREFIX};
@@ -35,7 +35,9 @@ use crate::utils::is_running_in_flatpak;
 use bound_rows::keep_named_choice_valid;
 use custom_flags::CustomFlags;
 use environment_variables::EnvironmentVariableRows;
-use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::widget::{
+    button, column, container, responsive, row, scrollable, space, text, text_input,
+};
 use iced::{Element, Length, Task};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -45,6 +47,7 @@ use std::rc::Rc;
 pub use custom_flags::{EXPORT_FILE_NAME, export_dialog, import_flags, save_exported};
 
 pub const SEARCH_WIDTH: f32 = 200.0;
+const ONE_LINE_HEADER_WIDTH: f32 = 660.0;
 const SEARCH_FIELD: &str = "settings-search";
 const SCROLLER: &str = "settings-scroller";
 
@@ -297,6 +300,11 @@ impl Settings {
     }
 
     pub fn view<'a>(&'a self, state: &AppState, look: Look) -> Element<'a, Message> {
+        let state = state.clone();
+        responsive(move |size| self.view_at(size.width, &state, look)).into()
+    }
+
+    fn view_at<'a>(&'a self, width: f32, state: &AppState, look: Look) -> Element<'a, Message> {
         let shown_tab = self.shown_tab(state);
         let is_searching = !self.search.trim().is_empty();
         let shown_tabs: Vec<Tab> = [
@@ -316,29 +324,38 @@ impl Settings {
                 .on_press(Message::Settings(SettingsMessage::ShowTab(tab)))
                 .into()
         });
+        let tabs = container(row(tabs).spacing(4))
+            .padding(3)
+            .style(style::card(look));
+        let fits_one_line = width >= ONE_LINE_HEADER_WIDTH;
         let search = text_input("Search settings", &self.search)
             .id(SEARCH_FIELD)
             .font(look.font)
             .size(13)
             .padding([6, 12])
-            .width(SEARCH_WIDTH)
+            .width(if fits_one_line {
+                Length::Fixed(SEARCH_WIDTH)
+            } else {
+                Length::Fill
+            })
             .style(style::input(look, true))
             .on_input(|query| Message::Settings(SettingsMessage::Search(query)));
+        let header: Element<'a, Message> = if fits_one_line {
+            row![tabs, space::horizontal(), search]
+                .align_y(iced::Alignment::Center)
+                .into()
+        } else {
+            column![tabs, search]
+                .spacing(8)
+                .align_x(iced::Alignment::Center)
+                .into()
+        };
         let header = container(
-            row![
-                container(row(tabs).spacing(4))
-                    .padding(3)
-                    .style(style::card(look)),
-                search,
-            ]
-            .spacing(12)
-            .align_y(iced::Alignment::Center)
-            .wrap()
-            .vertical_spacing(8)
-            .align_x(iced::Alignment::Center),
+            container(header)
+                .max_width(MAXIMUM_CONTENT_WIDTH)
+                .padding(iced::padding::top(12).left(16).right(16)),
         )
-        .center_x(Length::Fill)
-        .padding(iced::padding::top(12).left(16).right(16));
+        .center_x(Length::Fill);
 
         let sections = if is_searching {
             let (mut sections, found) = searching(&self.search, || {
