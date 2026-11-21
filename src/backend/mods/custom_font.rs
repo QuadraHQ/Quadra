@@ -22,7 +22,16 @@ pub fn apply(files: &mut ContentFiles, font: &Path) -> io::Result<()> {
 
     let name = format!("CustomFont.{extension}");
     files.place_file(&Path::new(FONTS_DIRECTORY).join(&name), font)?;
+    point_families_at(files, &name)
+}
 
+pub fn apply_bytes(files: &mut ContentFiles, font: &[u8], extension: &str) -> io::Result<()> {
+    let name = format!("CustomFont.{extension}");
+    files.place_bytes(&Path::new(FONTS_DIRECTORY).join(&name), font)?;
+    point_families_at(files, &name)
+}
+
+fn point_families_at(files: &mut ContentFiles, name: &str) -> io::Result<()> {
     let asset_uri = format!("rbxasset://fonts/{name}");
     for family in files.list(Path::new(FAMILIES_DIRECTORY)) {
         if family
