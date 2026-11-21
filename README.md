@@ -15,7 +15,9 @@ This is redybcs's fork of [QuadraHQ/Quadra](https://github.com/QuadraHQ/Quadra).
 - Starts in about half the time and allocates about half the memory of the GTK version
 - Its own title bar, which follows your desktop's button layout (or switch back to the system one)
 - Seven themes, including Aurora, Ember, Paper and Phosphor, with GPU-drawn animated backgrounds that pause when Quadra isn't in use
-- Fourteen background animations to use with any theme, in your own colours
+- Fourteen background animations to use with any theme, in your own colours, a theme gallery with live previews, and a cursor glow
+- An Animations setting (Full, Reduced or Off) that also follows your desktop's reduce-animations preference
+- Search across every settings tab
 - Your own themes, imported from CSS files (see [Custom themes](#custom-themes))
 
 For help with Quadra itself, upstream has a [Discord server](https://discord.gg/W8jXfngc8z).
@@ -106,7 +108,7 @@ Flake input:
 
 ## Custom themes
 
-Settings > General > App theme has a + button that imports a theme from a CSS file. Quadra only reads custom properties, so a theme sets colours and a few other values, not selectors or layout:
+The Import CSS theme card in Settings › General › Appearance imports a theme from a CSS file. Quadra only reads custom properties, so a theme sets colours and a few other values, not selectors or layout:
 
 ```css
 :root {
