@@ -1,4 +1,5 @@
 use super::imported_theme::brightness;
+use super::style::luminance;
 use crate::quadra::Message;
 use crate::state::Animations;
 use iced::advanced::layout::{self, Layout};
@@ -21,6 +22,7 @@ const REDUCED_FRAME: Duration = Duration::from_millis(66);
 const SETTLED_DISTANCE: f32 = 0.5;
 const LONGEST_STEP: f32 = 0.1;
 const DARK_WINDOW_STRENGTH: f32 = 0.16;
+const DARK_WINDOW_LIGHT: f32 = 0.05;
 const LIGHT_WINDOW_STRENGTH: f32 = 0.1;
 const LIGHT_WINDOW_BRIGHTNESS: f32 = 0.55;
 const SHADER: &str = r#"
@@ -71,7 +73,7 @@ pub fn cursor_glow(color: Color, window: Color, motion: Animations) -> Element<'
     let peak = if brightness(window) > LIGHT_WINDOW_BRIGHTNESS {
         LIGHT_WINDOW_STRENGTH
     } else {
-        DARK_WINDOW_STRENGTH
+        (DARK_WINDOW_LIGHT / luminance(color).max(f32::EPSILON)).min(DARK_WINDOW_STRENGTH)
     };
     Element::new(GlowLayer {
         glow: shader::Shader::new(CursorGlow {

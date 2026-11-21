@@ -16,7 +16,7 @@ pub fn tabs<'a>(look: Look, shown: Page, pages: &[Page], compact: bool) -> Row<'
     row(pages.iter().map(|&page| {
         let is_shown = page == shown;
         let color = if is_shown {
-            look.accent_text
+            look.selected_text()
         } else {
             look.text
         };

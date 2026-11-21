@@ -13,6 +13,7 @@ pub const CAPTION_SIZE: f32 = 12.0;
 pub const HEADING_SIZE: f32 = 12.0;
 pub const TITLE_SIZE: f32 = 26.0;
 pub const DIALOG_TITLE_SIZE: f32 = 17.0;
+const READABLE_CONTRAST: f32 = 4.5;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Look {
@@ -93,6 +94,15 @@ impl Look {
         }
     }
 
+    pub fn selected_text(&self) -> Color {
+        let fill = luminance_over(self.pressed, self.window);
+        if contrast(luminance(self.accent_text), fill) >= READABLE_CONTRAST {
+            self.accent_text
+        } else {
+            self.text
+        }
+    }
+
     fn border(&self, color: Color) -> Border {
         Border {
             color,
@@ -139,9 +149,9 @@ const ADWAITA_DARK: Look = Look {
     accent: color!(0x3584e4),
     on_accent: Color::WHITE,
     accent_text: color!(0x78aeed),
-    raised: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
-    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.15),
-    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.25),
+    raised: Color::from_rgba(1.0, 1.0, 1.0, 0.07),
+    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
+    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.14),
     field: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
     dialog: color!(0x36363a),
     shade: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
@@ -183,7 +193,7 @@ const GRID: Look = Look {
 const MONOCHROME: Look = Look {
     dark: true,
     window: color!(0x000000),
-    card: Color::from_rgba(30.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 0.4),
+    card: Color::from_rgba(30.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 0.75),
     border: color!(0x1e1e1e),
     strong_border: color!(0x2f2f2f),
     text: color!(0xe8e8e8),
@@ -218,8 +228,8 @@ const AURORA: Look = Look {
     on_accent: color!(0x24081c),
     accent_text: color!(0xff9ccb),
     raised: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
-    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.13),
-    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.2),
+    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
+    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.14),
     field: Color::from_rgba(0.0, 0.0, 0.0, 0.25),
     dialog: color!(0x1e1535),
     shade: Color::from_rgba(5.0 / 255.0, 2.0 / 255.0, 12.0 / 255.0, 0.6),
@@ -372,7 +382,7 @@ pub fn tab(look: Look, selected: bool) -> impl Fn(&iced::Theme, button::Status) 
         button::Style {
             background: Some(Background::Color(background)),
             text_color: if selected {
-                look.accent_text
+                look.selected_text()
             } else {
                 look.text
             },
@@ -694,5 +704,47 @@ fn darken(color: Color, amount: f32) -> Color {
         g: (color.g - amount).max(0.0),
         b: (color.b - amount).max(0.0),
         ..color
+    }
+}
+
+pub fn luminance(color: Color) -> f32 {
+    let [red, green, blue, _] = color.into_linear();
+    0.2126 * red + 0.7152 * green + 0.0722 * blue
+}
+
+fn luminance_over(top: Color, bottom: Color) -> f32 {
+    luminance(top) * top.a + luminance(bottom) * (1.0 - top.a)
+}
+
+fn contrast(first: f32, second: f32) -> f32 {
+    (first.max(second) + 0.05) / (first.min(second) + 0.05)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selected_tabs_stay_readable_in_every_theme() {
+        for look in [
+            ADWAITA_LIGHT,
+            ADWAITA_DARK,
+            GRID,
+            MONOCHROME,
+            AURORA,
+            EMBER,
+            PAPER,
+            PHOSPHOR,
+        ] {
+            let fill = luminance_over(look.pressed, look.window);
+            let shown = luminance(look.selected_text());
+            assert!(contrast(shown, fill) >= READABLE_CONTRAST, "{look:?}");
+        }
+    }
+
+    #[test]
+    fn selected_tabs_keep_the_accent_where_it_reads() {
+        assert_eq!(EMBER.selected_text(), EMBER.accent_text);
+        assert_eq!(AURORA.selected_text(), AURORA.text);
     }
 }
