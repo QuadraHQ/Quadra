@@ -138,6 +138,13 @@ pub enum BackgroundAnimation {
     Waves,
     Fireflies,
     Bokeh,
+    Warp,
+    Rain,
+    Lava,
+    Silk,
+    Snow,
+    Petals,
+    Horizon,
 }
 
 impl Choice for BackgroundAnimation {
@@ -151,6 +158,13 @@ impl Choice for BackgroundAnimation {
         Self::Waves,
         Self::Fireflies,
         Self::Bokeh,
+        Self::Warp,
+        Self::Rain,
+        Self::Lava,
+        Self::Silk,
+        Self::Snow,
+        Self::Petals,
+        Self::Horizon,
     ];
 
     fn label(self) -> &'static str {
@@ -164,6 +178,13 @@ impl Choice for BackgroundAnimation {
             Self::Waves => "Waves",
             Self::Fireflies => "Fireflies",
             Self::Bokeh => "Bokeh",
+            Self::Warp => "Warp",
+            Self::Rain => "Rain",
+            Self::Lava => "Lava",
+            Self::Silk => "Silk",
+            Self::Snow => "Snow",
+            Self::Petals => "Petals",
+            Self::Horizon => "Horizon",
         }
     }
 }

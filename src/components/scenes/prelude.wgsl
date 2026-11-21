@@ -94,6 +94,16 @@ fn mote_at(center: vec2<f32>, radius: f32, corner: u32) -> Mote {
     return mote;
 }
 
+fn streak_at(center: vec2<f32>, radius: f32, direction: vec2<f32>, stretch: f32, corner: u32) -> Mote {
+    let offset = (vec2<f32>(f32(corner & 1u), f32(corner >> 1u)) * 2.0 - 1.0) * MOTE_REACH;
+    let across = vec2<f32>(-direction.y, direction.x);
+    let spot = center + (direction * offset.x * stretch + across * offset.y) * radius;
+    var mote: Mote;
+    mote.position = vec4<f32>(spot.x / scene.size.x * 2.0 - 1.0, 1.0 - spot.y / scene.size.y * 2.0, 0.0, 1.0);
+    mote.offset = offset;
+    return mote;
+}
+
 fn disc_at(center: vec2<f32>, radius: f32, corner: u32) -> Mote {
     let offset = (vec2<f32>(f32(corner & 1u), f32(corner >> 1u)) * 2.0 - 1.0) * DISC_REACH;
     let spot = center + offset * radius;

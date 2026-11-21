@@ -26,6 +26,13 @@ pub enum Scene {
     Waves,
     Fireflies,
     Bokeh,
+    Warp,
+    Rain,
+    Lava,
+    Silk,
+    Snow,
+    Petals,
+    Horizon,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -35,7 +42,7 @@ pub struct Palette {
 }
 
 impl Scene {
-    const ALL: [Scene; 7] = [
+    const ALL: [Scene; 14] = [
         Self::Aurora,
         Self::Embers,
         Self::Leaves,
@@ -43,6 +50,13 @@ impl Scene {
         Self::Waves,
         Self::Fireflies,
         Self::Bokeh,
+        Self::Warp,
+        Self::Rain,
+        Self::Lava,
+        Self::Silk,
+        Self::Snow,
+        Self::Petals,
+        Self::Horizon,
     ];
     const COUNT: usize = Self::ALL.len();
 
@@ -56,6 +70,13 @@ impl Scene {
             BackgroundAnimation::Waves => Some(Self::Waves),
             BackgroundAnimation::Fireflies => Some(Self::Fireflies),
             BackgroundAnimation::Bokeh => Some(Self::Bokeh),
+            BackgroundAnimation::Warp => Some(Self::Warp),
+            BackgroundAnimation::Rain => Some(Self::Rain),
+            BackgroundAnimation::Lava => Some(Self::Lava),
+            BackgroundAnimation::Silk => Some(Self::Silk),
+            BackgroundAnimation::Snow => Some(Self::Snow),
+            BackgroundAnimation::Petals => Some(Self::Petals),
+            BackgroundAnimation::Horizon => Some(Self::Horizon),
         }
     }
 
@@ -77,6 +98,13 @@ impl Scene {
         const WAVES: [Color; 3] = [color!(0x2f6fd0), color!(0x19b5e6), color!(0x8be3f5)];
         const FIREFLIES: [Color; 2] = [color!(0xc8ff6a), color!(0xffd36a)];
         const BOKEH: [Color; 3] = [color!(0xff6fb5), color!(0x6fb7ff), color!(0xffd56f)];
+        const WARP: [Color; 3] = [color!(0x5b4dff), color!(0xd6e6ff), color!(0xff9de2)];
+        const RAIN: [Color; 2] = [color!(0x9ec9ff), color!(0xd2e2ff)];
+        const LAVA: [Color; 3] = [color!(0xff4f6d), color!(0xffb347), color!(0x6a2cff)];
+        const SILK: [Color; 3] = [color!(0x3a2cff), color!(0xc23bff), color!(0xffa6e8)];
+        const SNOW: [Color; 2] = [color!(0xffffff), color!(0xbcd8ff)];
+        const PETALS: [Color; 3] = [color!(0xffc2db), color!(0xff9cc4), color!(0xffe3ee)];
+        const HORIZON: [Color; 3] = [color!(0xff3df2), color!(0xffb03a), color!(0x7a2cff)];
         match self {
             Self::Aurora => &AURORA,
             Self::Embers => &EMBERS,
@@ -85,6 +113,13 @@ impl Scene {
             Self::Waves => &WAVES,
             Self::Fireflies => &FIREFLIES,
             Self::Bokeh => &BOKEH,
+            Self::Warp => &WARP,
+            Self::Rain => &RAIN,
+            Self::Lava => &LAVA,
+            Self::Silk => &SILK,
+            Self::Snow => &SNOW,
+            Self::Petals => &PETALS,
+            Self::Horizon => &HORIZON,
         }
     }
 
@@ -97,6 +132,13 @@ impl Scene {
             Self::Waves => &["Back wave", "Middle wave", "Front wave"],
             Self::Fireflies => &["Glow", "Second glow"],
             Self::Bokeh => &["First light", "Second light", "Third light"],
+            Self::Warp => &["Nebula", "Stars", "Rare stars"],
+            Self::Rain => &["Rain", "Lightning"],
+            Self::Lava => &["Cool wax", "Hot wax", "Lamp glass"],
+            Self::Silk => &["Deep fold", "Middle fold", "Highlight"],
+            Self::Snow => &["Snowflakes", "Snowdrift"],
+            Self::Petals => &["Haze", "First petals", "Second petals"],
+            Self::Horizon => &["Grid", "Sun", "Haze"],
         }
     }
 
@@ -119,8 +161,15 @@ impl Scene {
 
     fn frames_per_second(self) -> u32 {
         match self {
-            Self::Leaves | Self::Bokeh => 15,
-            Self::Aurora | Self::Embers | Self::Scanlines | Self::Waves | Self::Fireflies => 20,
+            Self::Leaves | Self::Bokeh | Self::Silk | Self::Lava => 15,
+            Self::Aurora
+            | Self::Embers
+            | Self::Scanlines
+            | Self::Waves
+            | Self::Fireflies
+            | Self::Snow
+            | Self::Petals => 20,
+            Self::Warp | Self::Rain | Self::Horizon => 30,
         }
     }
 
@@ -132,8 +181,15 @@ impl Scene {
         match self {
             Self::Aurora | Self::Waves => Some(4.0),
             Self::Embers => Some(6.0),
-            Self::Leaves | Self::Fireflies | Self::Bokeh => Some(8.0),
-            Self::Scanlines => None,
+            Self::Lava | Self::Silk => Some(6.0),
+            Self::Leaves
+            | Self::Fireflies
+            | Self::Bokeh
+            | Self::Warp
+            | Self::Rain
+            | Self::Snow
+            | Self::Petals => Some(8.0),
+            Self::Scanlines | Self::Horizon => None,
         }
     }
 
@@ -143,7 +199,16 @@ impl Scene {
             Self::Embers => 72,
             Self::Fireflies => 40,
             Self::Bokeh => 26,
-            Self::Leaves | Self::Scanlines | Self::Waves => 0,
+            Self::Warp => 120,
+            Self::Rain => 110,
+            Self::Snow => 140,
+            Self::Petals => 46,
+            Self::Leaves
+            | Self::Scanlines
+            | Self::Waves
+            | Self::Lava
+            | Self::Silk
+            | Self::Horizon => 0,
         }
     }
 
@@ -163,6 +228,13 @@ impl Scene {
             Self::Waves => "waves",
             Self::Fireflies => "fireflies",
             Self::Bokeh => "bokeh",
+            Self::Warp => "warp",
+            Self::Rain => "rain",
+            Self::Lava => "lava",
+            Self::Silk => "silk",
+            Self::Snow => "snow",
+            Self::Petals => "petals",
+            Self::Horizon => "horizon",
         }
     }
 
@@ -175,6 +247,13 @@ impl Scene {
             Self::Waves => include_str!("scenes/waves.wgsl"),
             Self::Fireflies => include_str!("scenes/fireflies.wgsl"),
             Self::Bokeh => include_str!("scenes/bokeh.wgsl"),
+            Self::Warp => include_str!("scenes/warp.wgsl"),
+            Self::Rain => include_str!("scenes/rain.wgsl"),
+            Self::Lava => include_str!("scenes/lava.wgsl"),
+            Self::Silk => include_str!("scenes/silk.wgsl"),
+            Self::Snow => include_str!("scenes/snow.wgsl"),
+            Self::Petals => include_str!("scenes/petals.wgsl"),
+            Self::Horizon => include_str!("scenes/horizon.wgsl"),
         };
         let glow_pass = if self.pixels_per_glow_texel().is_some() {
             GLOW_PASS
