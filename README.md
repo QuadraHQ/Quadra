@@ -3,35 +3,26 @@
 </p>
 
 <h1 align="center">
- Quadra, by QuadraHQ.
+ Quadra, iced edition
 </h1>
-
- <p align="center">
-    <a href="https://discord.gg/W8jXfngc8z">
-      <img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord" width="140">
-   </a>
- </p>
 
 <p align="center">
   A bootstrapper for the macOS Roblox Player & Studio client, running on Linux through <a href="https://github.com/microlift/rosemary">Rosemary</a>.
 </p>
 
+This is redybcs's fork of [QuadraHQ/Quadra](https://github.com/QuadraHQ/Quadra). It keeps up with upstream, and its [`iced-gui`](https://github.com/redybcs/Quadra/tree/iced-gui) branch replaces the GTK4/libadwaita interface with [iced](https://iced.rs):
+
+- Starts in about half the time and allocates about half the memory of the GTK version
+- Its own title bar, which follows your desktop's button layout (or switch back to the system one)
+- Seven themes, including Aurora, Ember, Paper and Phosphor, with GPU-drawn animated backgrounds that pause when Quadra isn't in use
+- Seven background animations to use with any theme, in your own colours
+- Your own themes, imported from CSS files (see [Custom themes](#custom-themes))
+
+For help with Quadra itself, upstream has a [Discord server](https://discord.gg/W8jXfngc8z).
+
 ## Install
 
-```
-curl -fsSL https://quadrahq.org/install.sh | bash
-```
-
-This installs the newest Quadra as an AppImage in `~/.local/bin` and adds it to the app menu. Run it again to update.
-Options go after `bash -s --`, for example `curl -fsSL https://quadrahq.org/install.sh | bash -s -- --flatpak`:
-
-- `--flatpak`: install the Flatpak bundle instead
-- `--native`: build Quadra on this computer instead
-- `--tarball`: same as native, but with pre-compiled binaries
-- `--version TAG`: install a specific release, such as `v0.50.0-alpha.3`
-- `--uninstall`: remove Quadra but keep its data and your Roblox sign-in; add `--purge` to delete those too
-
-The installer checks every download against the release's `SHA256SUMS` before installing it.
+This fork doesn't publish releases yet, so build it from source (below) or run it with Nix. The installer at quadrahq.org installs upstream's GTK version, not this one.
 
 ## Build instructions
 
@@ -47,14 +38,16 @@ The installer checks every download against the release's `SHA256SUMS` before in
 **Fetch source:**
 
 ```
-git clone https://github.com/QuadraHQ/quadra && cd quadra
+git clone --branch iced-gui https://github.com/redybcs/Quadra && cd Quadra
 ```
 
 **Build directly from source:**
 
 ```
-cargo build
+cargo build --release
 ```
+
+The program is written to `target/release/quadra`.
 
 **Build Flatpak:**
 
@@ -75,7 +68,7 @@ The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
 Try it without installing:
 
 ```sh
-nix run github:QuadraHQ/quadra
+nix run github:redybcs/Quadra/iced-gui
 ```
 
 Flake input:
@@ -84,7 +77,7 @@ Flake input:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    quadra.url = "github:QuadraHQ/quadra";
+    quadra.url = "github:redybcs/Quadra/iced-gui";
   };
 }
 ```
