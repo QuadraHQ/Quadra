@@ -234,8 +234,8 @@ impl Choice for Animations {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CursorEffect {
-    None,
     #[default]
+    None,
     Glow,
     Spotlight,
     Ring,
@@ -449,7 +449,7 @@ impl SavedSettings {
     fn chosen_cursor_effect(&self) -> CursorEffect {
         match (self.cursor_effect, self.legacy_cursor_glow) {
             (Some(effect), _) => effect,
-            (None, Some(false)) => CursorEffect::None,
+            (None, Some(true)) => CursorEffect::Glow,
             (None, _) => CursorEffect::default(),
         }
     }

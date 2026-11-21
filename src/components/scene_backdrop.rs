@@ -6,6 +6,7 @@ use iced::time::{Duration, Instant};
 use iced::wgpu;
 use iced::widget::shader::{self, Viewport};
 use iced::{Color, Element, Event, Length, Rectangle, color, window};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread;
 
 const GLOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -181,7 +182,10 @@ impl Scene {
                 .unwrap_or(Color::WHITE);
             *light = chosen.get(index).copied().flatten().unwrap_or(fallback);
         }
-        Palette { base, lights }
+        Palette {
+            base: Color { a: 1.0, ..base },
+            lights,
+        }
     }
 
     fn frames_per_second(self) -> u32 {
@@ -299,6 +303,16 @@ impl Scene {
     }
 }
 
+static FULLY_SHOWN_SCENES: AtomicU32 = AtomicU32::new(0);
+
+fn is_fully_shown(scene: Scene) -> bool {
+    FULLY_SHOWN_SCENES.load(Ordering::Relaxed) & (1 << scene as u32) != 0
+}
+
+fn mark_fully_shown(scene: Scene) {
+    FULLY_SHOWN_SCENES.fetch_or(1 << scene as u32, Ordering::Relaxed);
+}
+
 const WARMING_UP: Duration = Duration::from_millis(2500);
 const PREVIEW_STARTS_AT: Duration = Duration::from_secs(9);
 const REDUCED_PACE: f32 = 0.35;
@@ -341,6 +355,7 @@ impl SceneBackdrop {
                 SETTLES_AFTER_NO_INPUT_FOR
             },
             playing: self.playing,
+            needs_warming: !is_fully_shown(self.scene),
         }
     }
 }
@@ -351,6 +366,7 @@ struct Rules {
     top_pace: f32,
     settles_after: Duration,
     playing: Playing,
+    needs_warming: bool,
 }
 
 #[derive(Default)]
@@ -390,7 +406,8 @@ impl Clock {
         if self.warm_until.is_none() && rules.playing == Playing::Preview {
             self.shown = PREVIEW_STARTS_AT;
         }
-        let is_warming_up = *self.warm_until.get_or_insert(now + WARMING_UP) > now;
+        let warm_until = *self.warm_until.get_or_insert(now + WARMING_UP);
+        let is_warming_up = rules.needs_warming && warm_until > now;
         let wants_motion = self.wants_motion(now, rules);
         if self.is_resting() && !wants_motion && !is_warming_up {
             return None;
@@ -654,7 +671,12 @@ impl ScenePipeline {
     fn presence_of(&self, scene: Scene) -> f32 {
         match &self.painters[scene as usize] {
             PainterSlot::Ready(_, ready_at) => {
-                (ready_at.elapsed().as_secs_f32() / FADING_IN_TIME.as_secs_f32()).min(1.0)
+                let presence =
+                    (ready_at.elapsed().as_secs_f32() / FADING_IN_TIME.as_secs_f32()).min(1.0);
+                if presence == 1.0 {
+                    mark_fully_shown(scene);
+                }
+                presence
             }
             PainterSlot::Unstarted | PainterSlot::Compiling(_) | PainterSlot::Failed => 0.0,
         }
@@ -999,7 +1021,19 @@ mod tests {
             top_pace: 1.0,
             settles_after: SETTLES_AFTER_NO_INPUT_FOR,
             playing: Playing::Backdrop,
+            needs_warming: true,
         }
+    }
+
+    #[test]
+    fn previews_of_ready_scenes_ask_for_no_frames() {
+        let mut clock = Clock::default();
+        let preview = Rules {
+            playing: Playing::Preview,
+            needs_warming: false,
+            ..backdrop()
+        };
+        assert_eq!(clock.advance(Instant::now(), preview), None);
     }
 
     fn run_until_settled(clock: &mut Clock, start: Instant) -> Instant {

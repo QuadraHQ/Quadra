@@ -507,7 +507,12 @@ impl EffectFrame {
             self.kind,
             0.0,
         ]);
-        for (slot, (place, age)) in uniforms[16..].chunks_exact_mut(4).zip(&self.marks) {
+        for (slot, (place, age)) in uniforms[16..]
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(&self.marks)
+        {
             slot.copy_from_slice(&[place.x, place.y, *age, 0.0]);
         }
         uniforms

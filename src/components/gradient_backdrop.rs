@@ -17,23 +17,6 @@ impl Glow {
             stops: Cow::Owned(stops),
         }
     }
-
-    pub fn faded(self, opacity: f32) -> Self {
-        let stops = self
-            .stops
-            .iter()
-            .map(|&(offset, color)| {
-                (
-                    offset,
-                    Color {
-                        a: color.a * opacity,
-                        ..color
-                    },
-                )
-            })
-            .collect();
-        Self::new(self.angle, stops)
-    }
 }
 
 pub const AURORA: Glow = Glow {

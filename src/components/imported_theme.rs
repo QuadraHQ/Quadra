@@ -5,7 +5,6 @@ use iced::{Color, Degrees, Font};
 
 const MOST_GRADIENT_STOPS: usize = 8;
 const MOST_ANIMATION_COLORS: usize = 3;
-const MOST_SEE_THROUGH: f32 = 0.3;
 
 #[derive(Debug, Clone)]
 pub struct ImportedTheme {
@@ -25,7 +24,6 @@ struct Declared {
     font: Option<String>,
     mono_font: Option<String>,
     background: Option<Glow>,
-    opacity: Option<f32>,
     animation: Option<BackgroundAnimation>,
     animation_colors: Vec<Color>,
 }
@@ -80,10 +78,7 @@ pub fn parse_theme(file_name: &str, css: &str) -> Result<ImportedTheme, String> 
             .clone()
             .unwrap_or_else(|| file_name.to_owned()),
         look: look_from(&declared),
-        background: declared
-            .background
-            .clone()
-            .map(|glow| see_through(glow, declared.opacity)),
+        background: declared.background.clone(),
         animation: declared.animation.unwrap_or(BackgroundAnimation::None),
         animation_colors: declared.animation_colors.clone(),
         problems,
@@ -127,9 +122,6 @@ fn declare(declared: &mut Declared, property: &str, value: &str) -> Result<(), S
         "font" => declared.font = Some(first_family(value).ok_or("isn't a font name")?),
         "mono-font" => declared.mono_font = Some(first_family(value).ok_or("isn't a font name")?),
         "background" => declared.background = Some(parse_background(value)?),
-        "opacity" => {
-            declared.opacity = Some(parse_opacity(value).ok_or("isn't between 30% and 100%")?)
-        }
         "animation" => {
             declared.animation = Some(
                 BackgroundAnimation::named(value.trim())
@@ -162,10 +154,6 @@ fn look_from(declared: &Declared) -> Look {
     let dark = window.is_none_or(|window| brightness(window) < 0.5);
     let base = Look::adwaita(dark);
     let window = window.unwrap_or(base.window);
-    let window = Color {
-        a: declared.opacity.unwrap_or(window.a),
-        ..window
-    };
     let text = declared_color("text").unwrap_or(base.text);
     let accent = declared_color("accent").unwrap_or(base.accent);
     let toward_text = |amount| mix(window, text, amount);
@@ -198,24 +186,6 @@ fn look_from(declared: &Declared) -> Look {
         radius: declared.radius.unwrap_or(base.radius),
         font: declared.font.as_deref().map_or(base.font, font_named),
         mono: declared.mono_font.as_deref().map_or(base.mono, font_named),
-    }
-}
-
-fn parse_opacity(value: &str) -> Option<f32> {
-    let value = value.trim();
-    let opacity = match value.strip_suffix('%') {
-        Some(percent) => percent.trim().parse::<f32>().ok()? / 100.0,
-        None => value.parse::<f32>().ok()?,
-    };
-    (MOST_SEE_THROUGH..=1.0)
-        .contains(&opacity)
-        .then_some(opacity)
-}
-
-fn see_through(glow: Glow, opacity: Option<f32>) -> Glow {
-    match opacity {
-        Some(opacity) => glow.faded(opacity),
-        None => glow,
     }
 }
 

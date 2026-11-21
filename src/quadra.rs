@@ -909,7 +909,6 @@ fn window_settings(size: Size, resizable: bool, decorations: bool) -> window::Se
         min_size: resizable.then_some(MAIN_WINDOW_MINIMUM_SIZE),
         resizable,
         decorations,
-        transparent: true,
         exit_on_close_request: false,
         icon: app_icon_rgba()
             .and_then(|(rgba, width, height)| window::icon::from_rgba(rgba, width, height).ok()),
