@@ -40,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 47] = [
+const SAVED_PROPERTIES: [&str; 46] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -85,7 +85,6 @@ const SAVED_PROPERTIES: [&str; 47] = [
     "imported-theme",
     "background-animation",
     "animation-colors",
-    "theme-roblox",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -291,7 +290,6 @@ struct SavedSettings {
     background_animation: BackgroundAnimation,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     animation_colors: Vec<String>,
-    theme_roblox: bool,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -345,7 +343,6 @@ impl Default for SavedSettings {
             imported_theme: String::new(),
             background_animation: BackgroundAnimation::default(),
             animation_colors: Vec::new(),
-            theme_roblox: false,
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -459,7 +456,6 @@ properties! {
     imported_themes set_imported_themes: ImportedThemes = "imported-themes",
     background_animation set_background_animation: BackgroundAnimation = "background-animation",
     animation_colors set_animation_colors: Vec<String> = "animation-colors",
-    theme_roblox set_theme_roblox: bool = "theme-roblox",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
     system_title_bar set_system_title_bar: bool = "system-title-bar",
@@ -608,7 +604,6 @@ impl AppState {
         properties
             .animation_colors
             .replace(settings.animation_colors);
-        properties.theme_roblox.replace(settings.theme_roblox);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -860,7 +855,6 @@ impl AppState {
             imported_theme: self.imported_theme(),
             background_animation: self.background_animation(),
             animation_colors: self.animation_colors(),
-            theme_roblox: self.theme_roblox(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
         };

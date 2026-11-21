@@ -2,7 +2,6 @@ mod cursors;
 mod folder;
 mod set_aside;
 mod sounds;
-mod theme;
 mod typography;
 
 use super::Settings;
@@ -14,7 +13,6 @@ use folder::folder_group;
 use iced::Element;
 use set_aside::set_aside_group;
 use sounds::sounds_group;
-use theme::theme_group;
 use typography::typography_group;
 
 pub fn mods_section<'a>(
@@ -23,7 +21,6 @@ pub fn mods_section<'a>(
     look: Look,
 ) -> Vec<Element<'a, Message>> {
     let mut sections = vec![
-        theme_group(state, look),
         sounds_group(state, look),
         cursors_group(state, look),
         typography_group(state, look),
