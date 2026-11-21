@@ -1,6 +1,6 @@
 pub mod close_roblox_dialog;
 pub mod command_dialog;
-pub mod cursor_glow;
+pub mod cursor_effect;
 pub mod dialog;
 pub mod error_dialog;
 pub mod file_dialog;
@@ -9,6 +9,7 @@ pub mod flat_stack;
 pub mod gpu_or;
 pub mod gradient_backdrop;
 pub mod grid_backdrop;
+pub mod grid_bulge;
 pub mod header;
 pub mod icon;
 pub mod ignored_flag_icon;

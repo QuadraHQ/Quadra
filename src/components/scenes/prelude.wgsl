@@ -128,14 +128,18 @@ fn mote_light(mote: Mote) -> f32 {
     return (exp(-distance_squared) + exp(-distance_squared / 6.0) * 0.2) * mote.strength * scene.presence;
 }
 
+fn see_through(color: vec3<f32>) -> vec4<f32> {
+    return vec4<f32>(color * scene.base.a, scene.base.a);
+}
+
 @fragment
 fn show(covering: Covering) -> @location(0) vec4<f32> {
-    return vec4<f32>(srgb_from_linear(finished(covering)), 1.0);
+    return see_through(srgb_from_linear(finished(covering)));
 }
 
 @fragment
 fn show_on_srgb(covering: Covering) -> @location(0) vec4<f32> {
-    return vec4<f32>(finished(covering), 1.0);
+    return see_through(finished(covering));
 }
 
 @fragment

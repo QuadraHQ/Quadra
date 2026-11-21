@@ -5,8 +5,8 @@ use iced::{Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, colo
 
 const CELL_SIZE: usize = 32;
 const LINE_WIDTH: f32 = 1.0;
-const BACKGROUND: Color = color!(0x10141b);
-const LINE: Color = Color::from_rgba(128.0 / 255.0, 158.0 / 255.0, 197.0 / 255.0, 0.09);
+pub const BACKGROUND: Color = color!(0x10141b);
+pub const LINE: Color = Color::from_rgba(128.0 / 255.0, 158.0 / 255.0, 197.0 / 255.0, 0.09);
 
 #[derive(Default)]
 pub struct GridBackdrop {

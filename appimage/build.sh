@@ -18,7 +18,7 @@ mkdir -p "$tools"
 download_tool linuxdeploy-x86_64.AppImage \
     https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 
-cargo build --release --manifest-path ../Cargo.toml
+cargo build --release --locked --manifest-path ../Cargo.toml
 
 export PATH="$tools:$PATH"
 

@@ -30,3 +30,7 @@ zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 naga = { version = "27", features = ["wgsl-in"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

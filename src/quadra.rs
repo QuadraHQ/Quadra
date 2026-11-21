@@ -1,7 +1,7 @@
 use crate::backend::{self, LaunchRequest};
 use crate::command_line::{self, Invocation};
 use crate::components::close_roblox_dialog::confirm_closing_roblox;
-use crate::components::cursor_glow::cursor_glow;
+use crate::components::cursor_effect::{Pointer, cursor_effect};
 use crate::components::dialog::{self, Alert, Dialog};
 use crate::components::error_dialog::error_dialog;
 use crate::components::file_dialog;
@@ -9,7 +9,8 @@ use crate::components::file_row::{ChosenPath, Pick};
 use crate::components::flat_stack::flat_stack;
 use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
-use crate::components::grid_backdrop::GridBackdrop;
+use crate::components::grid_backdrop::{self, GridBackdrop};
+use crate::components::grid_bulge::grid_bulge;
 use crate::components::header::bar;
 use crate::components::icon::app_icon_rgba;
 use crate::components::launch_window::{self, Pulse};
@@ -49,10 +50,12 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
-const PROPERTIES_THAT_DECIDE_LOOK: [&str; 9] = [
+const PROPERTIES_THAT_DECIDE_LOOK: [&str; 11] = [
     "animations",
     "system-reduces-motion",
-    "cursor-glow",
+    "cursor-effect",
+    "cursor-effect-size",
+    "grid-bulge",
     "theme",
     "system-prefers-dark",
     "imported-theme",
@@ -767,23 +770,41 @@ impl Quadra {
     }
 
     fn background(&self) -> Option<Element<'_, Message>> {
-        let layers: Vec<Element<'_, Message>> = [self.backdrop(), self.cursor_glow()]
+        let layers: Vec<Element<'_, Message>> = [self.backdrop(), self.cursor_effect()]
             .into_iter()
             .flatten()
             .collect();
         (!layers.is_empty()).then(|| flat_stack(layers))
     }
 
-    fn cursor_glow(&self) -> Option<Element<'_, Message>> {
-        let motion = self.backdrop.motion;
-        (self.state.cursor_glow() && motion != Animations::Off)
-            .then(|| cursor_glow(self.look.accent, self.look.window, motion))
+    fn cursor_effect(&self) -> Option<Element<'_, Message>> {
+        cursor_effect(
+            Pointer {
+                effect: self.state.cursor_effect(),
+                size: self.state.cursor_effect_size() as f32 / 100.0,
+                color: self.look.accent,
+                window: self.look.window,
+            },
+            self.backdrop.motion,
+        )
+    }
+
+    fn grid_bulges(&self) -> bool {
+        self.state.grid_bulge() && self.backdrop.motion == Animations::Full
     }
 
     fn backdrop(&self) -> Option<Element<'_, Message>> {
         let still = match &self.backdrop.still {
             Still::Nothing => None,
             Still::Gradient(glow) => Some(gradient_backdrop(glow)),
+            Still::Grid if self.grid_bulges() => Some(gpu_or(
+                grid_bulge(
+                    grid_backdrop::BACKGROUND,
+                    grid_backdrop::LINE,
+                    self.look.accent,
+                ),
+                self.grid_backdrop.view(),
+            )),
             Still::Grid => Some(self.grid_backdrop.view()),
             Still::LineField => Some(line_field_backdrop(self.backdrop.motion)),
             Still::Scanlines => Some(self.scanline_backdrop.view()),
@@ -888,6 +909,7 @@ fn window_settings(size: Size, resizable: bool, decorations: bool) -> window::Se
         min_size: resizable.then_some(MAIN_WINDOW_MINIMUM_SIZE),
         resizable,
         decorations,
+        transparent: true,
         exit_on_close_request: false,
         icon: app_icon_rgba()
             .and_then(|(rgba, width, height)| window::icon::from_rgba(rgba, width, height).ok()),

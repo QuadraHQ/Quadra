@@ -34,6 +34,8 @@ pub enum Scene {
     Snow,
     Petals,
     Horizon,
+    Lines,
+    Facets,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,7 +45,7 @@ pub struct Palette {
 }
 
 impl Scene {
-    const ALL: [Scene; 14] = [
+    const ALL: [Scene; 16] = [
         Self::Aurora,
         Self::Embers,
         Self::Leaves,
@@ -58,6 +60,8 @@ impl Scene {
         Self::Snow,
         Self::Petals,
         Self::Horizon,
+        Self::Lines,
+        Self::Facets,
     ];
     const COUNT: usize = Self::ALL.len();
 
@@ -78,6 +82,8 @@ impl Scene {
             BackgroundAnimation::Snow => Some(Self::Snow),
             BackgroundAnimation::Petals => Some(Self::Petals),
             BackgroundAnimation::Horizon => Some(Self::Horizon),
+            BackgroundAnimation::Lines => Some(Self::Lines),
+            BackgroundAnimation::Facets => Some(Self::Facets),
         }
     }
 
@@ -121,6 +127,8 @@ impl Scene {
         const SNOW: [Color; 2] = [color!(0xffffff), color!(0xbcd8ff)];
         const PETALS: [Color; 3] = [color!(0xffc2db), color!(0xff9cc4), color!(0xffe3ee)];
         const HORIZON: [Color; 3] = [color!(0xff3df2), color!(0xffb03a), color!(0x7a2cff)];
+        const LINES: [Color; 2] = [color!(0x8c8c8c), color!(0xffffff)];
+        const FACETS: [Color; 3] = [color!(0x4b52d6), color!(0x38d0ff), color!(0xa98cff)];
         match self {
             Self::Aurora => &AURORA,
             Self::Embers => &EMBERS,
@@ -136,6 +144,8 @@ impl Scene {
             Self::Snow => &SNOW,
             Self::Petals => &PETALS,
             Self::Horizon => &HORIZON,
+            Self::Lines => &LINES,
+            Self::Facets => &FACETS,
         }
     }
 
@@ -155,6 +165,8 @@ impl Scene {
             Self::Snow => &["Snowflakes", "Snowdrift"],
             Self::Petals => &["Haze", "First petals", "Second petals"],
             Self::Horizon => &["Grid", "Sun", "Haze"],
+            Self::Lines => &["Lines", "Highlight"],
+            Self::Facets => &["Facets", "Sweep", "Edges"],
         }
     }
 
@@ -169,22 +181,20 @@ impl Scene {
                 .unwrap_or(Color::WHITE);
             *light = chosen.get(index).copied().flatten().unwrap_or(fallback);
         }
-        Palette {
-            base: Color { a: 1.0, ..base },
-            lights,
-        }
+        Palette { base, lights }
     }
 
     fn frames_per_second(self) -> u32 {
         match self {
-            Self::Leaves | Self::Bokeh | Self::Silk | Self::Lava => 15,
+            Self::Leaves | Self::Bokeh | Self::Silk | Self::Lava | Self::Facets => 15,
             Self::Aurora
             | Self::Embers
             | Self::Scanlines
             | Self::Waves
             | Self::Fireflies
             | Self::Snow
-            | Self::Petals => 20,
+            | Self::Petals
+            | Self::Lines => 20,
             Self::Warp | Self::Rain | Self::Horizon => 30,
         }
     }
@@ -201,7 +211,7 @@ impl Scene {
             | Self::Rain
             | Self::Snow
             | Self::Petals => Some(8.0),
-            Self::Scanlines | Self::Horizon => None,
+            Self::Scanlines | Self::Horizon | Self::Lines | Self::Facets => None,
         }
     }
 
@@ -220,7 +230,9 @@ impl Scene {
             | Self::Waves
             | Self::Lava
             | Self::Silk
-            | Self::Horizon => 0,
+            | Self::Horizon
+            | Self::Lines
+            | Self::Facets => 0,
         }
     }
 
@@ -254,6 +266,8 @@ impl Scene {
             Self::Snow => "snow",
             Self::Petals => "petals",
             Self::Horizon => "horizon",
+            Self::Lines => "lines",
+            Self::Facets => "facets",
         }
     }
 
@@ -273,6 +287,8 @@ impl Scene {
             Self::Snow => include_str!("scenes/snow.wgsl"),
             Self::Petals => include_str!("scenes/petals.wgsl"),
             Self::Horizon => include_str!("scenes/horizon.wgsl"),
+            Self::Lines => include_str!("scenes/lines.wgsl"),
+            Self::Facets => include_str!("scenes/facets.wgsl"),
         };
         let glow_pass = if self.pixels_per_glow_texel().is_some() {
             GLOW_PASS

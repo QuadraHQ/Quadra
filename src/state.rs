@@ -13,7 +13,7 @@ pub use client::Client;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
-pub use mods::{CursorStyle, DeathSound};
+pub use mods::{CursorStyle, DeathSound, FontStyle};
 pub use regions::{Region, Regions, country_and_city_of};
 pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
 pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
@@ -40,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 48] = [
+const SAVED_PROPERTIES: [&str; 51] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -72,6 +72,7 @@ const SAVED_PROPERTIES: [&str; 48] = [
     "cursor-style",
     "custom-cursor",
     "custom-font",
+    "font-style",
     "custom-mods",
     "hide-launcher-while-playing",
     "open-after-exit",
@@ -86,7 +87,9 @@ const SAVED_PROPERTIES: [&str; 48] = [
     "background-animation",
     "animation-colors",
     "animations",
-    "cursor-glow",
+    "cursor-effect",
+    "cursor-effect-size",
+    "grid-bulge",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -125,6 +128,7 @@ pub enum Theme {
     Ember,
     Paper,
     Phosphor,
+    Prism,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -147,6 +151,8 @@ pub enum BackgroundAnimation {
     Snow,
     Petals,
     Horizon,
+    Lines,
+    Facets,
 }
 
 impl Choice for BackgroundAnimation {
@@ -167,6 +173,8 @@ impl Choice for BackgroundAnimation {
         Self::Snow,
         Self::Petals,
         Self::Horizon,
+        Self::Lines,
+        Self::Facets,
     ];
 
     fn label(self) -> &'static str {
@@ -187,6 +195,8 @@ impl Choice for BackgroundAnimation {
             Self::Snow => "Snow",
             Self::Petals => "Petals",
             Self::Horizon => "Horizon",
+            Self::Lines => "Lines",
+            Self::Facets => "Facets",
         }
     }
 }
@@ -221,6 +231,44 @@ impl Choice for Animations {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorEffect {
+    None,
+    #[default]
+    Glow,
+    Spotlight,
+    Ring,
+    Ripples,
+    Trail,
+}
+
+impl Choice for CursorEffect {
+    const ALL: &'static [Self] = &[
+        Self::None,
+        Self::Glow,
+        Self::Spotlight,
+        Self::Ring,
+        Self::Ripples,
+        Self::Trail,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::Glow => "Glow",
+            Self::Spotlight => "Spotlight",
+            Self::Ring => "Ring",
+            Self::Ripples => "Ripples",
+            Self::Trail => "Trail",
+        }
+    }
+}
+
+pub const CURSOR_EFFECT_SIZES: RangeInclusive<u32> = 40..=200;
+pub const CURSOR_EFFECT_SIZE_STEP: u32 = 10;
+const DEFAULT_CURSOR_EFFECT_SIZE: u32 = 100;
+
 #[derive(Debug, Clone, Default)]
 pub struct ImportedThemes(pub Rc<Vec<ImportedTheme>>);
 
@@ -239,6 +287,7 @@ impl Choice for Theme {
         Self::Ember,
         Self::Paper,
         Self::Phosphor,
+        Self::Prism,
     ];
 
     fn label(self) -> &'static str {
@@ -250,6 +299,7 @@ impl Choice for Theme {
             Self::Ember => "Ember",
             Self::Paper => "Paper",
             Self::Phosphor => "Phosphor",
+            Self::Prism => "Prism",
         }
     }
 }
@@ -298,6 +348,8 @@ struct SavedSettings {
     custom_cursor: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_font: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    font_style: Option<FontStyle>,
     custom_mods: bool,
     hide_launcher_while_playing: bool,
     open_after_exit: bool,
@@ -314,7 +366,12 @@ struct SavedSettings {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     animation_colors: Vec<String>,
     animations: Animations,
-    cursor_glow: bool,
+    #[serde(rename = "cursor_glow", skip_serializing)]
+    legacy_cursor_glow: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cursor_effect: Option<CursorEffect>,
+    cursor_effect_size: u32,
+    grid_bulge: bool,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -355,6 +412,7 @@ impl Default for SavedSettings {
             cursor_style: CursorStyle::default(),
             custom_cursor: String::new(),
             custom_font: String::new(),
+            font_style: None,
             custom_mods: true,
             hide_launcher_while_playing: false,
             open_after_exit: false,
@@ -369,7 +427,10 @@ impl Default for SavedSettings {
             background_animation: BackgroundAnimation::default(),
             animation_colors: Vec::new(),
             animations: Animations::default(),
-            cursor_glow: true,
+            legacy_cursor_glow: None,
+            cursor_effect: None,
+            cursor_effect_size: DEFAULT_CURSOR_EFFECT_SIZE,
+            grid_bulge: false,
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -377,6 +438,22 @@ impl Default for SavedSettings {
 }
 
 impl SavedSettings {
+    fn chosen_font_style(&self) -> FontStyle {
+        match self.font_style {
+            Some(style) => style,
+            None if self.custom_font.is_empty() => FontStyle::Stock,
+            None => FontStyle::Custom,
+        }
+    }
+
+    fn chosen_cursor_effect(&self) -> CursorEffect {
+        match (self.cursor_effect, self.legacy_cursor_glow) {
+            (Some(effect), _) => effect,
+            (None, Some(false)) => CursorEffect::None,
+            (None, _) => CursorEffect::default(),
+        }
+    }
+
     fn chosen_renderer(&self) -> Renderer {
         match self.renderer {
             Some(renderer) => renderer,
@@ -447,6 +524,7 @@ properties! {
     cursor_style set_cursor_style: CursorStyle = "cursor-style",
     custom_cursor set_custom_cursor: String = "custom-cursor",
     custom_font set_custom_font: String = "custom-font",
+    font_style set_font_style: FontStyle = "font-style",
     custom_mods set_custom_mods: bool = "custom-mods",
     hide_launcher_while_playing set_hide_launcher_while_playing: bool = "hide-launcher-while-playing",
     open_after_exit set_open_after_exit: bool = "open-after-exit",
@@ -484,7 +562,9 @@ properties! {
     background_animation set_background_animation: BackgroundAnimation = "background-animation",
     animation_colors set_animation_colors: Vec<String> = "animation-colors",
     animations set_animations: Animations = "animations",
-    cursor_glow set_cursor_glow: bool = "cursor-glow",
+    cursor_effect set_cursor_effect: CursorEffect = "cursor-effect",
+    cursor_effect_size set_cursor_effect_size: u32 = "cursor-effect-size",
+    grid_bulge set_grid_bulge: bool = "grid-bulge",
     system_reduces_motion set_system_reduces_motion: bool = "system-reduces-motion",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
@@ -543,6 +623,8 @@ impl AppState {
             save_repaired_settings,
         } = read_saved_settings();
         let renderer = settings.chosen_renderer();
+        let cursor_effect = settings.chosen_cursor_effect();
+        let font_style = settings.chosen_font_style();
 
         let state = Self::default();
         let first_launch = !file_existed && !settings.opened_before;
@@ -633,6 +715,8 @@ impl AppState {
             .system_title_bar
             .replace(settings.system_title_bar);
         properties.first_launch.replace(first_launch);
+        properties.cursor_effect.replace(cursor_effect);
+        properties.font_style.replace(font_style);
         properties.theme.replace(settings.theme);
         properties.imported_theme.replace(settings.imported_theme);
         properties
@@ -642,7 +726,12 @@ impl AppState {
             .animation_colors
             .replace(settings.animation_colors);
         properties.animations.replace(settings.animations);
-        properties.cursor_glow.replace(settings.cursor_glow);
+        properties.cursor_effect_size.replace(
+            settings
+                .cursor_effect_size
+                .clamp(*CURSOR_EFFECT_SIZES.start(), *CURSOR_EFFECT_SIZES.end()),
+        );
+        properties.grid_bulge.replace(settings.grid_bulge);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -881,6 +970,7 @@ impl AppState {
             cursor_style: self.cursor_style(),
             custom_cursor: self.custom_cursor(),
             custom_font: self.custom_font(),
+            font_style: Some(self.font_style()),
             custom_mods: self.custom_mods(),
             hide_launcher_while_playing: self.hide_launcher_while_playing(),
             open_after_exit: self.open_after_exit(),
@@ -895,7 +985,10 @@ impl AppState {
             background_animation: self.background_animation(),
             animation_colors: self.animation_colors(),
             animations: self.animations(),
-            cursor_glow: self.cursor_glow(),
+            legacy_cursor_glow: None,
+            cursor_effect: Some(self.cursor_effect()),
+            cursor_effect_size: self.cursor_effect_size(),
+            grid_bulge: self.grid_bulge(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
         };

@@ -65,6 +65,7 @@ impl Look {
             Theme::Ember => EMBER,
             Theme::Paper => PAPER,
             Theme::Phosphor => PHOSPHOR,
+            Theme::Prism => PRISM,
         }
     }
 
@@ -317,6 +318,32 @@ const PHOSPHOR: Look = Look {
     warning: color!(0xe6ff5c),
     radius: 0.0,
     font: JETBRAINS_MONO,
+    mono: JETBRAINS_MONO,
+};
+
+const PRISM: Look = Look {
+    dark: true,
+    window: color!(0x0d0e22),
+    card: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.06),
+    border: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.1),
+    strong_border: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.22),
+    text: color!(0xe9ebff),
+    dimmed: color!(0x9aa0cf),
+    accent: color!(0x6f7bff),
+    on_accent: color!(0x06081f),
+    accent_text: color!(0xa9b1ff),
+    raised: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.07),
+    hovered: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.1),
+    pressed: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.14),
+    field: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
+    dialog: color!(0x15173a),
+    shade: Color::from_rgba(2.0 / 255.0, 3.0 / 255.0, 12.0 / 255.0, 0.62),
+    bar: Color::from_rgba(13.0 / 255.0, 14.0 / 255.0, 34.0 / 255.0, 0.6),
+    destructive: color!(0xff6b8a),
+    success: color!(0x4fe0b0),
+    warning: color!(0xffc56b),
+    radius: 2.0,
+    font: ARCHIVO,
     mono: JETBRAINS_MONO,
 };
 
@@ -735,6 +762,7 @@ mod tests {
             EMBER,
             PAPER,
             PHOSPHOR,
+            PRISM,
         ] {
             let fill = luminance_over(look.pressed, look.window);
             let shown = luminance(look.selected_text());

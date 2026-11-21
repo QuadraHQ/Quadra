@@ -14,8 +14,10 @@ This is redybcs's fork of [QuadraHQ/Quadra](https://github.com/QuadraHQ/Quadra).
 
 - Starts in about half the time and allocates about half the memory of the GTK version
 - Its own title bar, which follows your desktop's button layout (or switch back to the system one)
-- Seven themes, including Aurora, Ember, Paper and Phosphor, with GPU-drawn animated backgrounds that pause when Quadra isn't in use
-- Fourteen background animations to use with any theme, in your own colours, a theme gallery with live previews, and a cursor glow
+- Eight themes, including Aurora, Ember, Paper, Phosphor and Prism, with GPU-drawn animated backgrounds that pause when Quadra isn't in use
+- Sixteen background animations to use with any theme, in your own colours, and a theme gallery with live previews
+- Cursor effects (glow, spotlight, ring, ripples or a trail) in any size, and a Grid theme that bulges under the pointer
+- More mods: extra cursor sets and preset fonts for the game
 - An Animations setting (Full, Reduced or Off) that also follows your desktop's reduce-animations preference
 - Search across every settings tab
 - Your own themes, imported from CSS files (see [Custom themes](#custom-themes))
@@ -128,9 +130,14 @@ The Import CSS theme card in Settings › General › Appearance imports a theme
 - Colours: `--window`, `--card`, `--text`, `--dimmed`, `--accent`, `--on-accent`, `--accent-text`, `--border`, `--strong-border`, `--raised`, `--hovered`, `--pressed`, `--field`, `--dialog`, `--shade`, `--title-bar`, `--destructive`, `--success`, `--warning`. Use `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()`.
 - `--radius` in pixels, `--font` and `--mono-font` as the name of an installed font, and `--name` for the name shown in Settings (the file name otherwise).
 - `--background`: a colour or a `linear-gradient(…)` with up to 8 colours. It shows when the theme has no animation.
-- `--animation`: `aurora`, `embers`, `leaves`, `scanlines`, `waves`, `fireflies`, `bokeh`, `warp`, `rain`, `lava`, `silk`, `snow`, `petals`, `horizon` or `none`, with up to three `--animation-colors`. Most of them add light, so they look best on dark themes.
+- `--opacity`: how solid the window's background is, from `30%` (or `0.3`) to `100%`. Below 100% your desktop shows through, if it has a compositor.
+- `--animation`: `aurora`, `embers`, `leaves`, `scanlines`, `waves`, `fireflies`, `bokeh`, `warp`, `rain`, `lava`, `silk`, `snow`, `petals`, `horizon`, `lines`, `facets` or `none`, with up to three `--animation-colors`. Most of them add light, so they look best on dark themes.
 
 Anything left out comes from Adwaita's light or dark look, picked by how bright `--window` is. Values Quadra can't read are skipped and named in the log. The animation and its colours can also be changed for any theme under Background animation.
+
+## Fonts
+
+The preset fonts for the game's text are under the SIL Open Font License; each one's licence sits next to it in `data/mods/fonts/`.
 
 ## License
 

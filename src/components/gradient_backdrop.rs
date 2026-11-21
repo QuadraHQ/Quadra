@@ -17,6 +17,23 @@ impl Glow {
             stops: Cow::Owned(stops),
         }
     }
+
+    pub fn faded(self, opacity: f32) -> Self {
+        let stops = self
+            .stops
+            .iter()
+            .map(|&(offset, color)| {
+                (
+                    offset,
+                    Color {
+                        a: color.a * opacity,
+                        ..color
+                    },
+                )
+            })
+            .collect();
+        Self::new(self.angle, stops)
+    }
 }
 
 pub const AURORA: Glow = Glow {
@@ -31,6 +48,15 @@ pub const AURORA: Glow = Glow {
 pub const EMBER: Glow = Glow {
     angle: Degrees(180.0),
     stops: Cow::Borrowed(&[(0.0, color!(0x2a1a10)), (0.6, color!(0x16110e))]),
+};
+
+pub const PRISM: Glow = Glow {
+    angle: Degrees(150.0),
+    stops: Cow::Borrowed(&[
+        (0.0, color!(0x1a1c44)),
+        (0.55, color!(0x0d0e22)),
+        (1.0, color!(0x14102e)),
+    ]),
 };
 
 pub fn gradient_backdrop<'a>(glow: &Glow) -> Element<'a, Message> {

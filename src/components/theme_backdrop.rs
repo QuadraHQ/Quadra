@@ -62,7 +62,7 @@ fn theme_own_for(state: &AppState, choice: ThemeChoice<'_>) -> ThemeOwn {
     let (still, scene) = match built_in {
         Theme::Adwaita => (Still::Nothing, None),
         Theme::Grid => (Still::Grid, None),
-        Theme::Monochrome => (Still::LineField, None),
+        Theme::Monochrome => (Still::LineField, Some(Scene::Lines)),
         Theme::Aurora => (
             Still::Gradient(gradient_backdrop::AURORA),
             Some(Scene::Aurora),
@@ -73,6 +73,10 @@ fn theme_own_for(state: &AppState, choice: ThemeChoice<'_>) -> ThemeOwn {
         ),
         Theme::Paper => (Still::Nothing, Some(Scene::Leaves)),
         Theme::Phosphor => (Still::Scanlines, Some(Scene::Scanlines)),
+        Theme::Prism => (
+            Still::Gradient(gradient_backdrop::PRISM),
+            Some(Scene::Facets),
+        ),
     };
     ThemeOwn {
         still,
@@ -93,7 +97,28 @@ pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
 }
 
 pub fn backdrop_for_theme(state: &AppState, theme: ThemeChoice<'_>, look: &Look) -> Backdrop {
-    backdrop_of(state, theme_own_for(state, theme), look)
+    let own = theme_own_for(state, theme);
+    let motion = state.motion();
+    let Some(scene) = own.scene.filter(|_| motion != Animations::Off) else {
+        return Backdrop {
+            still: own.still,
+            scene: None,
+            motion,
+        };
+    };
+    let colors: Vec<Option<Color>> = theme_lights(&own, scene).into_iter().map(Some).collect();
+    Backdrop {
+        still: behind_scene(own.still),
+        scene: Some((scene, scene.palette(look.window, &colors))),
+        motion,
+    }
+}
+
+fn behind_scene(still: Still) -> Still {
+    match still {
+        Still::LineField => Still::Nothing,
+        still => still,
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -130,12 +155,8 @@ fn backdrop_of(state: &AppState, own: ThemeOwn, look: &Look) -> Backdrop {
             Some(picked.get(index).copied().flatten().unwrap_or(theme_color))
         })
         .collect();
-    let still = match own.still {
-        Still::LineField => Still::Nothing,
-        still => still,
-    };
     Backdrop {
-        still,
+        still: behind_scene(own.still),
         scene: Some((scene, scene.palette(look.window, &colors))),
         motion,
     }

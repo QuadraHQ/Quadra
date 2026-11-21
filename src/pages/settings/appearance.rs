@@ -1,5 +1,5 @@
 use super::SettingsMessage;
-use super::bound_rows::{choice_row, switch_row};
+use super::bound_rows::{SpinRange, choice_row, spin_row, switch_row};
 use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
 use crate::components::icon::{self, Symbol};
@@ -10,7 +10,9 @@ use crate::components::theme_backdrop::{
     Still, ThemeChoice, backdrop_for_theme, chosen_scene, theme_colors_for,
 };
 use crate::quadra::{Message, act};
-use crate::state::{AppState, Choice, Theme};
+use crate::state::{
+    AppState, CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Theme,
+};
 use iced::font::Weight;
 use iced::widget::{button, column, container, row, space, stack, text, text_input};
 use iced::{Alignment, Background, Border, Element, Font, Length};
@@ -95,15 +97,62 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
             }),
         )
         .push(
-            switch_row(look, "Cursor glow", state.cursor_glow(), |state, on| {
-                state.set_cursor_glow(on)
-            })
-            .subtitle("A soft light in your theme's accent follows the pointer"),
-        );
+            choice_row(
+                look,
+                "Cursor effect",
+                state.cursor_effect(),
+                |state, effect| state.set_cursor_effect(effect),
+            )
+            .subtitle(cursor_effect_description(state.cursor_effect())),
+        )
+        .push(
+            spin_row(
+                look,
+                "Cursor effect size (%)",
+                state.cursor_effect_size(),
+                SpinRange {
+                    values: CURSOR_EFFECT_SIZES,
+                    step: CURSOR_EFFECT_SIZE_STEP,
+                },
+                |state, size| state.set_cursor_effect_size(size),
+                state.cursor_effect() != CursorEffect::None,
+            )
+            .subtitle("How far the effect reaches around the pointer"),
+        )
+        .push_maybe(uses_grid(state).then(|| {
+            switch_row(
+                look,
+                "Grid bulges around the pointer",
+                state.grid_bulge(),
+                |state, on| state.set_grid_bulge(on),
+            )
+            .subtitle("The grid swells under the pointer, unless animations are reduced")
+        }));
     for row in color_rows(state, look) {
         group = group.push(row);
     }
     group.into()
+}
+
+fn uses_grid(state: &AppState) -> bool {
+    state.theme() == Theme::Grid
+        && state
+            .imported_themes()
+            .named(&state.imported_theme())
+            .is_none()
+}
+
+fn cursor_effect_description(effect: CursorEffect) -> &'static str {
+    match effect {
+        CursorEffect::None => "Nothing follows the pointer",
+        CursorEffect::Glow => "A soft light in your theme's accent follows the pointer",
+        CursorEffect::Spotlight => "Dims the window outside a circle around the pointer",
+        CursorEffect::Ring => "A thin ring in your theme's accent circles the pointer",
+        CursorEffect::Ripples => "Clicks send out rings, unless animations are reduced",
+        CursorEffect::Trail => {
+            "Dots trail behind the moving pointer, unless animations are reduced"
+        }
+    }
 }
 
 fn chosen_option(state: &AppState) -> ThemeOption {
