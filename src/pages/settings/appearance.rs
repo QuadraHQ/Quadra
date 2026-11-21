@@ -17,7 +17,8 @@ use crate::components::theme_backdrop::{
 use crate::quadra::{Message, act};
 use crate::state::{
     AppState, BACKGROUND_DIMMING_STEP, BACKGROUND_DIMMINGS, BackgroundAnimation,
-    CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Picker, Theme,
+    CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Picker, TEXT_SIZE_STEP,
+    TEXT_SIZES, Theme,
 };
 use crate::utils::{PRESET_FONTS, lasting_name};
 use iced::font::Weight;
@@ -99,7 +100,7 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
                 },
                 shown: text(state.background_animation().label())
                     .font(look.font)
-                    .size(14)
+                    .size(look.sized(14.0))
                     .into(),
             },
         ))
@@ -116,12 +117,29 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
                 picker: Picker::AppFont,
                 title: "Font",
                 subtitle: "The font Quadra's own text uses",
-                shown: text(app_font_label(state)).font(look.font).size(14).into(),
+                shown: text(app_font_label(state))
+                    .font(look.font)
+                    .size(look.sized(14.0))
+                    .into(),
             },
         ))
         .push_maybe(
             (state.open_picker() == Picker::AppFont)
                 .then(|| searchable(app_font_picker(state, look), "Font typeface import font")),
+        )
+        .push(
+            spin_row(
+                look,
+                "Text size (%)",
+                state.text_size(),
+                SpinRange {
+                    values: TEXT_SIZES,
+                    step: TEXT_SIZE_STEP,
+                },
+                |state, size| state.set_text_size(size),
+                true,
+            )
+            .subtitle("Makes Quadra's text larger or smaller"),
         )
         .push(accent_row(state, look))
         .push(file_row(
@@ -299,10 +317,13 @@ fn app_font_picker<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
 pub fn font_sample<'a>(font: Font, look: Look) -> Element<'a, Message> {
     container(
         column![
-            text("Aa").font(font).size(24).color(look.text),
+            text("Aa")
+                .font(font)
+                .size(look.sized(24.0))
+                .color(look.text),
             text("Quick brown fox")
                 .font(font)
-                .size(13)
+                .size(look.sized(13.0))
                 .color(look.dimmed)
                 .wrapping(text::Wrapping::None),
         ]
@@ -319,7 +340,7 @@ fn accent_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
     let shown = parsed.unwrap_or(theme_accent);
     let input = text_input(&hex(theme_accent), &typed)
         .font(look.mono)
-        .size(13)
+        .size(look.sized(13.0))
         .width(COLOR_INPUT_WIDTH)
         .padding([6, 10])
         .style(style::input(look, typed.is_empty() || parsed.is_some()))
@@ -481,7 +502,7 @@ fn theme_card<'a>(
                 weight: Weight::Bold,
                 ..card_look.font
             })
-            .size(18)
+            .size(look.sized(18.0))
             .color(card_look.text),
         container(space().width(26).height(10)).style(move |_| container::Style {
             background: Some(Background::Color(card_look.accent)),
@@ -510,7 +531,7 @@ fn theme_card<'a>(
     let mut label = row![
         text(option.name().to_owned())
             .font(look.font)
-            .size(13)
+            .size(look.sized(13.0))
             .width(Length::Fill)
             .wrapping(text::Wrapping::None)
     ]
@@ -555,7 +576,7 @@ fn color_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {
             let shown = parsed.unwrap_or(defaults[index]);
             let input = text_input(&hex(defaults[index]), &text)
                 .font(look.mono)
-                .size(13)
+                .size(look.sized(13.0))
                 .width(COLOR_INPUT_WIDTH)
                 .padding([6, 10])
                 .style(style::input(look, text.is_empty() || parsed.is_some()))

@@ -69,7 +69,7 @@ where
         on_select(choice)
     })
     .font(look.font)
-    .text_size(14)
+    .text_size(look.sized(14.0))
     .style(style::choice(look))
     .menu_style(style::menu(look));
     if enabled {
@@ -135,7 +135,7 @@ pub fn spin_row<'a>(
         icon_button(look, Symbol::Remove, "Decrease", change_to(lower)),
         text(value.to_string())
             .font(look.mono)
-            .size(13)
+            .size(look.sized(13.0))
             .width(44)
             .center(),
         icon_button(look, Symbol::Add, "Increase", change_to(higher)),
@@ -202,7 +202,7 @@ pub fn named_choice_row<'a>(
         NamedEntry::NothingChosen => Message::Ignored,
     })
     .font(look.font)
-    .text_size(14)
+    .text_size(look.sized(14.0))
     .style(style::choice(look))
     .menu_style(style::menu(look));
 

@@ -102,7 +102,7 @@ pub fn picker_card<'a>(look: Look, card: Card<'a>) -> Element<'a, Message> {
     let mut label = row![
         text(card.label)
             .font(look.font)
-            .size(13)
+            .size(look.sized(13.0))
             .width(Length::Fill)
             .wrapping(text::Wrapping::None)
     ]
@@ -129,7 +129,10 @@ pub fn adding_card<'a>(
 ) -> Element<'a, Message> {
     let content = column![
         icon::tinted(Symbol::Add, look.dimmed),
-        text(caption).font(look.font).size(13).color(look.dimmed),
+        text(caption)
+            .font(look.font)
+            .size(look.sized(13.0))
+            .color(look.dimmed),
     ]
     .spacing(6)
     .align_x(Alignment::Center);

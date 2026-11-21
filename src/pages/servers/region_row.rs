@@ -32,7 +32,7 @@ pub fn preferred_region_row<'a>(state: &AppState, look: Look) -> Element<'a, Mes
         act(move |state| state.set_preferred_region(choice.key.clone()))
     })
     .font(look.font)
-    .text_size(14)
+    .text_size(look.sized(14.0))
     .style(style::choice(look))
     .menu_style(style::menu(look));
 

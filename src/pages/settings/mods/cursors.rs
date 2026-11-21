@@ -38,7 +38,10 @@ pub fn cursors_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
                 picker: Picker::Cursor,
                 title: "Cursor style",
                 subtitle: "Replaces the mouse cursors inside the game",
-                shown: text(style.label()).font(look.font).size(14).into(),
+                shown: text(style.label())
+                    .font(look.font)
+                    .size(look.sized(14.0))
+                    .into(),
             },
         ))
         .push_maybe(
@@ -112,7 +115,7 @@ fn cursor_preview<'a>(style: CursorStyle, look: Look) -> Element<'a, Message> {
             _ => "Roblox's own",
         })
         .font(look.font)
-        .size(12)
+        .size(look.sized(12.0))
         .color(Color::WHITE)
         .into(),
     };

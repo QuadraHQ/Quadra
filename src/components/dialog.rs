@@ -154,7 +154,7 @@ pub fn code_block<'a>(code: &'a str, look: Look) -> Element<'a, Message> {
     container(
         text(code)
             .font(look.mono)
-            .size(13)
+            .size(look.sized(13.0))
             .wrapping(Wrapping::Glyph),
     )
     .padding(12)
@@ -241,7 +241,7 @@ fn flags_editor<'a>(
     text_editor(content)
         .on_action(move |action| Message::DialogEditor(action, editable))
         .font(look.mono)
-        .size(13)
+        .size(look.sized(13.0))
         .height(Length::Fixed(EDITOR_HEIGHT))
         .wrapping(Wrapping::Glyph)
         .style(style::editor(look))

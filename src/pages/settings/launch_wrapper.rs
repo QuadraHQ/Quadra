@@ -17,7 +17,7 @@ pub fn launch_wrapper_group<'a>(
     let problem = settings.launch_wrapper_problem.as_deref();
     let input = text_input("Launch wrapper", &state.launch_wrapper())
         .font(look.mono)
-        .size(13)
+        .size(look.sized(13.0))
         .padding([7, 10])
         .style(style::input(look, problem.is_none()))
         .on_input(|wrapper| Message::Settings(SettingsMessage::LaunchWrapperChanged(wrapper)));

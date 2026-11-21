@@ -59,7 +59,7 @@ impl LiveLog {
         text_editor(&self.content)
             .on_action(Message::LogAction)
             .font(look.mono)
-            .size(12.5)
+            .size(look.sized(12.5))
             .height(Length::Fill)
             .wrapping(Wrapping::WordOrGlyph)
             .padding(12)

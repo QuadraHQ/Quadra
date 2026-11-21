@@ -239,7 +239,7 @@ fn presets_group<'a>(
         Message::Settings(SettingsMessage::PresetChosen(choice))
     })
     .font(look.font)
-    .text_size(14)
+    .text_size(look.sized(14.0))
     .style(style::choice(look))
     .menu_style(style::menu(look));
 
@@ -368,7 +368,7 @@ fn number_row<'a>(
 
     let input = text_input("Default", &shown)
         .font(look.mono)
-        .size(13)
+        .size(look.sized(13.0))
         .width(NUMBER_INPUT_WIDTH)
         .align_x(iced::Alignment::End)
         .padding([6, 10])

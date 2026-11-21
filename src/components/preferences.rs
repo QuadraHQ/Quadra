@@ -60,14 +60,14 @@ pub fn searchable<'a>(
 pub fn body<'a>(look: Look, content: impl IntoFragment<'a>) -> Text<'a> {
     text(content)
         .font(look.font)
-        .size(BODY_SIZE)
+        .size(look.sized(BODY_SIZE))
         .wrapping(Wrapping::WordOrGlyph)
 }
 
 pub fn caption<'a>(look: Look, content: impl IntoFragment<'a>) -> Text<'a> {
     text(content)
         .font(look.font)
-        .size(CAPTION_SIZE)
+        .size(look.sized(CAPTION_SIZE))
         .wrapping(Wrapping::WordOrGlyph)
         .style(style::dimmed(look))
 }
@@ -78,12 +78,12 @@ pub fn heading<'a>(look: Look, content: impl IntoFragment<'a>) -> Text<'a> {
             weight: iced::font::Weight::Bold,
             ..look.font
         })
-        .size(HEADING_SIZE)
+        .size(look.sized(HEADING_SIZE))
         .style(style::dimmed(look))
 }
 
 pub fn title<'a>(look: Look, content: impl IntoFragment<'a>, size: f32) -> Text<'a> {
-    text(content).size(size).font(iced::Font {
+    text(content).size(look.sized(size)).font(iced::Font {
         weight: iced::font::Weight::Bold,
         ..look.font
     })
@@ -94,7 +94,7 @@ pub fn push_button<'a>(
     label: impl IntoFragment<'a>,
     emphasis: Emphasis,
 ) -> Button<'a, Message> {
-    button(text(label).font(look.font).size(BODY_SIZE))
+    button(text(label).font(look.font).size(look.sized(BODY_SIZE)))
         .padding([6, 14])
         .style(style::emphasized(look, emphasis))
 }
@@ -112,7 +112,7 @@ pub fn symbol_button<'a>(
     };
     let content = row![
         icon::tinted(symbol, color),
-        text(label).font(look.font).size(BODY_SIZE)
+        text(label).font(look.font).size(look.sized(BODY_SIZE))
     ]
     .spacing(8)
     .align_y(Alignment::Center);
@@ -195,7 +195,11 @@ impl<'a> PreferenceRow<'a> {
         let subtitle = subtitle.into_fragment();
         self.words.push(' ');
         self.words.push_str(&subtitle);
-        self.subtitle = Some(caption(self.look, subtitle).font(self.look.mono).size(11));
+        self.subtitle = Some(
+            caption(self.look, subtitle)
+                .font(self.look.mono)
+                .size(self.look.sized(11.0)),
+        );
         self
     }
 

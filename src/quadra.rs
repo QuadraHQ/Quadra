@@ -54,13 +54,14 @@ const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launc
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
 const LINEAR_LIGHT_GAMMA: f32 = 2.2;
-const PROPERTIES_THAT_DECIDE_LOOK: [&str; 13] = [
+const PROPERTIES_THAT_DECIDE_LOOK: [&str; 14] = [
     "animations",
     "system-reduces-motion",
     "cursor-effect",
     "cursor-effect-size",
     "grid-bulge",
     "ui-font",
+    "text-size",
     "accent-color",
     "theme",
     "system-prefers-dark",

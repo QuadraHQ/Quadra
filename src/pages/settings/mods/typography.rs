@@ -28,7 +28,7 @@ pub fn typography_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
                 subtitle: "Replaces the text font inside the game",
                 shown: text(style.label())
                     .font(font_of(style, look))
-                    .size(14)
+                    .size(look.sized(14.0))
                     .into(),
             },
         ))

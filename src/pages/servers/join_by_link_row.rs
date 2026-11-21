@@ -14,7 +14,7 @@ pub fn join_by_link_row<'a>(
 ) -> Element<'a, Message> {
     let entry = text_input("Join a game by ID or roblox.com link", link)
         .font(look.font)
-        .size(14)
+        .size(look.sized(14.0))
         .padding([7, 10])
         .style(style::input(look, !is_invalid))
         .on_input_maybe(

@@ -95,7 +95,7 @@ pub fn environment_variables_group<'a>(
             text_input("NAME=value", &variable.text)
                 .id(variable.id.clone())
                 .font(look.mono)
-                .size(13)
+                .size(look.sized(13.0))
                 .padding([7, 10])
                 .style(style::input(look, true))
                 .on_input(move |text| message(VariableMessage::Changed(position, text))),

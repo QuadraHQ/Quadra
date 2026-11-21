@@ -43,11 +43,13 @@ pub struct Look {
     pub radius: f32,
     pub font: Font,
     pub mono: Font,
+    pub text_scale: f32,
 }
 
 impl Look {
     pub fn of(state: &AppState) -> Self {
         let mut look = Self::of_theme(state);
+        look.text_scale = state.text_size() as f32 / 100.0;
         let family = state.ui_font();
         if !family.is_empty() {
             let imported = state.imported_fonts();
@@ -71,6 +73,10 @@ impl Look {
             };
         }
         look
+    }
+
+    pub fn sized(&self, size: f32) -> f32 {
+        (size * self.text_scale).round()
     }
 
     pub fn of_theme(state: &AppState) -> Self {
@@ -167,6 +173,7 @@ const ADWAITA_LIGHT: Look = Look {
     radius: 8.0,
     font: Font::DEFAULT,
     mono: Font::MONOSPACE,
+    text_scale: 1.0,
 };
 
 const ADWAITA_DARK: Look = Look {
@@ -193,6 +200,7 @@ const ADWAITA_DARK: Look = Look {
     radius: 8.0,
     font: Font::DEFAULT,
     mono: Font::MONOSPACE,
+    text_scale: 1.0,
 };
 
 const GRID: Look = Look {
@@ -219,6 +227,7 @@ const GRID: Look = Look {
     radius: 0.0,
     font: ARCHIVO,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const MONOCHROME: Look = Look {
@@ -245,6 +254,7 @@ const MONOCHROME: Look = Look {
     radius: 0.0,
     font: ARCHIVO,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const AURORA: Look = Look {
@@ -271,6 +281,7 @@ const AURORA: Look = Look {
     radius: 12.0,
     font: Font::DEFAULT,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const EMBER: Look = Look {
@@ -297,6 +308,7 @@ const EMBER: Look = Look {
     radius: 10.0,
     font: Font::DEFAULT,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const PAPER: Look = Look {
@@ -323,6 +335,7 @@ const PAPER: Look = Look {
     radius: 6.0,
     font: ARCHIVO,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const PHOSPHOR: Look = Look {
@@ -349,6 +362,7 @@ const PHOSPHOR: Look = Look {
     radius: 0.0,
     font: JETBRAINS_MONO,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 const PRISM: Look = Look {
@@ -375,6 +389,7 @@ const PRISM: Look = Look {
     radius: 2.0,
     font: ARCHIVO,
     mono: JETBRAINS_MONO,
+    text_scale: 1.0,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

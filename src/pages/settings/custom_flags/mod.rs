@@ -115,7 +115,7 @@ pub fn custom_flags_group<'a>(flags: &'a CustomFlags, look: Look) -> Element<'a,
                 text_input("NAME=value", &flag.text)
                     .id(flag.id.clone())
                     .font(look.mono)
-                    .size(13)
+                    .size(look.sized(13.0))
                     .padding([7, 10])
                     .style(style::input(look, true))
                     .on_input(move |text| message(CustomFlagMessage::Changed(position, text))),

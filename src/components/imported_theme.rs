@@ -186,6 +186,7 @@ fn look_from(declared: &Declared) -> Look {
         radius: declared.radius.unwrap_or(base.radius),
         font: declared.font.as_deref().map_or(base.font, font_named),
         mono: declared.mono_font.as_deref().map_or(base.mono, font_named),
+        text_scale: base.text_scale,
     }
 }
 

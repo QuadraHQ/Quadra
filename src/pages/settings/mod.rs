@@ -333,7 +333,7 @@ impl Settings {
         .filter(|tab| tab.is_shown(state))
         .collect();
         let tabs = shown_tabs.iter().map(|&tab| {
-            button(text(tab.title()).font(look.font).size(13))
+            button(text(tab.title()).font(look.font).size(look.sized(13.0)))
                 .padding([5, 14])
                 .style(style::tab(look, tab == shown_tab && !is_searching))
                 .on_press(Message::Settings(SettingsMessage::ShowTab(tab)))
@@ -346,7 +346,7 @@ impl Settings {
         let search = text_input("Search settings", &self.search)
             .id(SEARCH_FIELD)
             .font(look.font)
-            .size(13)
+            .size(look.sized(13.0))
             .padding([6, 12])
             .width(if fits_one_line {
                 Length::Fixed(SEARCH_WIDTH)

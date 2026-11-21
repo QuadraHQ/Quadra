@@ -17,7 +17,11 @@ pub fn client_page<'a>(state: &AppState, look: Look, client: Client) -> Element<
     let content = Column::new()
         .push(app_icon(128.0))
         .push(title(look, client.home_title(), TITLE_SIZE))
-        .push(caption(look, status_text(state, client)).center().size(14))
+        .push(
+            caption(look, status_text(state, client))
+                .center()
+                .size(look.sized(14.0)),
+        )
         .push(playtime)
         .push(space().height(0))
         .push(
@@ -33,6 +37,7 @@ pub fn client_page<'a>(state: &AppState, look: Look, client: Client) -> Element<
 
 fn playtime_label<'a>(state: &AppState, look: Look) -> Option<iced::widget::Text<'a>> {
     let seconds = state.playtime_seconds();
-    (state.show_playtime() && seconds > 0)
-        .then(|| caption(look, format!("Played for {}", format_playtime(seconds))).size(14))
+    (state.show_playtime() && seconds > 0).then(|| {
+        caption(look, format!("Played for {}", format_playtime(seconds))).size(look.sized(14.0))
+    })
 }

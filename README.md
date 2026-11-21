@@ -116,9 +116,9 @@ Flake input:
 
 Settings › General › Appearance › Background picture shows a PNG, JPEG or WebP picture behind Quadra instead of the theme's background. The chosen background animation plays over it, adding only its light, such as rain, petals or snow. Picture dimming shades the picture in the theme's window colour so text stays readable.
 
-## Font and accent colour
+## Font, text size and accent colour
 
-Settings › General › Appearance › Font changes the font of Quadra's own text, whatever the theme. It offers Quadra's built-in fonts, the preset game fonts and any `.ttf` or `.otf` font you import; each one is shown in its own typeface. Accent colour replaces the theme's accent with any colour you type.
+Settings › General › Appearance › Font changes the font of Quadra's own text, whatever the theme. It offers Quadra's built-in fonts, the preset game fonts and any `.ttf` or `.otf` font you import; each one is shown in its own typeface. Text size makes Quadra's text from 80% to 150% of its usual size. Accent colour replaces the theme's accent with any colour you type.
 
 ## Custom themes
 

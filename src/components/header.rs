@@ -20,7 +20,7 @@ pub fn tabs<'a>(look: Look, shown: Page, pages: &[Page], compact: bool) -> Row<'
         } else {
             look.text
         };
-        let label = (!compact).then(|| text(page.title()).font(look.font).size(14));
+        let label = (!compact).then(|| text(page.title()).font(look.font).size(look.sized(14.0)));
         button(
             row![icon::tinted(symbol_of(page), color)]
                 .push(label)

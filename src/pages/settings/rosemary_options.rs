@@ -126,7 +126,7 @@ fn refresh_rate_row<'a>(
 
     let input = text_input("The monitor's", &shown)
         .font(look.font)
-        .size(14)
+        .size(look.sized(14.0))
         .width(REFRESH_RATE_INPUT_WIDTH)
         .padding([6, 10])
         .style(style::input(look, settings.invalid_refresh_rate.is_none()))
