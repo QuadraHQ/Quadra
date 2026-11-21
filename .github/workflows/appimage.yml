@@ -39,7 +39,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build AppImage
-        run: ./appimage/build.sh
+        run: ./build/appimage/build.sh
 
       - uses: actions/upload-artifact@v7
         with:

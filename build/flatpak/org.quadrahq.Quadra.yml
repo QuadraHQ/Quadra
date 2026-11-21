@@ -80,7 +80,7 @@ modules:
       - install -Dm644 flatpak/org.quadrahq.Quadra.metainfo.xml -t /app/share/metainfo/
     sources:
       - type: dir
-        path: ..
+        path: ../..
         skip:
           - target
           - build-dir
