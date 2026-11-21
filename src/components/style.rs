@@ -43,7 +43,15 @@ pub struct Look {
 
 impl Look {
     pub fn of(state: &AppState) -> Self {
-        Self::for_theme(state.theme(), state.system_prefers_dark())
+        let imported = state.imported_themes();
+        match imported.named(&state.imported_theme()) {
+            Some(theme) => theme.look,
+            None => Self::for_theme(state.theme(), state.system_prefers_dark()),
+        }
+    }
+
+    pub fn adwaita(dark: bool) -> Self {
+        if dark { ADWAITA_DARK } else { ADWAITA_LIGHT }
     }
 
     pub fn for_theme(theme: Theme, system_prefers_dark: bool) -> Self {

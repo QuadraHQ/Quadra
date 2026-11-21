@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::components::imported_theme::ImportedTheme;
 use crate::main_loop::{self, Source};
 use crate::utils::config_directory;
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 43] = [
+const SAVED_PROPERTIES: [&str; 46] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -81,6 +82,9 @@ const SAVED_PROPERTIES: [&str; 43] = [
     "block-telemetry",
     "force-raknet",
     "theme",
+    "imported-theme",
+    "background-animation",
+    "animation-colors",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -119,6 +123,67 @@ pub enum Theme {
     Ember,
     Paper,
     Phosphor,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackgroundAnimation {
+    #[default]
+    ThemeDefault,
+    None,
+    Aurora,
+    Embers,
+    Leaves,
+    Scanlines,
+    Waves,
+    Fireflies,
+    Bokeh,
+}
+
+impl Choice for BackgroundAnimation {
+    const ALL: &'static [Self] = &[
+        Self::ThemeDefault,
+        Self::None,
+        Self::Aurora,
+        Self::Embers,
+        Self::Leaves,
+        Self::Scanlines,
+        Self::Waves,
+        Self::Fireflies,
+        Self::Bokeh,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::ThemeDefault => "Theme's own",
+            Self::None => "None",
+            Self::Aurora => "Aurora",
+            Self::Embers => "Embers",
+            Self::Leaves => "Leaves",
+            Self::Scanlines => "Scanlines",
+            Self::Waves => "Waves",
+            Self::Fireflies => "Fireflies",
+            Self::Bokeh => "Bokeh",
+        }
+    }
+}
+
+impl BackgroundAnimation {
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|animation| animation.label().eq_ignore_ascii_case(name))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ImportedThemes(pub Rc<Vec<ImportedTheme>>);
+
+impl ImportedThemes {
+    pub fn named(&self, name: &str) -> Option<&ImportedTheme> {
+        self.0.iter().find(|theme| theme.name == name)
+    }
 }
 
 impl Choice for Theme {
@@ -199,6 +264,11 @@ struct SavedSettings {
     block_telemetry: bool,
     force_raknet: bool,
     theme: Theme,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    imported_theme: String,
+    background_animation: BackgroundAnimation,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    animation_colors: Vec<String>,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -249,6 +319,9 @@ impl Default for SavedSettings {
             block_telemetry: false,
             force_raknet: false,
             theme: Theme::default(),
+            imported_theme: String::new(),
+            background_animation: BackgroundAnimation::default(),
+            animation_colors: Vec::new(),
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -358,6 +431,10 @@ properties! {
     can_play set_can_play: bool = "can-play",
     can_open_studio set_can_open_studio: bool = "can-open-studio",
     theme set_theme: Theme = "theme",
+    imported_theme set_imported_theme: String = "imported-theme",
+    imported_themes set_imported_themes: ImportedThemes = "imported-themes",
+    background_animation set_background_animation: BackgroundAnimation = "background-animation",
+    animation_colors set_animation_colors: Vec<String> = "animation-colors",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
     system_title_bar set_system_title_bar: bool = "system-title-bar",
@@ -499,6 +576,13 @@ impl AppState {
             .replace(settings.system_title_bar);
         properties.first_launch.replace(first_launch);
         properties.theme.replace(settings.theme);
+        properties.imported_theme.replace(settings.imported_theme);
+        properties
+            .background_animation
+            .replace(settings.background_animation);
+        properties
+            .animation_colors
+            .replace(settings.animation_colors);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -747,6 +831,9 @@ impl AppState {
             block_telemetry: self.block_telemetry(),
             force_raknet: self.force_raknet(),
             theme: self.theme(),
+            imported_theme: self.imported_theme(),
+            background_animation: self.background_animation(),
+            animation_colors: self.animation_colors(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
         };

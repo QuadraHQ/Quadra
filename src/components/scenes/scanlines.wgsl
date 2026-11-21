@@ -1,5 +1,3 @@
-const WINDOW_LIGHT = vec3<f32>(0.0009, 0.0024, 0.0015);
-const PHOSPHOR_LIGHT = vec3<f32>(0.0409, 1.0, 0.1946);
 const SCANLINE_SPACING = 3.0;
 const SCANLINE_LIGHT = 0.035;
 const BAND_LIGHT = 0.0045;
@@ -19,5 +17,6 @@ fn light_at(covering: Covering) -> vec3<f32> {
     let row = spot.y - SCANLINE_SPACING * floor(spot.y / SCANLINE_SPACING);
     let scanline = select(0.0, SCANLINE_LIGHT, row < 1.0) * (1.0 + band * 0.6);
     let breathing = 0.0006 * sin(scene.seconds * 0.4);
-    return WINDOW_LIGHT * vignette + PHOSPHOR_LIGHT * ((band * BAND_LIGHT + breathing) * vignette + scanline);
+    let phosphor = scene.tint_lights[0].rgb;
+    return scene.base_light.rgb * vignette + phosphor * ((band * BAND_LIGHT + breathing) * vignette + scanline);
 }

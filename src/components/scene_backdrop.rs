@@ -1,9 +1,10 @@
 use crate::quadra::Message;
+use crate::state::BackgroundAnimation;
 use iced::mouse::Cursor;
 use iced::time::{Duration, Instant};
 use iced::wgpu;
 use iced::widget::shader::{self, Viewport};
-use iced::{Element, Event, Length, Rectangle, window};
+use iced::{Color, Element, Event, Length, Rectangle, color, window};
 use std::thread;
 
 const GLOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -19,26 +20,107 @@ const GLOW_PASS: &str = include_str!("scenes/glow.wgsl");
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Scene {
     Aurora,
-    Ember,
-    Paper,
-    Phosphor,
+    Embers,
+    Leaves,
+    Scanlines,
+    Waves,
+    Fireflies,
+    Bokeh,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Palette {
+    base: Color,
+    lights: [Color; 3],
 }
 
 impl Scene {
-    const ALL: [Scene; 4] = [Self::Aurora, Self::Ember, Self::Paper, Self::Phosphor];
+    const ALL: [Scene; 7] = [
+        Self::Aurora,
+        Self::Embers,
+        Self::Leaves,
+        Self::Scanlines,
+        Self::Waves,
+        Self::Fireflies,
+        Self::Bokeh,
+    ];
     const COUNT: usize = Self::ALL.len();
 
-    pub fn view(self) -> Element<'static, Message> {
-        shader::Shader::new(SceneBackdrop { scene: self })
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+    pub fn chosen(animation: BackgroundAnimation) -> Option<Self> {
+        match animation {
+            BackgroundAnimation::ThemeDefault | BackgroundAnimation::None => None,
+            BackgroundAnimation::Aurora => Some(Self::Aurora),
+            BackgroundAnimation::Embers => Some(Self::Embers),
+            BackgroundAnimation::Leaves => Some(Self::Leaves),
+            BackgroundAnimation::Scanlines => Some(Self::Scanlines),
+            BackgroundAnimation::Waves => Some(Self::Waves),
+            BackgroundAnimation::Fireflies => Some(Self::Fireflies),
+            BackgroundAnimation::Bokeh => Some(Self::Bokeh),
+        }
+    }
+
+    pub fn view(self, palette: Palette) -> Element<'static, Message> {
+        shader::Shader::new(SceneBackdrop {
+            scene: self,
+            palette,
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+    }
+
+    pub fn default_lights(self) -> &'static [Color] {
+        const AURORA: [Color; 3] = [color!(0xff5fa2), color!(0x8f66ff), color!(0xf2e6ff)];
+        const EMBERS: [Color; 2] = [color!(0xff661c), color!(0xffd180)];
+        const LEAVES: [Color; 2] = [color!(0xfffbf1), color!(0x3c4a2c)];
+        const SCANLINES: [Color; 1] = [color!(0x39ff7a)];
+        const WAVES: [Color; 3] = [color!(0x2f6fd0), color!(0x19b5e6), color!(0x8be3f5)];
+        const FIREFLIES: [Color; 2] = [color!(0xc8ff6a), color!(0xffd36a)];
+        const BOKEH: [Color; 3] = [color!(0xff6fb5), color!(0x6fb7ff), color!(0xffd56f)];
+        match self {
+            Self::Aurora => &AURORA,
+            Self::Embers => &EMBERS,
+            Self::Leaves => &LEAVES,
+            Self::Scanlines => &SCANLINES,
+            Self::Waves => &WAVES,
+            Self::Fireflies => &FIREFLIES,
+            Self::Bokeh => &BOKEH,
+        }
+    }
+
+    pub fn light_names(self) -> &'static [&'static str] {
+        match self {
+            Self::Aurora => &["Lower curtain", "Upper curtain", "Stars"],
+            Self::Embers => &["Flame", "Sparks"],
+            Self::Leaves => &["Sunlight", "Shadow"],
+            Self::Scanlines => &["Glow"],
+            Self::Waves => &["Back wave", "Middle wave", "Front wave"],
+            Self::Fireflies => &["Glow", "Second glow"],
+            Self::Bokeh => &["First light", "Second light", "Third light"],
+        }
+    }
+
+    pub fn palette(self, base: Color, chosen: &[Option<Color>]) -> Palette {
+        let mut lights = [Color::WHITE; 3];
+        let defaults = self.default_lights();
+        for (index, light) in lights.iter_mut().enumerate() {
+            let fallback = defaults
+                .get(index)
+                .or(defaults.last())
+                .copied()
+                .unwrap_or(Color::WHITE);
+            *light = chosen.get(index).copied().flatten().unwrap_or(fallback);
+        }
+        Palette {
+            base: Color { a: 1.0, ..base },
+            lights,
+        }
     }
 
     fn frames_per_second(self) -> u32 {
         match self {
-            Self::Paper => 15,
-            Self::Aurora | Self::Ember | Self::Phosphor => 20,
+            Self::Leaves | Self::Bokeh => 15,
+            Self::Aurora | Self::Embers | Self::Scanlines | Self::Waves | Self::Fireflies => 20,
         }
     }
 
@@ -48,36 +130,51 @@ impl Scene {
 
     fn pixels_per_glow_texel(self) -> Option<f32> {
         match self {
-            Self::Aurora => Some(4.0),
-            Self::Ember => Some(6.0),
-            Self::Paper => Some(8.0),
-            Self::Phosphor => None,
+            Self::Aurora | Self::Waves => Some(4.0),
+            Self::Embers => Some(6.0),
+            Self::Leaves | Self::Fireflies | Self::Bokeh => Some(8.0),
+            Self::Scanlines => None,
         }
     }
 
     fn motes(self) -> u32 {
         match self {
             Self::Aurora => 70,
-            Self::Ember => 72,
-            Self::Paper | Self::Phosphor => 0,
+            Self::Embers => 72,
+            Self::Fireflies => 40,
+            Self::Bokeh => 26,
+            Self::Leaves | Self::Scanlines | Self::Waves => 0,
+        }
+    }
+
+    fn mote_shape(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Bokeh => ("shine_disc", "shine_disc_on_srgb"),
+            _ => ("shine", "shine_on_srgb"),
         }
     }
 
     fn name(self) -> &'static str {
         match self {
             Self::Aurora => "aurora",
-            Self::Ember => "ember",
-            Self::Paper => "paper",
-            Self::Phosphor => "phosphor",
+            Self::Embers => "embers",
+            Self::Leaves => "leaves",
+            Self::Scanlines => "scanlines",
+            Self::Waves => "waves",
+            Self::Fireflies => "fireflies",
+            Self::Bokeh => "bokeh",
         }
     }
 
     fn shader_source(self) -> String {
         let own = match self {
             Self::Aurora => include_str!("scenes/aurora.wgsl"),
-            Self::Ember => include_str!("scenes/ember.wgsl"),
-            Self::Paper => include_str!("scenes/paper.wgsl"),
-            Self::Phosphor => include_str!("scenes/phosphor.wgsl"),
+            Self::Embers => include_str!("scenes/embers.wgsl"),
+            Self::Leaves => include_str!("scenes/leaves.wgsl"),
+            Self::Scanlines => include_str!("scenes/scanlines.wgsl"),
+            Self::Waves => include_str!("scenes/waves.wgsl"),
+            Self::Fireflies => include_str!("scenes/fireflies.wgsl"),
+            Self::Bokeh => include_str!("scenes/bokeh.wgsl"),
         };
         let glow_pass = if self.pixels_per_glow_texel().is_some() {
             GLOW_PASS
@@ -90,6 +187,7 @@ impl Scene {
 
 struct SceneBackdrop {
     scene: Scene,
+    palette: Palette,
 }
 
 #[derive(Default)]
@@ -197,6 +295,7 @@ impl shader::Program<Message> for SceneBackdrop {
     fn draw(&self, clock: &Clock, _cursor: Cursor, _bounds: Rectangle) -> SceneFrame {
         SceneFrame {
             scene: self.scene,
+            palette: self.palette,
             seconds: clock.seconds(),
         }
     }
@@ -205,7 +304,24 @@ impl shader::Program<Message> for SceneBackdrop {
 #[derive(Debug)]
 struct SceneFrame {
     scene: Scene,
+    palette: Palette,
     seconds: f32,
+}
+
+const UNIFORM_FLOATS: usize = 36;
+
+impl SceneFrame {
+    fn uniforms(&self, bounds: &Rectangle, presence: f32) -> [f32; UNIFORM_FLOATS] {
+        let mut uniforms = [0.0; UNIFORM_FLOATS];
+        uniforms[..4].copy_from_slice(&[bounds.width, bounds.height, self.seconds, presence]);
+        let colors = std::iter::once(self.palette.base).chain(self.palette.lights);
+        for (index, color) in colors.enumerate() {
+            let srgb = [color.r, color.g, color.b, color.a];
+            uniforms[4 + index * 4..8 + index * 4].copy_from_slice(&srgb);
+            uniforms[20 + index * 4..24 + index * 4].copy_from_slice(&color.into_linear());
+        }
+        uniforms
+    }
 }
 
 impl shader::Primitive for SceneFrame {
@@ -223,7 +339,7 @@ impl shader::Primitive for SceneFrame {
             return;
         }
         let presence = pipeline.presence_of(self.scene);
-        let uniforms = [bounds.width, bounds.height, self.seconds, presence];
+        let uniforms = self.uniforms(bounds, presence);
         queue.write_buffer(&pipeline.uniforms, 0, bytemuck::cast_slice(&uniforms));
 
         if let Some(pixels_per_texel) = self.scene.pixels_per_glow_texel() {
@@ -457,7 +573,7 @@ impl shader::Pipeline for ScenePipeline {
 
         let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("scene"),
-            size: std::mem::size_of::<[f32; 4]>() as u64,
+            size: std::mem::size_of::<[f32; UNIFORM_FLOATS]>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -542,6 +658,7 @@ impl Painter {
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
         );
+        let (shine, shine_on_srgb) = scene.mote_shape();
         let motes = (scene.motes() > 0).then(|| {
             render_pipeline(
                 device,
@@ -550,7 +667,7 @@ impl Painter {
                     label: "scene motes",
                     layout: &layouts.scene_only,
                     vertex: "place_mote",
-                    fragment: if on_srgb { "shine_on_srgb" } else { "shine" },
+                    fragment: if on_srgb { shine_on_srgb } else { shine },
                     target: adding_light(format),
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                 },

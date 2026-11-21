@@ -1,15 +1,7 @@
-const WINDOW_LIGHT = vec3<f32>(0.007, 0.004, 0.0176);
-const DUSK = vec3<f32>(0.169, 0.082, 0.322);
-const MIDNIGHT = vec3<f32>(0.078, 0.051, 0.141);
-const PLUM = vec3<f32>(0.231, 0.063, 0.212);
-const ROSE = vec3<f32>(1.0, 0.373, 0.635);
-const VIOLET = vec3<f32>(0.561, 0.4, 1.0);
-const STARLIGHT = vec3<f32>(0.95, 0.9, 1.0);
-
 fn sky(uv: vec2<f32>) -> vec3<f32> {
     let along = clamp((uv.x + uv.y) * 0.5, 0.0, 1.0);
-    let upper = mix(DUSK, MIDNIGHT, smoothstep(0.0, 0.5, along));
-    return mix(upper, PLUM, smoothstep(0.5, 1.0, along));
+    let upper = mix(mix(scene.base.rgb, tint(1u), 0.18), scene.base.rgb, smoothstep(0.0, 0.5, along));
+    return mix(upper, mix(scene.base.rgb, tint(0u), 0.14), smoothstep(0.5, 1.0, along));
 }
 
 fn curtain(spot: vec2<f32>, edge: f32, speed: f32, phase: f32) -> vec3<f32> {
@@ -26,7 +18,7 @@ fn curtain(spot: vec2<f32>, edge: f32, speed: f32, phase: f32) -> vec3<f32> {
     let hanging = rising * exp(-below * below);
     let rays = mix(0.4, 1.0, noise(vec2<f32>(across * 24.0 + phase * 7.0, time * 1.4 + phase)));
     let shimmer = 0.75 + 0.25 * sin(scene.seconds * 0.23 + phase * 3.1);
-    return mix(ROSE, VIOLET, smoothstep(0.0, 0.2, height)) * hanging * rays * shimmer;
+    return mix(tint(0u), tint(1u), smoothstep(0.0, 0.2, height)) * hanging * rays * shimmer;
 }
 
 fn glow(spot: vec2<f32>) -> vec3<f32> {
@@ -45,7 +37,7 @@ fn place_mote(@builtin(vertex_index) corner: u32, @builtin(instance_index) star:
     let place = vec2<f32>(random(star, 1u), random(star, 2u) * random(star, 3u) * 0.8) * scene.size;
     let twinkle = 0.5 + 0.5 * sin(scene.seconds * mix(0.6, 2.2, random(star, 4u)) + random(star, 5u) * TAU);
     var mote = mote_at(place, mix(0.5, 0.95, random(star, 6u)), corner);
-    mote.tint = STARLIGHT;
+    mote.tint = tint(2u);
     mote.strength = mix(0.2, 0.7, random(star, 7u)) * twinkle;
     return mote;
 }

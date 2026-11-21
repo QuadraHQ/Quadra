@@ -1,8 +1,3 @@
-const WINDOW_LIGHT = vec3<f32>(0.9131, 0.8694, 0.7914);
-const PAPER = vec3<f32>(0.961, 0.941, 0.902);
-const SUNLIT = vec3<f32>(1.0, 0.984, 0.945);
-const LEAF_SHADE = vec3<f32>(0.83, 0.815, 0.775);
-
 fn turned(spot: vec2<f32>, angle: f32) -> vec2<f32> {
     let along = vec2<f32>(cos(angle), sin(angle));
     return vec2<f32>(along.x * spot.x - along.y * spot.y, along.y * spot.x + along.x * spot.y);
@@ -21,7 +16,9 @@ fn glow(spot: vec2<f32>) -> vec3<f32> {
     let from_corner = distance(spot / scene.size.y, vec2<f32>(aspect, 0.0));
     let reach = 1.0 - smoothstep(0.15, 1.3, from_corner);
     let shade = smoothstep(0.48, 0.58, leaves(spot));
-    return mix(PAPER, mix(SUNLIT, LEAF_SHADE, shade), reach * 0.75);
+    let sunlit = mix(scene.base.rgb, tint(0u), 0.3);
+    let shaded = mix(scene.base.rgb, tint(1u), 0.18);
+    return mix(scene.base.rgb, mix(sunlit, shaded, shade), reach * 0.75);
 }
 
 fn light_at(covering: Covering) -> vec3<f32> {

@@ -1,8 +1,3 @@
-const WINDOW_LIGHT = vec3<f32>(0.008, 0.0056, 0.0044);
-const SOOT = vec3<f32>(0.086, 0.067, 0.055);
-const SMOULDER = vec3<f32>(0.17, 0.088, 0.047);
-const FLAME = vec3<f32>(1.0, 0.4, 0.11);
-const WHITE_HOT = vec3<f32>(1.0, 0.82, 0.5);
 
 fn heat(spot: vec2<f32>) -> f32 {
     let time = scene.seconds;
@@ -13,8 +8,9 @@ fn heat(spot: vec2<f32>) -> f32 {
 }
 
 fn glow(spot: vec2<f32>) -> vec3<f32> {
-    let base = mix(SOOT, SMOULDER, smoothstep(0.25, 1.0, spot.y / scene.size.y));
-    return base + FLAME * heat(spot) * 0.2;
+    let smoulder = mix(scene.base.rgb, tint(0u), 0.09);
+    let base = mix(scene.base.rgb, smoulder, smoothstep(0.25, 1.0, spot.y / scene.size.y));
+    return base + tint(0u) * heat(spot) * 0.2;
 }
 
 fn light_at(covering: Covering) -> vec3<f32> {
@@ -38,7 +34,7 @@ fn place_mote(@builtin(vertex_index) corner: u32, @builtin(instance_index) ember
     let flicker = 0.7 + 0.3 * sin(time * mix(7.0, 13.0, random(ember, 10u)) + random(ember, 11u) * TAU);
 
     var mote = mote_at(center, mix(1.1, 2.3, random(ember, 9u)), corner);
-    mote.tint = mix(FLAME, WHITE_HOT, pow(1.0 - progress, 2.0));
+    mote.tint = mix(tint(0u), tint(1u), pow(1.0 - progress, 2.0));
     mote.strength = fading * flicker * mix(0.55, 1.0, random(ember, 12u));
     return mote;
 }

@@ -36,6 +36,7 @@ mod runners;
 mod server_history;
 mod server_location;
 mod telemetry;
+mod themes;
 mod transport_patch;
 mod updater;
 mod vr;
@@ -53,6 +54,7 @@ pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
+pub use themes::load as load_themes;
 pub use vr_access::missing as missing_vr_access;
 pub use window_buttons::load_layout as load_window_button_layout;
 
@@ -454,6 +456,18 @@ pub fn open_studio(state: &AppState, target: StudioTarget) {
 
 pub fn has_shortcut(shortcut: Shortcut) -> bool {
     shortcut.entry().exists()
+}
+
+pub fn import_theme(state: &AppState, file: &Path) {
+    if let Err(error) = themes::import(state, file) {
+        state.report_error(&format!("Couldn't import the theme: {error:#}"));
+    }
+}
+
+pub fn remove_theme(state: &AppState, name: &str) {
+    if let Err(error) = themes::remove(state, name) {
+        state.report_error(&format!("{error:#}"));
+    }
 }
 
 pub fn add_shortcut(state: &AppState, shortcut: Shortcut) {

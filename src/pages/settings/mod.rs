@@ -1,5 +1,6 @@
 mod account;
 mod advanced;
+mod appearance;
 mod bound_rows;
 mod butter_access;
 mod controller_access;
@@ -95,6 +96,10 @@ pub enum SettingsMessage {
     VrToggled(bool),
     ControllerAccessToggled(bool),
     PresetChosen(fast_flags::PresetChoice),
+    ImportTheme,
+    ThemeFilePicked(Option<PathBuf>),
+    RemoveTheme(String),
+    AnimationColorEdited(usize, String),
 }
 
 pub struct Settings {
@@ -198,6 +203,27 @@ impl Settings {
                 if let Some(executable) = chosen {
                     backend::use_custom_runner(state, &executable);
                 }
+            }
+            SettingsMessage::ImportTheme => {
+                return file_dialog::pick_file("Choose a CSS theme", &["css"])
+                    .map(|chosen| Message::Settings(SettingsMessage::ThemeFilePicked(chosen)));
+            }
+            SettingsMessage::ThemeFilePicked(chosen) => {
+                if let Some(file) = chosen {
+                    backend::import_theme(state, &file);
+                }
+            }
+            SettingsMessage::RemoveTheme(name) => backend::remove_theme(state, &name),
+            SettingsMessage::AnimationColorEdited(index, text) => {
+                let mut colors = state.animation_colors();
+                if colors.len() <= index {
+                    colors.resize(index + 1, String::new());
+                }
+                colors[index] = text.trim().to_owned();
+                while colors.last().is_some_and(String::is_empty) {
+                    colors.pop();
+                }
+                state.set_animation_colors(colors);
             }
             SettingsMessage::ClearCache => {
                 let cleared = self.cleared_cache_bytes.clone();

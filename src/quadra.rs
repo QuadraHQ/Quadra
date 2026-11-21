@@ -6,7 +6,7 @@ use crate::components::error_dialog::error_dialog;
 use crate::components::file_dialog;
 use crate::components::file_row::{ChosenPath, Pick};
 use crate::components::gpu_or::gpu_or;
-use crate::components::gradient_backdrop::{self, gradient_backdrop};
+use crate::components::gradient_backdrop::gradient_backdrop;
 use crate::components::grid_backdrop::GridBackdrop;
 use crate::components::header::bar;
 use crate::components::icon::app_icon_rgba;
@@ -15,8 +15,8 @@ use crate::components::line_field_backdrop::{self, LineField};
 use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
 use crate::components::scanline_backdrop::ScanlineBackdrop;
-use crate::components::scene_backdrop::Scene;
 use crate::components::style::Look;
+use crate::components::theme_backdrop::{Backdrop, Still, chosen_backdrop};
 use crate::components::title_bar::{self, ButtonLayout, TitleBar};
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
@@ -25,7 +25,7 @@ use crate::pages::home::home_page;
 use crate::pages::servers::{Servers, ServersMessage};
 use crate::pages::settings::{self, Settings, SettingsMessage};
 use crate::single_instance;
-use crate::state::{AppState, Client, LaunchMode, LogChange, Theme};
+use crate::state::{AppState, Client, LaunchMode, LogChange};
 use crate::utils::{BUNDLED_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
 use iced::widget::{Column, column, space, stack, text_editor};
@@ -47,7 +47,14 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
-const PROPERTIES_THAT_DECIDE_LOOK: [&str; 2] = ["theme", "system-prefers-dark"];
+const PROPERTIES_THAT_DECIDE_LOOK: [&str; 6] = [
+    "theme",
+    "system-prefers-dark",
+    "imported-theme",
+    "imported-themes",
+    "background-animation",
+    "animation-colors",
+];
 const MAIN_WINDOW_SIZE: Size = Size::new(800.0, 600.0);
 const MAIN_WINDOW_MINIMUM_SIZE: Size = Size::new(360.0, 420.0);
 const PULSE_EVERY: std::time::Duration = std::time::Duration::from_millis(50);
@@ -162,6 +169,7 @@ pub struct Quadra {
     live_log: LiveLog,
     look: Look,
     iced_theme: iced::Theme,
+    backdrop: Backdrop,
     grid_backdrop: GridBackdrop,
     scanline_backdrop: ScanlineBackdrop,
     line_field: Option<LineField>,
@@ -196,10 +204,12 @@ impl Quadra {
         let reactions = Reactions::default();
         backend::initialize(&state);
         backend::load_window_button_layout(&state);
+        backend::load_themes(&state);
         settings::keep_choices_valid(&state);
         react_to_state(&state, &reactions);
 
         let look = Look::of(&state);
+        let backdrop = chosen_backdrop(&state, &look);
         let mut quadra = Self {
             servers: Servers::default(),
             settings: Settings::new(&state),
@@ -212,6 +222,7 @@ impl Quadra {
             live_log: LiveLog::default(),
             iced_theme: look.iced_theme(),
             look,
+            backdrop,
             grid_backdrop: GridBackdrop::default(),
             scanline_backdrop: ScanlineBackdrop::default(),
             line_field: None,
@@ -513,7 +524,9 @@ impl Quadra {
             self.look = look;
             self.iced_theme = look.iced_theme();
         }
-        let wants_line_field = self.state.theme() == Theme::Monochrome;
+        self.backdrop = chosen_backdrop(&self.state, &look);
+        let wants_line_field =
+            self.backdrop.scene.is_none() && self.backdrop.still == Still::LineField;
         if wants_line_field != self.line_field.is_some() {
             self.line_field = wants_line_field.then(LineField::default);
         }
@@ -753,23 +766,19 @@ impl Quadra {
     }
 
     fn backdrop(&self) -> Option<Element<'_, Message>> {
-        match self.state.theme() {
-            Theme::Grid => Some(self.grid_backdrop.view()),
-            Theme::Monochrome => self.line_field.as_ref().map(LineField::view),
-            Theme::Aurora => Some(gpu_or(
-                Scene::Aurora.view(),
-                gradient_backdrop(&gradient_backdrop::AURORA),
+        let still = match &self.backdrop.still {
+            Still::Nothing => None,
+            Still::Gradient(glow) => Some(gradient_backdrop(glow)),
+            Still::Grid => Some(self.grid_backdrop.view()),
+            Still::LineField => self.line_field.as_ref().map(LineField::view),
+            Still::Scanlines => Some(self.scanline_backdrop.view()),
+        };
+        match self.backdrop.scene {
+            Some((scene, palette)) => Some(gpu_or(
+                scene.view(palette),
+                still.unwrap_or_else(|| space().into()),
             )),
-            Theme::Ember => Some(gpu_or(
-                Scene::Ember.view(),
-                gradient_backdrop(&gradient_backdrop::EMBER),
-            )),
-            Theme::Paper => Some(gpu_or(Scene::Paper.view(), space())),
-            Theme::Phosphor => Some(gpu_or(
-                Scene::Phosphor.view(),
-                self.scanline_backdrop.view(),
-            )),
-            Theme::Adwaita => None,
+            None => still,
         }
     }
 

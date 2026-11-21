@@ -1,4 +1,5 @@
 use super::account::account_group;
+use super::appearance::appearance_rows;
 use super::bound_rows::{choice_row, switch, switch_row};
 use super::privacy::privacy_group;
 use super::runtime::runtime_section;
@@ -37,13 +38,10 @@ pub fn general_section<'a>(
                 |state, on| state.set_run_in_background(on),
             )
             .subtitle("Keep Quadra in the system tray after its window closes"),
-        )
-        .push(
-            choice_row(look, "App theme", state.theme(), |state, theme| {
-                state.set_theme(theme)
-            })
-            .subtitle("Change the theme to what you like."),
-        )
+        );
+    let quadra_group = appearance_rows(state, look)
+        .into_iter()
+        .fold(quadra_group, |group, row| group.push(row))
         .push(
             switch_row(
                 look,

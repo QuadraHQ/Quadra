@@ -2,6 +2,10 @@ struct Scene {
     size: vec2<f32>,
     seconds: f32,
     presence: f32,
+    base: vec4<f32>,
+    tints: array<vec4<f32>, 3>,
+    base_light: vec4<f32>,
+    tint_lights: array<vec4<f32>, 3>,
 }
 
 struct Covering {
@@ -17,6 +21,7 @@ struct Mote {
 }
 
 const MOTE_REACH = 4.0;
+const DISC_REACH = 1.1;
 const TAU = 6.2831855;
 const SRGB_STEP_PER_ROOT = 2.4 / 1.055 / 255.0;
 
@@ -76,7 +81,7 @@ fn spot_of(covering: Covering) -> vec2<f32> {
 
 fn finished(covering: Covering) -> vec3<f32> {
     let pixel = floor(covering.position.xy);
-    let color = mix(WINDOW_LIGHT, max(light_at(covering), vec3<f32>(0.0)), scene.presence);
+    let color = mix(scene.base_light.rgb, max(light_at(covering), vec3<f32>(0.0)), scene.presence);
     return max(color + (hash(pixel) - 0.5) * sqrt(color) * SRGB_STEP_PER_ROOT, vec3<f32>(0.0));
 }
 
@@ -87,6 +92,25 @@ fn mote_at(center: vec2<f32>, radius: f32, corner: u32) -> Mote {
     mote.position = vec4<f32>(spot.x / scene.size.x * 2.0 - 1.0, 1.0 - spot.y / scene.size.y * 2.0, 0.0, 1.0);
     mote.offset = offset;
     return mote;
+}
+
+fn disc_at(center: vec2<f32>, radius: f32, corner: u32) -> Mote {
+    let offset = (vec2<f32>(f32(corner & 1u), f32(corner >> 1u)) * 2.0 - 1.0) * DISC_REACH;
+    let spot = center + offset * radius;
+    var mote: Mote;
+    mote.position = vec4<f32>(spot.x / scene.size.x * 2.0 - 1.0, 1.0 - spot.y / scene.size.y * 2.0, 0.0, 1.0);
+    mote.offset = offset;
+    return mote;
+}
+
+fn disc_light(mote: Mote) -> f32 {
+    let distance = length(mote.offset);
+    let body = 1.0 - smoothstep(0.88, 1.0, distance);
+    return body * (0.7 + 0.3 * smoothstep(0.5, 0.95, distance)) * mote.strength * scene.presence;
+}
+
+fn tint(index: u32) -> vec3<f32> {
+    return scene.tints[index].rgb;
 }
 
 fn mote_light(mote: Mote) -> f32 {
@@ -112,4 +136,14 @@ fn shine(mote: Mote) -> @location(0) vec4<f32> {
 @fragment
 fn shine_on_srgb(mote: Mote) -> @location(0) vec4<f32> {
     return vec4<f32>(linear_from_srgb(mote.tint) * mote_light(mote), 0.0);
+}
+
+@fragment
+fn shine_disc(mote: Mote) -> @location(0) vec4<f32> {
+    return vec4<f32>(mote.tint * disc_light(mote), 0.0);
+}
+
+@fragment
+fn shine_disc_on_srgb(mote: Mote) -> @location(0) vec4<f32> {
+    return vec4<f32>(linear_from_srgb(mote.tint) * disc_light(mote), 0.0);
 }

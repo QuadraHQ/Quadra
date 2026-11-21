@@ -2,27 +2,38 @@ use crate::quadra::Message;
 use iced::gradient::Linear;
 use iced::widget::{container, space};
 use iced::{Background, Color, Degrees, Element, Gradient, Length, color};
+use std::borrow::Cow;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Glow {
     angle: Degrees,
-    stops: &'static [(f32, Color)],
+    stops: Cow<'static, [(f32, Color)]>,
+}
+
+impl Glow {
+    pub fn new(angle: Degrees, stops: Vec<(f32, Color)>) -> Self {
+        Self {
+            angle,
+            stops: Cow::Owned(stops),
+        }
+    }
 }
 
 pub const AURORA: Glow = Glow {
     angle: Degrees(135.0),
-    stops: &[
+    stops: Cow::Borrowed(&[
         (0.0, color!(0x2b1552)),
         (0.5, color!(0x140d24)),
         (1.0, color!(0x3b1036)),
-    ],
+    ]),
 };
 
 pub const EMBER: Glow = Glow {
     angle: Degrees(180.0),
-    stops: &[(0.0, color!(0x2a1a10)), (0.6, color!(0x16110e))],
+    stops: Cow::Borrowed(&[(0.0, color!(0x2a1a10)), (0.6, color!(0x16110e))]),
 };
 
-pub fn gradient_backdrop<'a>(glow: &'static Glow) -> Element<'a, Message> {
+pub fn gradient_backdrop<'a>(glow: &Glow) -> Element<'a, Message> {
     let gradient = glow
         .stops
         .iter()
