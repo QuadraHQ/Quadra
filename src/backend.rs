@@ -6,6 +6,7 @@ mod cache;
 mod controller_access;
 mod cpu_limit;
 mod desktop_entries;
+mod desktop_settings;
 mod destination;
 mod diagnostics;
 mod discord_access;
@@ -18,6 +19,7 @@ mod flatpak_override;
 mod game_activity;
 mod game_details;
 mod handlers;
+mod key_file;
 mod launch;
 mod launch_request;
 mod live_log;
@@ -35,6 +37,7 @@ mod runners;
 mod server_history;
 mod server_location;
 mod telemetry;
+mod themes;
 mod transport_patch;
 mod updater;
 mod vr;
@@ -45,20 +48,20 @@ pub use controller_access::{
     command_to_change as controller_access_command, is_granted as controller_access_is_granted,
 };
 pub use desktop_entries::Shortcut;
-pub use discord_access::{MissingDiscordAccess, missing as missing_discord_access};
+pub use desktop_settings::{load_layout as load_window_button_layout, load_motion_preference};
+pub use discord_access::missing as missing_discord_access;
 pub use handlers::Handler;
 pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
+pub use themes::load as load_themes;
 pub use vr_access::missing as missing_vr_access;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
-use crate::utils::is_executable_file;
+use crate::utils::{documents_directory, is_executable_file, open_with_default_app};
 use background::{Progress, run_quietly, run_task};
 use destination::Destination;
-use gtk::glib;
-use gtk::prelude::*;
 use runners::Runner;
 use std::path::{Path, PathBuf};
 
@@ -69,7 +72,7 @@ pub fn initialize(state: &AppState) {
         &PROPERTIES_THAT_DECIDE_SELECTED_RUNNER,
         refresh_selected_runner_status,
     );
-    state.connect_notify_local(Some("prefix"), |state, _| account::refresh(state));
+    state.connect_property_notify("prefix", account::refresh);
     updater::initialize(state);
     quadra_rosemary::look_for_update(state);
     fast_flag_allowlist::initialize();
@@ -336,7 +339,7 @@ pub fn clear_roblox_cache(state: &AppState, when_finished: impl FnOnce(u64) + 's
 }
 
 pub fn diagnostics_directory() -> std::path::PathBuf {
-    glib::user_special_dir(glib::UserDirectory::Documents).unwrap_or_else(glib::home_dir)
+    documents_directory()
 }
 
 pub fn collect_diagnostics_in_background(state: &AppState) {
@@ -353,8 +356,9 @@ pub fn collect_diagnostics_in_background(state: &AppState) {
             diagnostics::collect(&summary, &directory)
         },
         |_, archive| {
-            gtk::FileLauncher::new(Some(&gtk::gio::File::for_path(archive)))
-                .open_containing_folder(gtk::Window::NONE, gtk::gio::Cancellable::NONE, |_| {});
+            if let Some(folder) = archive.parent() {
+                open_with_default_app(folder);
+            }
         },
     );
 }
@@ -452,6 +456,18 @@ pub fn open_studio(state: &AppState, target: StudioTarget) {
 
 pub fn has_shortcut(shortcut: Shortcut) -> bool {
     shortcut.entry().exists()
+}
+
+pub fn import_theme(state: &AppState, file: &Path) {
+    if let Err(error) = themes::import(state, file) {
+        state.report_error(&format!("Couldn't import the theme: {error:#}"));
+    }
+}
+
+pub fn remove_theme(state: &AppState, name: &str) {
+    if let Err(error) = themes::remove(state, name) {
+        state.report_error(&format!("{error:#}"));
+    }
 }
 
 pub fn add_shortcut(state: &AppState, shortcut: Shortcut) {

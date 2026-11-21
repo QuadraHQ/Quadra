@@ -1,28 +1,21 @@
-use crate::backend;
-use crate::components::command_dialog::show_command_dialog;
-use adw::prelude::*;
+use crate::components::command_dialog::command_dialog;
+use crate::components::preferences::{preference_row, push_button};
+use crate::components::style::{Emphasis, Look};
+use crate::quadra::Message;
+use iced::Element;
 
-pub fn butter_access_row() -> Option<adw::ActionRow> {
-    let command = backend::missing_butter_access()?;
+pub fn butter_access_row<'a>(command: Option<&str>, look: Look) -> Option<Element<'a, Message>> {
+    let command = command?;
+    let dialog = command_dialog(
+        "Let Quadra see Butter runners",
+        "Run this in a terminal to let Quadra read the runners Butter installed, then restart Quadra:",
+        command,
+    );
 
-    let button = gtk::Button::builder()
-        .label("Show how")
-        .valign(gtk::Align::Center)
-        .build();
-    let row = adw::ActionRow::builder()
-        .title("Looking for Butter runners?")
-        .subtitle("Quadra runs as a Flatpak, so it can only list the runners Butter installed once you allow it.")
-        .build();
-    row.add_suffix(&button);
-
-    button.connect_clicked(move |button| {
-        show_command_dialog(
-            button,
-            "Let Quadra see Butter runners",
-            "Run this in a terminal to let Quadra read the runners Butter installed, then restart Quadra:",
-            &command,
-        );
-    });
-
-    Some(row)
+    Some(
+        preference_row(look, "Looking for Butter runners?")
+            .subtitle("Quadra runs as a Flatpak, so it can only list the runners Butter installed once you allow it.")
+            .suffix(push_button(look, "Show how", Emphasis::Normal).on_press(Message::Alert(dialog)))
+            .into(),
+    )
 }

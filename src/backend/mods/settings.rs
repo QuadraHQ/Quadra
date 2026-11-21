@@ -1,4 +1,4 @@
-use crate::state::{AppState, CursorStyle, DeathSound};
+use crate::state::{AppState, CursorStyle, DeathSound, FontStyle};
 use std::path::PathBuf;
 
 pub struct ModSettings {
@@ -7,6 +7,7 @@ pub struct ModSettings {
     pub old_character_sounds: bool,
     pub cursor_style: CursorStyle,
     pub custom_cursor: PathBuf,
+    pub font_style: FontStyle,
     pub custom_font: PathBuf,
     pub custom_mods: bool,
 }
@@ -19,6 +20,7 @@ impl ModSettings {
             old_character_sounds: state.old_character_sounds(),
             cursor_style: state.cursor_style(),
             custom_cursor: state.custom_cursor().into(),
+            font_style: state.font_style(),
             custom_font: state.custom_font().into(),
             custom_mods: state.custom_mods(),
         }

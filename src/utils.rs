@@ -1,104 +1,52 @@
-use crate::state::{AppState, Client};
-use gtk::prelude::*;
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
-
-pub fn scrollable(child: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
-    let clamp = adw::Clamp::builder().maximum_size(600).child(child).build();
-
-    gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Never)
-        .child(&clamp)
-        .vexpand(true)
-        .build()
-}
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 pub const APP_ICON_PNG: &[u8] =
     include_bytes!("../data/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png");
 
-const BUNDLED_FONTS: [(&str, &[u8]); 2] = [
-    ("Archivo.ttf", include_bytes!("../assets/fonts/Archivo.ttf")),
-    (
-        "JetBrainsMono.ttf",
-        include_bytes!("../assets/fonts/JetBrainsMono.ttf"),
-    ),
+pub const BUNDLED_FONTS: [&[u8]; 2] = [
+    include_bytes!("../assets/fonts/Archivo.ttf"),
+    include_bytes!("../assets/fonts/JetBrainsMono.ttf"),
 ];
 
-pub fn register_bundled_fonts() {
-    let font_map = pangocairo::FontMap::default();
-    let fonts_directory = gtk::glib::user_cache_dir().join("quadra").join("fonts");
-    for (name, contents) in BUNDLED_FONTS {
-        let file = fonts_directory.join(name);
-        if let Err(error) = register_font(&font_map, &file, contents) {
-            eprintln!("Failed to load the {name} font: {error}");
+pub fn home_directory() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"))
+}
+
+pub fn config_directory() -> PathBuf {
+    dirs::config_dir().unwrap_or_else(|| home_directory().join(".config"))
+}
+
+pub fn data_directory() -> PathBuf {
+    dirs::data_dir().unwrap_or_else(|| home_directory().join(".local/share"))
+}
+
+pub fn cache_directory() -> PathBuf {
+    dirs::cache_dir().unwrap_or_else(|| home_directory().join(".cache"))
+}
+
+pub fn runtime_directory() -> PathBuf {
+    dirs::runtime_dir().unwrap_or_else(cache_directory)
+}
+
+pub fn documents_directory() -> PathBuf {
+    dirs::document_dir().unwrap_or_else(home_directory)
+}
+
+pub fn open_with_default_app(target: impl AsRef<std::ffi::OsStr>) {
+    let spawned = Command::new("xdg-open")
+        .arg(target)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
+    match spawned {
+        Ok(mut opener) => {
+            std::thread::spawn(move || opener.wait());
         }
+        Err(error) => eprintln!("Couldn't run xdg-open: {error}"),
     }
-}
-
-fn register_font(
-    font_map: &pango::FontMap,
-    file: &std::path::Path,
-    contents: &[u8],
-) -> anyhow::Result<()> {
-    if std::fs::read(file).ok().as_deref() != Some(contents) {
-        create_parent_directory(file)?;
-        std::fs::write(file, contents)?;
-    }
-    font_map.add_font_file(file)?;
-    Ok(())
-}
-
-pub fn show_only_while_roblox_is_selected(target: &impl IsA<gtk::glib::Object>, state: &AppState) {
-    state
-        .bind_property("selected-client", target, "visible")
-        .transform_to(|_, client: Client| Some(client == Client::Player))
-        .sync_create()
-        .build();
-}
-
-pub fn scroll_into_view_once_shown(widget: &impl IsA<gtk::Widget>) {
-    widget.add_tick_callback(|widget, _| {
-        let is_laid_out = widget.width() > 0;
-        if !is_laid_out {
-            return gtk::glib::ControlFlow::Continue;
-        }
-
-        let viewport = widget
-            .ancestor(gtk::Viewport::static_type())
-            .and_downcast::<gtk::Viewport>();
-        if let Some(viewport) = viewport {
-            viewport.scroll_to(widget, None);
-        }
-        gtk::glib::ControlFlow::Break
-    });
-}
-
-pub fn unfocus_on_outside_click(container: &impl IsA<gtk::Widget>) {
-    let gesture = gtk::GestureClick::new();
-    // Capture phase, so this runs before the clicked child handles the event.
-    gesture.set_propagation_phase(gtk::PropagationPhase::Capture);
-
-    gesture.connect_pressed(|gesture, _, x, y| {
-        let Some(container) = gesture.widget() else {
-            return;
-        };
-        let Some(root) = container.root() else { return };
-        let Some(focus) = root.focus() else { return };
-
-        // In an Entry, the focus sits on its inner gtk::Text child.
-        if !focus.is::<gtk::Text>() {
-            return;
-        }
-        let field = focus.parent().unwrap_or(focus);
-
-        let clicked = container.pick(x, y, gtk::PickFlags::DEFAULT);
-        let inside = clicked.is_some_and(|w| w == field || w.is_ancestor(&field));
-        if !inside {
-            root.set_focus(None::<&gtk::Widget>);
-        }
-    });
-
-    container.add_controller(gesture);
 }
 
 pub fn find_in_path(program: &str) -> Option<PathBuf> {
@@ -108,23 +56,23 @@ pub fn find_in_path(program: &str) -> Option<PathBuf> {
         .find(|candidate| is_executable_file(candidate))
 }
 
-pub fn is_executable_file(path: &std::path::Path) -> bool {
+pub fn is_executable_file(path: &Path) -> bool {
     path.metadata()
         .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
 }
 
-pub fn path_for_display(path: &std::path::Path) -> String {
-    match path.strip_prefix(gtk::glib::home_dir()) {
+pub fn path_for_display(path: &Path) -> String {
+    match path.strip_prefix(home_directory()) {
         Ok(path_inside_home) => format!("~/{}", path_inside_home.display()),
         Err(_) => path.display().to_string(),
     }
 }
 
 pub fn is_running_in_flatpak() -> bool {
-    std::path::Path::new("/.flatpak-info").exists()
+    Path::new("/.flatpak-info").exists()
 }
 
-pub fn files_under(path: &std::path::Path) -> std::io::Result<Vec<PathBuf>> {
+pub fn files_under(path: &Path) -> std::io::Result<Vec<PathBuf>> {
     if !path.is_dir() {
         return Ok(vec![path.to_owned()]);
     }
@@ -136,7 +84,7 @@ pub fn files_under(path: &std::path::Path) -> std::io::Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-pub fn create_parent_directory(path: &std::path::Path) -> std::io::Result<()> {
+pub fn create_parent_directory(path: &Path) -> std::io::Result<()> {
     match path.parent() {
         Some(parent) => std::fs::create_dir_all(parent),
         None => Ok(()),

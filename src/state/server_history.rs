@@ -1,4 +1,3 @@
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
 const MAX_REMEMBERED_GAMES: usize = 50;
@@ -28,8 +27,7 @@ impl PlayedGame {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, glib::Boxed, Serialize, Deserialize)]
-#[boxed_type(name = "QuadraServerHistory")]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ServerHistory(pub Vec<PlayedGame>);
 

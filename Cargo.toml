@@ -4,21 +4,33 @@ version = "0.50.4"
 edition = "2024"
 
 [dependencies]
-adw = { version = "0.9.2", package = "libadwaita", features = ["v1_7"] }
 anyhow = "1.0.104"
 async-channel = "2.5.0"
+async-io = "2.6.0"
+async-task = "4.7.1"
+bytemuck = "1"
+dirs = "6"
 discord-rich-presence = "1.1.0"
 flate2 = "1.1.10"
-gtk = { version = "0.11.5", package = "gtk4", features = ["v4_18"] }
+iced = { version = "0.14.0", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "thread-pool", "linux-theme-detection", "x11", "wayland", "image-without-codecs", "svg", "canvas", "advanced"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 ksni = { version = "0.3.7", default-features = false, features = ["blocking", "async-io"] }
-pango = { version = "0.22.9", features = ["v1_56"] }
-pangocairo = "0.22.9"
+nix = { version = "0.32.0", features = ["process", "signal", "sched"] }
+notify-rust = { version = "~4.18", default-features = false, features = ["z"] }
+rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal", "wayland"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-shlex = "2.0.1"
 sha2 = "0.11.1"
+shlex = "2.0.1"
 tar = "0.4.46"
 toml = "1.2.0"
 ureq = { version = "3.5.1", features = ["json"] }
+zbus = { version = "5", default-features = false, features = ["async-io"] }
 zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
-nix = { version = "0.32.0", features = ["process", "signal", "sched"] }
+
+[dev-dependencies]
+naga = { version = "27", features = ["wgsl-in"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

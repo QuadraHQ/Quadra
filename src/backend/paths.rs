@@ -1,5 +1,6 @@
-use crate::utils::is_running_in_flatpak;
-use gtk::glib;
+use crate::utils::{
+    cache_directory, config_directory, data_directory, home_directory, is_running_in_flatpak,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +9,7 @@ const HOST_OS_DIRECTORIES: [&str; 4] = ["/usr", "/lib", "/lib64", "/etc/alternat
 const LONGEST_LINK_CHAIN: usize = 16;
 
 pub fn quadra_data_directory() -> PathBuf {
-    glib::user_data_dir().join("quadra")
+    data_directory().join("quadra")
 }
 
 pub fn quadra_rosemary_versions_directory() -> PathBuf {
@@ -41,17 +42,17 @@ pub fn mime_directory() -> PathBuf {
 
 pub fn mime_defaults_file() -> PathBuf {
     if is_running_in_flatpak() {
-        glib::home_dir().join(".config/mimeapps.list")
+        home_directory().join(".config/mimeapps.list")
     } else {
-        glib::user_config_dir().join("mimeapps.list")
+        config_directory().join("mimeapps.list")
     }
 }
 
 fn host_data_directory() -> PathBuf {
     if is_running_in_flatpak() {
-        glib::home_dir().join(".local/share")
+        home_directory().join(".local/share")
     } else {
-        glib::user_data_dir()
+        data_directory()
     }
 }
 
@@ -94,30 +95,30 @@ pub fn logs_directory() -> PathBuf {
 }
 
 pub fn downloads_directory() -> PathBuf {
-    glib::user_cache_dir().join("quadra").join("downloads")
+    cache_directory().join("quadra").join("downloads")
 }
 
 pub fn butter_runner_directories() -> [PathBuf; 2] {
     [
         host_data_directory().join("butter").join("runners"),
-        glib::home_dir().join(".var/app/io.github.microlift.butter/data/butter/runners"),
+        home_directory().join(".var/app/io.github.microlift.butter/data/butter/runners"),
     ]
 }
 
 pub fn server_history_file() -> PathBuf {
-    glib::user_config_dir()
+    config_directory()
         .join("quadra")
         .join("server-history.json")
 }
 
 pub fn regions_cache_file() -> PathBuf {
-    glib::user_cache_dir()
+    cache_directory()
         .join("quadra")
         .join("rovalra-regions.json")
 }
 
 pub fn vr_directory() -> PathBuf {
-    glib::user_cache_dir().join("quadra").join("vr")
+    cache_directory().join("quadra").join("vr")
 }
 
 pub fn mods_directory() -> PathBuf {
@@ -129,13 +130,11 @@ pub fn mods_backup_directory() -> PathBuf {
 }
 
 pub fn mod_guard_file() -> PathBuf {
-    glib::user_config_dir()
-        .join("quadra")
-        .join("mod-guard.json")
+    config_directory().join("quadra").join("mod-guard.json")
 }
 
 pub fn fast_flag_allowlist_file() -> PathBuf {
-    glib::user_cache_dir()
+    cache_directory()
         .join("quadra")
         .join("fast-flag-allowlist.json")
 }

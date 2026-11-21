@@ -1,46 +1,35 @@
 use crate::backend;
+use crate::components::preferences::{preference_group, preference_row, push_button};
+use crate::components::style::{Emphasis, Look};
 use crate::pages::settings::bound_rows::switch_row;
+use crate::quadra::{Message, act};
 use crate::state::AppState;
-use adw::prelude::*;
-use gtk::{gio, glib};
+use crate::utils::open_with_default_app;
+use iced::Element;
 
-pub fn folder_group(state: &AppState) -> adw::PreferencesGroup {
-    let enabled_row = switch_row(state, "custom-mods", "Use the modifications folder");
-    enabled_row.set_subtitle("Overlays its files onto the Roblox client when it starts");
-
-    let open_button = gtk::Button::builder()
-        .label("Open")
-        .valign(gtk::Align::Center)
-        .build();
-    open_button.connect_clicked(glib::clone!(
-        #[weak]
-        state,
-        move |_| open_folder(&state)
-    ));
-
-    let open_row = adw::ActionRow::builder()
-        .title("Modifications folder")
-        .subtitle("Drop your own textures, sounds and models here")
-        .build();
-    open_row.add_suffix(&open_button);
-
-    let group = adw::PreferencesGroup::builder()
+pub fn folder_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    preference_group(look)
         .title("User modifications")
-        .build();
-    group.add(&enabled_row);
-    group.add(&open_row);
-    group
+        .push(
+            switch_row(
+                look,
+                "Use the modifications folder",
+                state.custom_mods(),
+                |state, on| state.set_custom_mods(on),
+            )
+            .subtitle("Overlays its files onto the Roblox client when it starts"),
+        )
+        .push(
+            preference_row(look, "Modifications folder")
+                .subtitle("Drop your own textures, sounds and models here")
+                .suffix(push_button(look, "Open", Emphasis::Normal).on_press(act(open_folder))),
+        )
+        .into()
 }
 
 fn open_folder(state: &AppState) {
     match backend::mods_folder() {
-        Ok(directory) => {
-            gtk::FileLauncher::new(Some(&gio::File::for_path(directory))).launch(
-                gtk::Window::NONE,
-                gio::Cancellable::NONE,
-                |_| {},
-            );
-        }
+        Ok(directory) => open_with_default_app(directory),
         Err(error) => {
             state.report_error(&format!("Couldn't open the modifications folder: {error}"))
         }

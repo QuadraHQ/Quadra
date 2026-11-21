@@ -1,4 +1,3 @@
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -44,8 +43,7 @@ impl FastFlagValue {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, glib::Boxed, Serialize, Deserialize)]
-#[boxed_type(name = "QuadraFastFlags")]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FastFlags(pub BTreeMap<String, FastFlagValue>);
 

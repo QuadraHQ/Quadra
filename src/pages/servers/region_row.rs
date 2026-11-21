@@ -1,86 +1,44 @@
+use crate::components::preferences::preference_row;
+use crate::components::style::{self, Look};
+use crate::quadra::{Message, act};
 use crate::state::{AppState, Region};
-use adw::prelude::*;
-use gtk::glib;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use iced::Element;
+use iced::widget::pick_list;
+use std::fmt;
 
 const NO_PREFERENCE_LABEL: &str = "No preference";
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct RegionChoice {
     key: String,
     label: String,
 }
 
-#[derive(Clone, Default)]
-struct ShownChoices {
-    choices: Rc<RefCell<Vec<RegionChoice>>>,
-    is_updating_row: Rc<Cell<bool>>,
+impl fmt::Display for RegionChoice {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.label)
+    }
 }
 
-pub fn preferred_region_row(state: &AppState) -> adw::ComboRow {
-    let options = gtk::StringList::new(&[]);
-    let row = adw::ComboRow::builder()
-        .title("Preferred region")
-        .model(&options)
-        .build();
-    let shown = ShownChoices::default();
-
-    row.connect_selected_notify(glib::clone!(
-        #[weak]
-        state,
-        #[strong]
-        shown,
-        move |row| {
-            if shown.is_updating_row.get() {
-                return;
-            }
-            let chosen_key = shown
-                .choices
-                .borrow()
-                .get(row.selected() as usize)
-                .map(|choice| choice.key.clone());
-            if let Some(chosen_key) = chosen_key {
-                state.set_preferred_region(chosen_key);
-            }
-        }
-    ));
-
-    state.follow_properties(
-        &["regions", "preferred-region"],
-        glib::clone!(
-            #[weak]
-            row,
-            #[weak]
-            options,
-            #[strong]
-            shown,
-            move |state| show_choices(&row, &options, &shown, state)
-        ),
-    );
-
-    row
-}
-
-fn show_choices(
-    row: &adw::ComboRow,
-    options: &gtk::StringList,
-    shown: &ShownChoices,
-    state: &AppState,
-) {
+pub fn preferred_region_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
     let preferred_region = state.preferred_region();
     let choices = region_choices(&state.regions().0, &preferred_region);
-    let labels: Vec<&str> = choices.iter().map(|choice| choice.label.as_str()).collect();
-    let preferred_position = choices
+    let selected = choices
         .iter()
-        .position(|choice| choice.key == preferred_region)
-        .unwrap_or_default();
+        .find(|choice| choice.key == preferred_region)
+        .cloned();
 
-    shown.is_updating_row.set(true);
-    options.splice(0, options.n_items(), &labels);
-    row.set_selected(preferred_position as u32);
-    shown.is_updating_row.set(false);
+    let picker = pick_list(choices, selected, |choice: RegionChoice| {
+        act(move |state| state.set_preferred_region(choice.key.clone()))
+    })
+    .font(look.font)
+    .text_size(14)
+    .style(style::choice(look))
+    .menu_style(style::menu(look));
 
-    shown.choices.replace(choices);
+    preference_row(look, "Preferred region")
+        .suffix(picker)
+        .into()
 }
 
 fn region_choices(regions: &[Region], preferred_region: &str) -> Vec<RegionChoice> {

@@ -1,4 +1,3 @@
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -8,8 +7,7 @@ pub struct EnvironmentVariable {
     pub enabled: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, glib::Boxed, Serialize, Deserialize)]
-#[boxed_type(name = "QuadraEnvironmentVariables")]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EnvironmentVariables(pub Vec<EnvironmentVariable>);
 

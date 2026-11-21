@@ -13,11 +13,12 @@ pub use client::Client;
 pub use environment_variables::{EnvironmentVariable, EnvironmentVariables};
 pub use fast_flags::{FastFlagValue, FastFlags};
 pub use launch_mode::LaunchMode;
-pub use mods::{CursorStyle, DeathSound};
+pub use mods::{CursorStyle, DeathSound, FontStyle};
 pub use regions::{Region, Regions, country_and_city_of};
 pub use rosemary_options::{CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar};
 pub use server_history::{JoinedServer, PlayedGame, ServerHistory};
 
+use std::cell::RefCell;
 use std::error::Error;
 use std::fs;
 use std::io::ErrorKind;
@@ -26,9 +27,9 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use gtk::glib;
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
+use crate::components::imported_theme::ImportedTheme;
+use crate::main_loop::{self, Source};
+use crate::utils::config_directory;
 use serde::{Deserialize, Serialize};
 
 pub const USE_MONITOR_REFRESH_RATE: u32 = 0;
@@ -39,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 42] = [
+const SAVED_PROPERTIES: [&str; 51] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -71,6 +72,7 @@ const SAVED_PROPERTIES: [&str; 42] = [
     "cursor-style",
     "custom-cursor",
     "custom-font",
+    "font-style",
     "custom-mods",
     "hide-launcher-while-playing",
     "open-after-exit",
@@ -81,7 +83,15 @@ const SAVED_PROPERTIES: [&str; 42] = [
     "block-telemetry",
     "force-raknet",
     "theme",
+    "imported-theme",
+    "background-animation",
+    "animation-colors",
+    "animations",
+    "cursor-effect",
+    "cursor-effect-size",
+    "grid-bulge",
     "advanced-settings-visible",
+    "system-title-bar",
 ];
 const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "roblox-installed",
@@ -90,8 +100,7 @@ const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
     "runner",
 ];
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraRuntime")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Runtime {
     #[default]
@@ -108,24 +117,189 @@ impl Choice for Runtime {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraTheme")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
     #[default]
     Adwaita,
     Grid,
     Monochrome,
+    Aurora,
+    Ember,
+    Paper,
+    Phosphor,
+    Prism,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackgroundAnimation {
+    #[default]
+    ThemeDefault,
+    None,
+    Aurora,
+    Embers,
+    Leaves,
+    Scanlines,
+    Waves,
+    Fireflies,
+    Bokeh,
+    Warp,
+    Rain,
+    Lava,
+    Silk,
+    Snow,
+    Petals,
+    Horizon,
+    Lines,
+    Facets,
+}
+
+impl Choice for BackgroundAnimation {
+    const ALL: &'static [Self] = &[
+        Self::ThemeDefault,
+        Self::None,
+        Self::Aurora,
+        Self::Embers,
+        Self::Leaves,
+        Self::Scanlines,
+        Self::Waves,
+        Self::Fireflies,
+        Self::Bokeh,
+        Self::Warp,
+        Self::Rain,
+        Self::Lava,
+        Self::Silk,
+        Self::Snow,
+        Self::Petals,
+        Self::Horizon,
+        Self::Lines,
+        Self::Facets,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::ThemeDefault => "Theme's own",
+            Self::None => "None",
+            Self::Aurora => "Aurora",
+            Self::Embers => "Embers",
+            Self::Leaves => "Leaves",
+            Self::Scanlines => "Scanlines",
+            Self::Waves => "Waves",
+            Self::Fireflies => "Fireflies",
+            Self::Bokeh => "Bokeh",
+            Self::Warp => "Warp",
+            Self::Rain => "Rain",
+            Self::Lava => "Lava",
+            Self::Silk => "Silk",
+            Self::Snow => "Snow",
+            Self::Petals => "Petals",
+            Self::Horizon => "Horizon",
+            Self::Lines => "Lines",
+            Self::Facets => "Facets",
+        }
+    }
+}
+
+impl BackgroundAnimation {
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|animation| animation.label().eq_ignore_ascii_case(name))
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Animations {
+    #[default]
+    Full,
+    Reduced,
+    Off,
+}
+
+impl Choice for Animations {
+    const ALL: &'static [Self] = &[Self::Full, Self::Reduced, Self::Off];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Full => "Full",
+            Self::Reduced => "Reduced",
+            Self::Off => "Off",
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorEffect {
+    #[default]
+    None,
+    Glow,
+    Spotlight,
+    Ring,
+    Ripples,
+    Trail,
+}
+
+impl Choice for CursorEffect {
+    const ALL: &'static [Self] = &[
+        Self::None,
+        Self::Glow,
+        Self::Spotlight,
+        Self::Ring,
+        Self::Ripples,
+        Self::Trail,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::Glow => "Glow",
+            Self::Spotlight => "Spotlight",
+            Self::Ring => "Ring",
+            Self::Ripples => "Ripples",
+            Self::Trail => "Trail",
+        }
+    }
+}
+
+pub const CURSOR_EFFECT_SIZES: RangeInclusive<u32> = 40..=200;
+pub const CURSOR_EFFECT_SIZE_STEP: u32 = 10;
+const DEFAULT_CURSOR_EFFECT_SIZE: u32 = 100;
+
+#[derive(Debug, Clone, Default)]
+pub struct ImportedThemes(pub Rc<Vec<ImportedTheme>>);
+
+impl ImportedThemes {
+    pub fn named(&self, name: &str) -> Option<&ImportedTheme> {
+        self.0.iter().find(|theme| theme.name == name)
+    }
 }
 
 impl Choice for Theme {
-    const ALL: &'static [Self] = &[Self::Adwaita, Self::Grid, Self::Monochrome];
+    const ALL: &'static [Self] = &[
+        Self::Adwaita,
+        Self::Grid,
+        Self::Monochrome,
+        Self::Aurora,
+        Self::Ember,
+        Self::Paper,
+        Self::Phosphor,
+        Self::Prism,
+    ];
 
     fn label(self) -> &'static str {
         match self {
             Self::Adwaita => "Adwaita",
             Self::Grid => "Grid",
             Self::Monochrome => "Monochrome",
+            Self::Aurora => "Aurora",
+            Self::Ember => "Ember",
+            Self::Paper => "Paper",
+            Self::Phosphor => "Phosphor",
+            Self::Prism => "Prism",
         }
     }
 }
@@ -174,6 +348,8 @@ struct SavedSettings {
     custom_cursor: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_font: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    font_style: Option<FontStyle>,
     custom_mods: bool,
     hide_launcher_while_playing: bool,
     open_after_exit: bool,
@@ -184,7 +360,20 @@ struct SavedSettings {
     block_telemetry: bool,
     force_raknet: bool,
     theme: Theme,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    imported_theme: String,
+    background_animation: BackgroundAnimation,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    animation_colors: Vec<String>,
+    animations: Animations,
+    #[serde(rename = "cursor_glow", skip_serializing)]
+    legacy_cursor_glow: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cursor_effect: Option<CursorEffect>,
+    cursor_effect_size: u32,
+    grid_bulge: bool,
     advanced_settings_visible: bool,
+    system_title_bar: bool,
 }
 
 impl Default for SavedSettings {
@@ -223,6 +412,7 @@ impl Default for SavedSettings {
             cursor_style: CursorStyle::default(),
             custom_cursor: String::new(),
             custom_font: String::new(),
+            font_style: None,
             custom_mods: true,
             hide_launcher_while_playing: false,
             open_after_exit: false,
@@ -233,12 +423,37 @@ impl Default for SavedSettings {
             block_telemetry: false,
             force_raknet: false,
             theme: Theme::default(),
+            imported_theme: String::new(),
+            background_animation: BackgroundAnimation::default(),
+            animation_colors: Vec::new(),
+            animations: Animations::default(),
+            legacy_cursor_glow: None,
+            cursor_effect: None,
+            cursor_effect_size: DEFAULT_CURSOR_EFFECT_SIZE,
+            grid_bulge: false,
             advanced_settings_visible: false,
+            system_title_bar: false,
         }
     }
 }
 
 impl SavedSettings {
+    fn chosen_font_style(&self) -> FontStyle {
+        match self.font_style {
+            Some(style) => style,
+            None if self.custom_font.is_empty() => FontStyle::Stock,
+            None => FontStyle::Custom,
+        }
+    }
+
+    fn chosen_cursor_effect(&self) -> CursorEffect {
+        match (self.cursor_effect, self.legacy_cursor_glow) {
+            (Some(effect), _) => effect,
+            (None, Some(true)) => CursorEffect::Glow,
+            (None, _) => CursorEffect::default(),
+        }
+    }
+
     fn chosen_renderer(&self) -> Renderer {
         match self.renderer {
             Some(renderer) => renderer,
@@ -248,189 +463,158 @@ impl SavedSettings {
     }
 }
 
-const LOG_CLEARED: &str = "log-cleared";
-const LOG_APPENDED: &str = "log-appended";
-
-mod imp {
-    use super::*;
-    use glib::subclass::Signal;
-    use std::cell::{Cell, RefCell};
-    use std::sync::OnceLock;
-
-    #[derive(Default, glib::Properties)]
-    #[properties(wrapper_type = super::AppState)]
-    pub struct AppState {
-        #[property(get, set, builder(LaunchMode::default()))]
-        launch_mode: Cell<LaunchMode>,
-        #[property(get, set)]
-        run_in_background: Cell<bool>,
-        #[property(get, set)]
-        discord_rich_presence: Cell<bool>,
-        #[property(get, set, builder(Runtime::default()))]
-        runtime: Cell<Runtime>,
-        #[property(get, set)]
-        runner: RefCell<String>,
-        #[property(get, set)]
-        custom_runner_path: RefCell<String>,
-        #[property(get, set)]
-        available_runners: RefCell<Vec<String>>,
-        #[property(get, set)]
-        prefix: RefCell<String>,
-        #[property(get, set)]
-        available_prefixes: RefCell<Vec<String>>,
-        #[property(get, set)]
-        darwin_base_installed: Cell<bool>,
-        #[property(get, set)]
-        newer_darwin_base: RefCell<String>,
-        #[property(get, set)]
-        newer_quadra_rosemary: RefCell<String>,
-        #[property(get, set, builder(Renderer::default()))]
-        renderer: Cell<Renderer>,
-        #[property(get, set)]
-        mangohud: Cell<bool>,
-        #[property(get, set)]
-        refresh_rate: Cell<u32>,
-        #[property(get, set, builder(PresentationMode::default()))]
-        presentation_mode: Cell<PresentationMode>,
-        #[property(get, set, builder(SwapInterval::default()))]
-        opengl_swap_interval: Cell<SwapInterval>,
-        #[property(get, set, builder(TitleBar::default()))]
-        title_bar: Cell<TitleBar>,
-        #[property(get, set)]
-        show_menu_bar: Cell<bool>,
-        #[property(get, set, builder(CommandKey::default()))]
-        command_key: Cell<CommandKey>,
-        #[property(get, set)]
-        ctrl_for_edit_shortcuts: Cell<bool>,
-        #[property(get, set)]
-        plain_ctrl_click: Cell<bool>,
-        #[property(get, set)]
-        environment_variables: RefCell<EnvironmentVariables>,
-        #[property(get, set)]
-        launch_wrapper: RefCell<String>,
-        #[property(get, set)]
-        fast_flags: RefCell<FastFlags>,
-        #[property(get, set)]
-        preferred_region: RefCell<String>,
-        #[property(get, set)]
-        regions: RefCell<Regions>,
-        #[property(get, set)]
-        server_history: RefCell<ServerHistory>,
-        #[property(get, set)]
-        vr: Cell<bool>,
-        #[property(get, set)]
-        vr_mirror: Cell<bool>,
-        #[property(get, set)]
-        vr_render_scale: Cell<u32>,
-        #[property(get, set)]
-        vr_zink: Cell<bool>,
-        #[property(get, set, builder(DeathSound::default()))]
-        death_sound: Cell<DeathSound>,
-        #[property(get, set)]
-        custom_death_sound: RefCell<String>,
-        #[property(get, set)]
-        old_character_sounds: Cell<bool>,
-        #[property(get, set, builder(CursorStyle::default()))]
-        cursor_style: Cell<CursorStyle>,
-        #[property(get, set)]
-        custom_cursor: RefCell<String>,
-        #[property(get, set)]
-        custom_font: RefCell<String>,
-        #[property(get, set)]
-        custom_mods: Cell<bool>,
-        #[property(get, set)]
-        hide_launcher_while_playing: Cell<bool>,
-        #[property(get, set)]
-        open_after_exit: Cell<bool>,
-        #[property(get, set)]
-        show_playtime: Cell<bool>,
-        #[property(get, set)]
-        playtime_seconds: Cell<u64>,
-        #[property(get, set)]
-        notify_server_location: Cell<bool>,
-        #[property(get, set)]
-        cpu_core_limit: Cell<u32>,
-        #[property(get, set)]
-        signed_in: Cell<bool>,
-        #[property(get, set)]
-        block_telemetry: Cell<bool>,
-        #[property(get, set)]
-        force_raknet: Cell<bool>,
-        #[property(get, set)]
-        advanced_settings_visible: Cell<bool>,
-        #[property(get, set)]
-        available_update: RefCell<String>,
-        #[property(get, set)]
-        update_status: RefCell<String>,
-        #[property(get, set)]
-        vr_status: RefCell<String>,
-        #[property(get, set)]
-        first_launch: Cell<bool>,
-        #[property(get, set)]
-        roblox_version: RefCell<String>,
-        #[property(get, set)]
-        studio_version: RefCell<String>,
-        #[property(get, set, builder(Client::default()))]
-        selected_client: Cell<Client>,
-        #[property(get, set, builder(Client::default()))]
-        running_client: Cell<Client>,
-        #[property(get, set)]
-        busy: Cell<bool>,
-        #[property(get, set)]
-        task_description: RefCell<String>,
-        #[property(get, set)]
-        task_progress: Cell<f64>,
-        #[property(get, set)]
-        error_message: RefCell<String>,
-        #[property(get, set)]
-        running: Cell<bool>,
-        #[property(get, set)]
-        roblox_graphics_started: Cell<bool>,
-        #[property(get, set)]
-        stopping: Cell<bool>,
-        #[property(get, set)]
-        roblox_installed: Cell<bool>,
-        #[property(get, set)]
-        studio_installed: Cell<bool>,
-        #[property(get, set)]
-        rosemary_installed: Cell<bool>,
-        #[property(get)]
-        pub can_play: Cell<bool>,
-        #[property(get)]
-        pub can_open_studio: Cell<bool>,
-        pub pending_save: RefCell<Option<glib::SourceId>>,
-        pub log: RefCell<String>,
-        #[property(get, set, builder(Theme::default()))]
-        theme: Cell<Theme>,
-    }
-
-    #[glib::object_subclass]
-    impl ObjectSubclass for AppState {
-        const NAME: &'static str = "QuadraAppState";
-        type Type = super::AppState;
-    }
-
-    #[glib::derived_properties]
-    impl ObjectImpl for AppState {
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| {
-                vec![
-                    Signal::builder(LOG_CLEARED).build(),
-                    Signal::builder(LOG_APPENDED)
-                        .param_types([String::static_type()])
-                        .build(),
-                ]
-            })
+macro_rules! properties {
+    ($($getter:ident $setter:ident: $value:ty = $name:literal,)*) => {
+        #[derive(Default)]
+        struct Properties {
+            $($getter: RefCell<$value>,)*
         }
+
+        impl AppState {
+            $(
+                pub fn $getter(&self) -> $value {
+                    self.0.properties.$getter.borrow().clone()
+                }
+
+                pub fn $setter(&self, value: impl Into<$value>) {
+                    self.0.properties.$getter.replace(value.into());
+                    self.notify($name);
+                }
+            )*
+        }
+    };
+}
+
+properties! {
+    launch_mode set_launch_mode: LaunchMode = "launch-mode",
+    run_in_background set_run_in_background: bool = "run-in-background",
+    discord_rich_presence set_discord_rich_presence: bool = "discord-rich-presence",
+    runtime set_runtime: Runtime = "runtime",
+    runner set_runner: String = "runner",
+    custom_runner_path set_custom_runner_path: String = "custom-runner-path",
+    available_runners set_available_runners: Vec<String> = "available-runners",
+    prefix set_prefix: String = "prefix",
+    available_prefixes set_available_prefixes: Vec<String> = "available-prefixes",
+    darwin_base_installed set_darwin_base_installed: bool = "darwin-base-installed",
+    newer_darwin_base set_newer_darwin_base: String = "newer-darwin-base",
+    newer_quadra_rosemary set_newer_quadra_rosemary: String = "newer-quadra-rosemary",
+    renderer set_renderer: Renderer = "renderer",
+    mangohud set_mangohud: bool = "mangohud",
+    refresh_rate set_refresh_rate: u32 = "refresh-rate",
+    presentation_mode set_presentation_mode: PresentationMode = "presentation-mode",
+    opengl_swap_interval set_opengl_swap_interval: SwapInterval = "opengl-swap-interval",
+    title_bar set_title_bar: TitleBar = "title-bar",
+    show_menu_bar set_show_menu_bar: bool = "show-menu-bar",
+    command_key set_command_key: CommandKey = "command-key",
+    ctrl_for_edit_shortcuts set_ctrl_for_edit_shortcuts: bool = "ctrl-for-edit-shortcuts",
+    plain_ctrl_click set_plain_ctrl_click: bool = "plain-ctrl-click",
+    environment_variables set_environment_variables: EnvironmentVariables = "environment-variables",
+    launch_wrapper set_launch_wrapper: String = "launch-wrapper",
+    fast_flags set_fast_flags: FastFlags = "fast-flags",
+    preferred_region set_preferred_region: String = "preferred-region",
+    regions set_regions: Regions = "regions",
+    server_history set_server_history: ServerHistory = "server-history",
+    vr set_vr: bool = "vr",
+    vr_mirror set_vr_mirror: bool = "vr-mirror",
+    vr_render_scale set_vr_render_scale: u32 = "vr-render-scale",
+    vr_zink set_vr_zink: bool = "vr-zink",
+    death_sound set_death_sound: DeathSound = "death-sound",
+    custom_death_sound set_custom_death_sound: String = "custom-death-sound",
+    old_character_sounds set_old_character_sounds: bool = "old-character-sounds",
+    cursor_style set_cursor_style: CursorStyle = "cursor-style",
+    custom_cursor set_custom_cursor: String = "custom-cursor",
+    custom_font set_custom_font: String = "custom-font",
+    font_style set_font_style: FontStyle = "font-style",
+    custom_mods set_custom_mods: bool = "custom-mods",
+    hide_launcher_while_playing set_hide_launcher_while_playing: bool = "hide-launcher-while-playing",
+    open_after_exit set_open_after_exit: bool = "open-after-exit",
+    show_playtime set_show_playtime: bool = "show-playtime",
+    playtime_seconds set_playtime_seconds: u64 = "playtime-seconds",
+    notify_server_location set_notify_server_location: bool = "notify-server-location",
+    cpu_core_limit set_cpu_core_limit: u32 = "cpu-core-limit",
+    signed_in set_signed_in: bool = "signed-in",
+    block_telemetry set_block_telemetry: bool = "block-telemetry",
+    force_raknet set_force_raknet: bool = "force-raknet",
+    advanced_settings_visible set_advanced_settings_visible: bool = "advanced-settings-visible",
+    available_update set_available_update: String = "available-update",
+    update_status set_update_status: String = "update-status",
+    vr_status set_vr_status: String = "vr-status",
+    first_launch set_first_launch: bool = "first-launch",
+    roblox_version set_roblox_version: String = "roblox-version",
+    studio_version set_studio_version: String = "studio-version",
+    selected_client set_selected_client: Client = "selected-client",
+    running_client set_running_client: Client = "running-client",
+    busy set_busy: bool = "busy",
+    task_description set_task_description: String = "task-description",
+    task_progress set_task_progress: f64 = "task-progress",
+    error_message set_error_message: String = "error-message",
+    running set_running: bool = "running",
+    roblox_graphics_started set_roblox_graphics_started: bool = "roblox-graphics-started",
+    stopping set_stopping: bool = "stopping",
+    roblox_installed set_roblox_installed: bool = "roblox-installed",
+    studio_installed set_studio_installed: bool = "studio-installed",
+    rosemary_installed set_rosemary_installed: bool = "rosemary-installed",
+    can_play set_can_play: bool = "can-play",
+    can_open_studio set_can_open_studio: bool = "can-open-studio",
+    theme set_theme: Theme = "theme",
+    imported_theme set_imported_theme: String = "imported-theme",
+    imported_themes set_imported_themes: ImportedThemes = "imported-themes",
+    background_animation set_background_animation: BackgroundAnimation = "background-animation",
+    animation_colors set_animation_colors: Vec<String> = "animation-colors",
+    animations set_animations: Animations = "animations",
+    cursor_effect set_cursor_effect: CursorEffect = "cursor-effect",
+    cursor_effect_size set_cursor_effect_size: u32 = "cursor-effect-size",
+    grid_bulge set_grid_bulge: bool = "grid-bulge",
+    system_reduces_motion set_system_reduces_motion: bool = "system-reduces-motion",
+    system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
+    window_button_layout set_window_button_layout: String = "window-button-layout",
+    system_title_bar set_system_title_bar: bool = "system-title-bar",
+}
+
+pub type HandlerId = u64;
+
+type PropertyHandler = Rc<dyn Fn(&AppState)>;
+type LogHandler = Rc<dyn Fn(&AppState, LogChange<'_>)>;
+
+#[derive(Clone, Copy)]
+pub enum LogChange<'a> {
+    Cleared,
+    Appended(&'a str),
+}
+
+#[derive(Default)]
+struct Handlers {
+    next_id: HandlerId,
+    property: Vec<(HandlerId, &'static str, PropertyHandler)>,
+    log: Vec<(HandlerId, LogHandler)>,
+}
+
+impl Handlers {
+    fn next_id(&mut self) -> HandlerId {
+        self.next_id += 1;
+        self.next_id
     }
 }
 
-glib::wrapper! {
-    pub struct AppState(ObjectSubclass<imp::AppState>);
+#[derive(Default)]
+struct Inner {
+    properties: Properties,
+    handlers: RefCell<Handlers>,
+    pending_save: RefCell<Option<Source>>,
+    log: RefCell<String>,
 }
+
+#[derive(Clone, Default)]
+pub struct AppState(Rc<Inner>);
 
 impl AppState {
+    pub fn motion(&self) -> Animations {
+        match self.animations() {
+            Animations::Full if self.system_reduces_motion() => Animations::Reduced,
+            chosen => chosen,
+        }
+    }
+
     pub fn load() -> Self {
         let LoadedSettings {
             settings,
@@ -439,68 +623,115 @@ impl AppState {
             save_repaired_settings,
         } = read_saved_settings();
         let renderer = settings.chosen_renderer();
+        let cursor_effect = settings.chosen_cursor_effect();
+        let font_style = settings.chosen_font_style();
 
-        let state: Self = glib::Object::builder()
-            .property("launch-mode", settings.launch_mode)
-            .property("run-in-background", settings.run_in_background)
-            .property("discord-rich-presence", settings.discord_rich_presence)
-            .property("runtime", settings.runtime)
-            .property("runner", settings.runner)
-            .property("custom-runner-path", settings.custom_runner_path)
-            .property("available-runners", vec![QUADRA_RUNNER.to_owned()])
-            .property("prefix", settings.prefix)
-            .property(
-                "available-prefixes",
-                vec![QUADRA_PREFIX.to_owned(), ROSEMARY_DEFAULT_PREFIX.to_owned()],
-            )
-            .property("renderer", renderer)
-            .property("mangohud", settings.mangohud)
-            .property("refresh-rate", settings.refresh_rate)
-            .property("presentation-mode", settings.presentation_mode)
-            .property("opengl-swap-interval", settings.opengl_swap_interval)
-            .property("title-bar", settings.title_bar)
-            .property("show-menu-bar", settings.show_menu_bar)
-            .property("command-key", settings.command_key)
-            .property("ctrl-for-edit-shortcuts", settings.ctrl_for_edit_shortcuts)
-            .property("plain-ctrl-click", settings.plain_ctrl_click)
-            .property("environment-variables", settings.environment_variables)
-            .property("launch-wrapper", settings.launch_wrapper)
-            .property("fast-flags", settings.fast_flags)
-            .property("preferred-region", settings.preferred_region)
-            .property("vr", settings.vr)
-            .property("vr-mirror", settings.vr_mirror)
-            .property(
-                "vr-render-scale",
-                settings
-                    .vr_render_scale
-                    .clamp(*VR_RENDER_SCALE_RANGE.start(), *VR_RENDER_SCALE_RANGE.end()),
-            )
-            .property("vr-zink", settings.vr_zink)
-            .property("death-sound", settings.death_sound)
-            .property("custom-death-sound", settings.custom_death_sound)
-            .property("old-character-sounds", settings.old_character_sounds)
-            .property("cursor-style", settings.cursor_style)
-            .property("custom-cursor", settings.custom_cursor)
-            .property("custom-font", settings.custom_font)
-            .property("custom-mods", settings.custom_mods)
-            .property(
-                "hide-launcher-while-playing",
-                settings.hide_launcher_while_playing,
-            )
-            .property("open-after-exit", settings.open_after_exit)
-            .property("show-playtime", settings.show_playtime)
-            .property("playtime-seconds", settings.playtime_seconds)
-            .property("notify-server-location", settings.notify_server_location)
-            .property("cpu-core-limit", settings.cpu_core_limit)
-            .property("block-telemetry", settings.block_telemetry)
-            .property("force-raknet", settings.force_raknet)
-            .property(
-                "advanced-settings-visible",
-                settings.advanced_settings_visible,
-            )
-            .property("first-launch", !file_existed && !settings.opened_before)
-            .property("theme", settings.theme)
-            .build();
+        let state = Self::default();
+        let first_launch = !file_existed && !settings.opened_before;
+        let properties = &state.0.properties;
+        properties.launch_mode.replace(settings.launch_mode);
+        properties
+            .run_in_background
+            .replace(settings.run_in_background);
+        properties
+            .discord_rich_presence
+            .replace(settings.discord_rich_presence);
+        properties.runtime.replace(settings.runtime);
+        properties.runner.replace(settings.runner);
+        properties
+            .custom_runner_path
+            .replace(settings.custom_runner_path);
+        properties
+            .available_runners
+            .replace(vec![QUADRA_RUNNER.to_owned()]);
+        properties.prefix.replace(settings.prefix);
+        properties.available_prefixes.replace(vec![
+            QUADRA_PREFIX.to_owned(),
+            ROSEMARY_DEFAULT_PREFIX.to_owned(),
+        ]);
+        properties.renderer.replace(renderer);
+        properties.mangohud.replace(settings.mangohud);
+        properties.refresh_rate.replace(settings.refresh_rate);
+        properties
+            .presentation_mode
+            .replace(settings.presentation_mode);
+        properties
+            .opengl_swap_interval
+            .replace(settings.opengl_swap_interval);
+        properties.title_bar.replace(settings.title_bar);
+        properties.show_menu_bar.replace(settings.show_menu_bar);
+        properties.command_key.replace(settings.command_key);
+        properties
+            .ctrl_for_edit_shortcuts
+            .replace(settings.ctrl_for_edit_shortcuts);
+        properties
+            .plain_ctrl_click
+            .replace(settings.plain_ctrl_click);
+        properties
+            .environment_variables
+            .replace(settings.environment_variables);
+        properties.launch_wrapper.replace(settings.launch_wrapper);
+        properties.fast_flags.replace(settings.fast_flags);
+        properties
+            .preferred_region
+            .replace(settings.preferred_region);
+        properties.vr.replace(settings.vr);
+        properties.vr_mirror.replace(settings.vr_mirror);
+        properties.vr_render_scale.replace(
+            settings
+                .vr_render_scale
+                .clamp(*VR_RENDER_SCALE_RANGE.start(), *VR_RENDER_SCALE_RANGE.end()),
+        );
+        properties.vr_zink.replace(settings.vr_zink);
+        properties.death_sound.replace(settings.death_sound);
+        properties
+            .custom_death_sound
+            .replace(settings.custom_death_sound);
+        properties
+            .old_character_sounds
+            .replace(settings.old_character_sounds);
+        properties.cursor_style.replace(settings.cursor_style);
+        properties.custom_cursor.replace(settings.custom_cursor);
+        properties.custom_font.replace(settings.custom_font);
+        properties.custom_mods.replace(settings.custom_mods);
+        properties
+            .hide_launcher_while_playing
+            .replace(settings.hide_launcher_while_playing);
+        properties.open_after_exit.replace(settings.open_after_exit);
+        properties.show_playtime.replace(settings.show_playtime);
+        properties
+            .playtime_seconds
+            .replace(settings.playtime_seconds);
+        properties
+            .notify_server_location
+            .replace(settings.notify_server_location);
+        properties.cpu_core_limit.replace(settings.cpu_core_limit);
+        properties.block_telemetry.replace(settings.block_telemetry);
+        properties.force_raknet.replace(settings.force_raknet);
+        properties
+            .advanced_settings_visible
+            .replace(settings.advanced_settings_visible);
+        properties
+            .system_title_bar
+            .replace(settings.system_title_bar);
+        properties.first_launch.replace(first_launch);
+        properties.cursor_effect.replace(cursor_effect);
+        properties.font_style.replace(font_style);
+        properties.theme.replace(settings.theme);
+        properties.imported_theme.replace(settings.imported_theme);
+        properties
+            .background_animation
+            .replace(settings.background_animation);
+        properties
+            .animation_colors
+            .replace(settings.animation_colors);
+        properties.animations.replace(settings.animations);
+        properties.cursor_effect_size.replace(
+            settings
+                .cursor_effect_size
+                .clamp(*CURSOR_EFFECT_SIZES.start(), *CURSOR_EFFECT_SIZES.end()),
+        );
+        properties.grid_bulge.replace(settings.grid_bulge);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -512,30 +743,70 @@ impl AppState {
 
         if let Some(problem) = problem {
             let state = state.clone();
-            glib::idle_add_local_once(move || state.report_error(&problem));
+            main_loop::idle_once(move || state.report_error(&problem));
         }
 
         state
     }
 
+    fn notify(&self, property: &'static str) {
+        let handlers: Vec<PropertyHandler> = self
+            .0
+            .handlers
+            .borrow()
+            .property
+            .iter()
+            .filter(|(_, followed, _)| *followed == property)
+            .map(|(_, _, handler)| handler.clone())
+            .collect();
+        for handler in handlers {
+            handler(self);
+        }
+    }
+
+    pub fn connect_property_notify(
+        &self,
+        property: &'static str,
+        handler: impl Fn(&Self) + 'static,
+    ) -> HandlerId {
+        let mut handlers = self.0.handlers.borrow_mut();
+        let id = handlers.next_id();
+        handlers.property.push((id, property, Rc::new(handler)));
+        id
+    }
+
     pub fn connect_properties_notify(
         &self,
-        properties: &[&str],
+        properties: &[&'static str],
         handler: impl Fn(&Self) + 'static,
-    ) -> Vec<glib::SignalHandlerId> {
-        let handler = Rc::new(handler);
+    ) -> Vec<HandlerId> {
+        let handler: PropertyHandler = Rc::new(handler);
+        let mut handlers = self.0.handlers.borrow_mut();
         properties
             .iter()
             .map(|property| {
-                let handler = handler.clone();
-                self.connect_notify_local(Some(property), move |state, _| handler(state))
+                let id = handlers.next_id();
+                handlers.property.push((id, property, handler.clone()));
+                id
             })
             .collect()
     }
 
-    pub fn follow_properties(&self, properties: &[&str], handler: impl Fn(&Self) + 'static) {
+    pub fn follow_properties(
+        &self,
+        properties: &[&'static str],
+        handler: impl Fn(&Self) + 'static,
+    ) {
         handler(self);
         self.connect_properties_notify(properties, handler);
+    }
+
+    pub fn disconnect(&self, id: HandlerId) {
+        let mut handlers = self.0.handlers.borrow_mut();
+        handlers
+            .property
+            .retain(|(handler_id, _, _)| *handler_id != id);
+        handlers.log.retain(|(handler_id, _)| *handler_id != id);
     }
 
     pub fn report_error(&self, message: &str) {
@@ -544,45 +815,53 @@ impl AppState {
     }
 
     pub fn log(&self) -> String {
-        self.imp().log.borrow().clone()
+        self.0.log.borrow().clone()
     }
 
     pub fn clear_log(&self) {
-        self.imp().log.borrow_mut().clear();
-        self.emit_by_name::<()>(LOG_CLEARED, &[]);
+        self.0.log.borrow_mut().clear();
+        self.emit_log_change(LogChange::Cleared);
     }
 
     pub fn append_log(&self, text: &str) {
-        self.imp().log.borrow_mut().push_str(text);
-        self.emit_by_name::<()>(LOG_APPENDED, &[&text]);
+        self.0.log.borrow_mut().push_str(text);
+        self.emit_log_change(LogChange::Appended(text));
     }
 
-    pub fn connect_log_cleared(&self, handler: impl Fn(&Self) + 'static) -> glib::SignalHandlerId {
-        self.connect_local(LOG_CLEARED, false, move |values| {
-            let state = values[0]
-                .get::<Self>()
-                .expect("signal is emitted by AppState");
-            handler(&state);
-            None
-        })
+    fn emit_log_change(&self, change: LogChange<'_>) {
+        let handlers: Vec<LogHandler> = self
+            .0
+            .handlers
+            .borrow()
+            .log
+            .iter()
+            .map(|(_, handler)| handler.clone())
+            .collect();
+        for handler in handlers {
+            handler(self, change);
+        }
     }
 
-    pub fn connect_log_appended(
+    pub fn connect_log_changed(
         &self,
-        handler: impl Fn(&Self, &str) + 'static,
-    ) -> glib::SignalHandlerId {
-        self.connect_local(LOG_APPENDED, false, move |values| {
-            let state = values[0]
-                .get::<Self>()
-                .expect("signal is emitted by AppState");
-            let text = values[1].get::<&str>().expect("log-appended carries text");
-            handler(&state, text);
-            None
+        handler: impl Fn(&Self, LogChange<'_>) + 'static,
+    ) -> HandlerId {
+        let mut handlers = self.0.handlers.borrow_mut();
+        let id = handlers.next_id();
+        handlers.log.push((id, Rc::new(handler)));
+        id
+    }
+
+    pub fn connect_log_appended(&self, handler: impl Fn(&Self, &str) + 'static) -> HandlerId {
+        self.connect_log_changed(move |state, change| {
+            if let LogChange::Appended(text) = change {
+                handler(state, text);
+            }
         })
     }
 
     pub fn save_pending_changes(&self) {
-        if let Some(pending_save) = self.imp().pending_save.take() {
+        if let Some(pending_save) = self.0.pending_save.take() {
             pending_save.remove();
             self.save();
         }
@@ -632,30 +911,28 @@ impl AppState {
         let runner_is_ready = self.rosemary_installed() || runner_will_be_installed_on_play;
 
         let can_play = self.roblox_installed() && runner_is_ready;
-        let could_play = self.imp().can_play.replace(can_play);
-        if could_play != can_play {
-            self.notify_can_play();
+        if self.can_play() != can_play {
+            self.set_can_play(can_play);
         }
 
         let can_open_studio = self.studio_installed() && runner_is_ready;
-        let could_open_studio = self.imp().can_open_studio.replace(can_open_studio);
-        if could_open_studio != can_open_studio {
-            self.notify_can_open_studio();
+        if self.can_open_studio() != can_open_studio {
+            self.set_can_open_studio(can_open_studio);
         }
     }
 
     fn schedule_save(&self) {
-        if let Some(previous_save) = self.imp().pending_save.take() {
+        if let Some(previous_save) = self.0.pending_save.take() {
             previous_save.remove();
         }
 
         let state = self.clone();
-        let pending_save = glib::timeout_add_local_once(SAVE_DELAY_AFTER_LAST_CHANGE, move || {
-            state.imp().pending_save.take();
+        let pending_save = main_loop::timeout_once(SAVE_DELAY_AFTER_LAST_CHANGE, move || {
+            state.0.pending_save.take();
             state.save();
         });
 
-        self.imp().pending_save.replace(Some(pending_save));
+        self.0.pending_save.replace(Some(pending_save));
     }
 
     fn save(&self) {
@@ -693,6 +970,7 @@ impl AppState {
             cursor_style: self.cursor_style(),
             custom_cursor: self.custom_cursor(),
             custom_font: self.custom_font(),
+            font_style: Some(self.font_style()),
             custom_mods: self.custom_mods(),
             hide_launcher_while_playing: self.hide_launcher_while_playing(),
             open_after_exit: self.open_after_exit(),
@@ -703,7 +981,16 @@ impl AppState {
             block_telemetry: self.block_telemetry(),
             force_raknet: self.force_raknet(),
             theme: self.theme(),
+            imported_theme: self.imported_theme(),
+            background_animation: self.background_animation(),
+            animation_colors: self.animation_colors(),
+            animations: self.animations(),
+            legacy_cursor_glow: None,
+            cursor_effect: Some(self.cursor_effect()),
+            cursor_effect_size: self.cursor_effect_size(),
+            grid_bulge: self.grid_bulge(),
             advanced_settings_visible: self.advanced_settings_visible(),
+            system_title_bar: self.system_title_bar(),
         };
 
         if let Err(error) = write_saved_settings(&settings) {
@@ -716,7 +1003,7 @@ impl AppState {
 }
 
 pub fn settings_path() -> PathBuf {
-    glib::user_config_dir().join("quadra").join("config.toml")
+    config_directory().join("quadra").join("config.toml")
 }
 
 enum SettingsProblem {

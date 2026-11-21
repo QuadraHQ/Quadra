@@ -74,14 +74,6 @@ impl PlayAction {
         }
     }
 
-    pub fn icon_name(self) -> &'static str {
-        match self {
-            Self::Install(_) => "folder-download-symbolic",
-            Self::Play(_) | Self::Opening => "media-playback-start-symbolic",
-            Self::Stop | Self::Stopping => "media-playback-stop-symbolic",
-        }
-    }
-
     pub fn perform(self, state: &AppState) {
         match self {
             Self::Install(client) => backend::install(state, client),

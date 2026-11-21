@@ -1,31 +1,31 @@
+use super::preferences::{body, push_button};
+use super::style::{self, Emphasis, Look};
 use crate::backend;
+use crate::quadra::{Message, act};
 use crate::state::AppState;
-use adw::prelude::*;
-use gtk::glib;
+use iced::widget::{container, row};
+use iced::{Alignment, Element, Length};
 
-pub fn update_banner(state: &AppState) -> adw::Banner {
-    let banner = adw::Banner::builder().button_label("Update").build();
-    banner.connect_button_clicked(glib::clone!(
-        #[strong]
-        state,
-        move |_| backend::install_update(&state)
-    ));
-
-    state.follow_properties(
-        &["available-update", "busy"],
-        glib::clone!(
-            #[weak]
-            banner,
-            move |state| show_update(&banner, state)
-        ),
-    );
-
-    banner
-}
-
-fn show_update(banner: &adw::Banner, state: &AppState) {
+pub fn update_banner<'a>(state: &AppState, look: Look) -> Option<Element<'a, Message>> {
     let version = state.available_update();
-    banner.set_title(&format!("Quadra {version} is available"));
-    banner.set_revealed(!version.is_empty());
-    banner.set_sensitive(!state.busy());
+    if version.is_empty() {
+        return None;
+    }
+
+    let update_button = push_button(look, "Update", Emphasis::Suggested)
+        .on_press_maybe((!state.busy()).then(|| act(backend::install_update)));
+    let content = row![
+        body(look, format!("Quadra {version} is available")).width(Length::Fill),
+        update_button
+    ]
+    .spacing(12)
+    .align_y(Alignment::Center);
+
+    Some(
+        container(content)
+            .padding([8, 16])
+            .width(Length::Fill)
+            .style(style::banner(look))
+            .into(),
+    )
 }

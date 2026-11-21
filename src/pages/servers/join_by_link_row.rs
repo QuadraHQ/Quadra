@@ -1,32 +1,36 @@
-use super::join_availability::JoinAvailability;
-use super::place_link::place_id_in;
-use crate::backend;
-use crate::state::AppState;
-use adw::prelude::*;
-use gtk::glib;
+use super::ServersMessage;
+use crate::components::icon::Symbol;
+use crate::components::preferences::icon_button;
+use crate::components::style::{self, Look};
+use crate::quadra::Message;
+use iced::widget::{container, row, text_input};
+use iced::{Alignment, Element};
 
-const INVALID_INPUT_STYLE: &str = "error";
+pub fn join_by_link_row<'a>(
+    link: &'a str,
+    is_invalid: bool,
+    can_join: bool,
+    look: Look,
+) -> Element<'a, Message> {
+    let entry = text_input("Join a game by ID or roblox.com link", link)
+        .font(look.font)
+        .size(14)
+        .padding([7, 10])
+        .style(style::input(look, !is_invalid))
+        .on_input_maybe(
+            can_join.then_some(|link| Message::Servers(ServersMessage::LinkChanged(link))),
+        )
+        .on_submit_maybe(can_join.then_some(Message::Servers(ServersMessage::JoinByLink)));
 
-pub fn join_by_link_row(state: &AppState, join_availability: &JoinAvailability) -> adw::EntryRow {
-    let row = adw::EntryRow::builder()
-        .title("Join a game by ID or roblox.com link")
-        .show_apply_button(true)
-        .build();
+    let apply = icon_button(
+        look,
+        Symbol::Check,
+        "Join",
+        (can_join && !link.trim().is_empty())
+            .then_some(Message::Servers(ServersMessage::JoinByLink)),
+    );
 
-    row.connect_apply(glib::clone!(
-        #[strong]
-        state,
-        move |row| match place_id_in(&row.text()) {
-            Some(place_id) => {
-                row.remove_css_class(INVALID_INPUT_STYLE);
-                row.set_text("");
-                backend::join_game(&state, place_id);
-            }
-            None => row.add_css_class(INVALID_INPUT_STYLE),
-        }
-    ));
-    row.connect_changed(|row| row.remove_css_class(INVALID_INPUT_STYLE));
-
-    join_availability.applies_to(&row);
-    row
+    container(row![entry, apply].spacing(6).align_y(Alignment::Center))
+        .padding([6, 12])
+        .into()
 }

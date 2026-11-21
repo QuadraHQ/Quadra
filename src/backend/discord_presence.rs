@@ -3,8 +3,8 @@ use super::bloxstrap_rpc::{Overrides, PresenceUpdate};
 use super::discord_ipc::{DiscordClient, Image, Link, RichPresence};
 use super::game_activity::{self, GameEvent};
 use super::game_details::{self, GameDetails};
+use crate::main_loop::{Repeat, Source, timeout_once, timeout_repeating};
 use crate::state::AppState;
-use gtk::glib;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -28,7 +28,7 @@ struct CurrentGame {
     joined_at: i64,
     details: Option<GameDetails>,
     overrides: Overrides,
-    refreshing_details: glib::SourceId,
+    refreshing_details: Source,
 }
 
 #[derive(Default)]
@@ -47,26 +47,24 @@ type SharedPresence = Rc<RefCell<Presence>>;
 pub fn initialize(state: &AppState) {
     let presence = SharedPresence::default();
 
-    state.connect_log_appended(glib::clone!(
-        #[strong]
-        presence,
-        move |state, output| {
-            for event in game_activity::events_in(output) {
-                match event {
-                    GameEvent::Joining { place_id, .. } => join_game(state, &presence, place_id),
-                    GameEvent::JoinReported { universe_id } => {
-                        learn_universe(state, &presence, universe_id);
-                    }
-                    GameEvent::Connected { .. } => {}
-                    GameEvent::Left => leave_game(&presence),
-                    GameEvent::PresenceUpdated(update) => {
-                        update_presence(state, &presence, update);
-                    }
+    let following_log = presence.clone();
+    state.connect_log_appended(move |state, output| {
+        let presence = &following_log;
+        for event in game_activity::events_in(output) {
+            match event {
+                GameEvent::Joining { place_id, .. } => join_game(state, presence, place_id),
+                GameEvent::JoinReported { universe_id } => {
+                    learn_universe(state, presence, universe_id);
+                }
+                GameEvent::Connected { .. } => {}
+                GameEvent::Left => leave_game(presence),
+                GameEvent::PresenceUpdated(update) => {
+                    update_presence(state, presence, update);
                 }
             }
-            show(state, &presence);
         }
-    ));
+        show(state, presence);
+    });
 
     state.connect_properties_notify(&PROPERTIES_THAT_DECIDE_PRESENCE, move |state| {
         follow_roblox(state, &presence);
@@ -108,19 +106,14 @@ fn join_game(state: &AppState, presence: &SharedPresence, place_id: u64) {
     }
     leave_game(presence);
 
-    let refreshing_details = glib::timeout_add_local(
-        REFRESH_GAME_DETAILS_EVERY,
-        glib::clone!(
-            #[strong]
-            state,
-            #[strong]
-            presence,
-            move || {
-                fetch_details(&state, &presence, place_id);
-                glib::ControlFlow::Continue
-            }
-        ),
-    );
+    let refreshing_details = {
+        let state = state.clone();
+        let presence = presence.clone();
+        timeout_repeating(REFRESH_GAME_DETAILS_EVERY, move || {
+            fetch_details(&state, &presence, place_id);
+            Repeat::Continue
+        })
+    };
     presence.borrow_mut().game = Some(CurrentGame {
         place_id,
         universe_id: None,
@@ -130,25 +123,16 @@ fn join_game(state: &AppState, presence: &SharedPresence, place_id: u64) {
         refreshing_details,
     });
 
-    glib::timeout_add_local_once(
-        WAIT_FOR_JOIN_REPORT,
-        glib::clone!(
-            #[strong]
-            state,
-            #[strong]
-            presence,
-            move || {
-                let join_report_never_came = presence.borrow().game.as_ref().is_some_and(|game| {
-                    game.place_id == place_id
-                        && game.universe_id.is_none()
-                        && game.details.is_none()
-                });
-                if join_report_never_came {
-                    fetch_details(&state, &presence, place_id);
-                }
-            }
-        ),
-    );
+    let state = state.clone();
+    let presence = presence.clone();
+    timeout_once(WAIT_FOR_JOIN_REPORT, move || {
+        let join_report_never_came = presence.borrow().game.as_ref().is_some_and(|game| {
+            game.place_id == place_id && game.universe_id.is_none() && game.details.is_none()
+        });
+        if join_report_never_came {
+            fetch_details(&state, &presence, place_id);
+        }
+    });
 }
 
 fn learn_universe(state: &AppState, presence: &SharedPresence, universe_id: u64) {

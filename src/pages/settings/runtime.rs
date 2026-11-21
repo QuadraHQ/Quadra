@@ -1,23 +1,32 @@
+use super::Settings;
 use super::bound_rows::choice_row;
 use super::rosemary_options::{graphics_group, input_group};
 use super::rosemary_runtime::rosemary_runtime_group;
-use crate::state::{AppState, Runtime};
-use adw::prelude::*;
+use crate::components::preferences::preference_group;
+use crate::components::style::Look;
+use crate::quadra::Message;
+use crate::state::AppState;
+use iced::Element;
 
-pub fn runtime_section(state: &AppState) -> gtk::Box {
-    let runtime_row = choice_row::<Runtime>(state, "runtime", "Run Roblox with");
-
-    let runtime_group = adw::PreferencesGroup::builder()
+pub fn runtime_section<'a>(
+    settings: &'a Settings,
+    state: &AppState,
+    look: Look,
+) -> Vec<Element<'a, Message>> {
+    let runtime_group = preference_group(look)
         .title("Runtime")
         .description("Which compatibility layer the macOS Roblox client runs on.")
-        .build();
-    runtime_group.add(&runtime_row);
+        .push(choice_row(
+            look,
+            "Run Roblox with",
+            state.runtime(),
+            |state, runtime| state.set_runtime(runtime),
+        ));
 
-    let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    section.append(&runtime_group);
-    section.append(&rosemary_runtime_group(state));
-    section.append(&graphics_group(state));
-    section.append(&input_group(state));
-
-    section
+    vec![
+        runtime_group.into(),
+        rosemary_runtime_group(settings, state, look),
+        graphics_group(settings, state, look),
+        input_group(settings, state, look),
+    ]
 }
