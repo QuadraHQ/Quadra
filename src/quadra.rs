@@ -31,8 +31,11 @@ use crate::single_instance;
 use crate::state::{Animations, AppState, Client, LaunchMode, LogChange};
 use crate::utils::{BUNDLED_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
-use iced::widget::{Column, column, space, stack, text_editor};
-use iced::{Element, Size, Subscription, Task, keyboard, system, theme, window};
+use iced::widget::{Column, column, container, image, space, stack, text_editor};
+use iced::{
+    Background, Color, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system,
+    theme, window,
+};
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt;
@@ -50,6 +53,7 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
+const LINEAR_LIGHT_GAMMA: f32 = 2.2;
 const PROPERTIES_THAT_DECIDE_LOOK: [&str; 11] = [
     "animations",
     "system-reduces-motion",
@@ -793,7 +797,34 @@ impl Quadra {
         self.state.grid_bulge() && self.backdrop.motion == Animations::Full
     }
 
+    fn picture(&self) -> Option<Element<'_, Message>> {
+        let handle = self.state.background_image().0?;
+        let dimming = self.state.background_dimming() as f32 / 100.0;
+        let shade = Color {
+            a: 1.0 - (1.0 - dimming).powf(LINEAR_LIGHT_GAMMA),
+            ..self.look.window
+        };
+        Some(
+            stack![
+                image(handle)
+                    .content_fit(ContentFit::Cover)
+                    .width(Length::Fill)
+                    .height(Length::Fill),
+                container(space().width(Length::Fill).height(Length::Fill)).style(move |_| {
+                    container::Style {
+                        background: Some(Background::Color(shade)),
+                        ..container::Style::default()
+                    }
+                }),
+            ]
+            .into(),
+        )
+    }
+
     fn backdrop(&self) -> Option<Element<'_, Message>> {
+        if let Some(picture) = self.picture() {
+            return Some(picture);
+        }
         let still = match &self.backdrop.still {
             Still::Nothing => None,
             Still::Gradient(glow) => Some(gradient_backdrop(glow)),

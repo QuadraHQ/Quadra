@@ -20,6 +20,7 @@ pub enum ChosenPath {
     DeathSound,
     Cursor,
     Font,
+    BackgroundPicture,
 }
 
 impl ChosenPath {
@@ -28,6 +29,7 @@ impl ChosenPath {
             Self::DeathSound => state.custom_death_sound(),
             Self::Cursor => state.custom_cursor(),
             Self::Font => state.custom_font(),
+            Self::BackgroundPicture => state.background_picture(),
         }
     }
 
@@ -36,6 +38,7 @@ impl ChosenPath {
             Self::DeathSound => state.set_custom_death_sound(path),
             Self::Cursor => state.set_custom_cursor(path),
             Self::Font => state.set_custom_font(path),
+            Self::BackgroundPicture => state.set_background_picture(path),
         }
     }
 }

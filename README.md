@@ -111,6 +111,10 @@ Flake input:
 - `~/.config/quadra/themes`: Themes you imported from CSS files
 - `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
 
+## Background picture
+
+Settings › General › Appearance › Background picture shows a PNG, JPEG or WebP picture behind Quadra instead of the theme's background. Picture dimming shades it in the theme's window colour so text stays readable.
+
 ## Custom themes
 
 The Import CSS theme card in Settings › General › Appearance imports a theme from a CSS file. Quadra only reads custom properties, so a theme sets colours and a few other values, not selectors or layout:

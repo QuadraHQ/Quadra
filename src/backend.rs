@@ -1,5 +1,6 @@
 mod account;
 mod background;
+mod background_picture;
 mod bloxstrap_rpc;
 mod butter_access;
 mod cache;
@@ -74,6 +75,7 @@ pub fn initialize(state: &AppState) {
     );
     state.connect_property_notify("prefix", account::refresh);
     updater::initialize(state);
+    background_picture::initialize(state);
     quadra_rosemary::look_for_update(state);
     fast_flag_allowlist::initialize();
     fast_flags::initialize(state);

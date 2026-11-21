@@ -1,21 +1,24 @@
 use super::SettingsMessage;
 use super::bound_rows::{SpinRange, choice_row, spin_row, switch_row};
+use crate::components::file_row::{ChosenPath, Pick, file_row};
 use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
 use crate::components::icon::{self, Symbol};
 use crate::components::imported_theme::{hex, parse_color};
 use crate::components::preferences::{icon_button, preference_group, preference_row, searchable};
+use crate::components::scene_backdrop::Scene;
 use crate::components::style::{self, Look};
 use crate::components::theme_backdrop::{
-    Still, ThemeChoice, backdrop_for_theme, chosen_scene, theme_colors_for,
+    Still, ThemeChoice, backdrop_for_theme, chosen_scene, picked_colors, theme_colors_for,
 };
 use crate::quadra::{Message, act};
 use crate::state::{
-    AppState, CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Theme,
+    AppState, BACKGROUND_DIMMING_STEP, BACKGROUND_DIMMINGS, BackgroundAnimation,
+    CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Theme,
 };
 use iced::font::Weight;
 use iced::widget::{button, column, container, row, space, stack, text, text_input};
-use iced::{Alignment, Background, Border, Element, Font, Length};
+use iced::{Alignment, Background, Border, Color, Element, Font, Length};
 
 const COLOR_INPUT_WIDTH: f32 = 96.0;
 const SWATCH_SIZE: f32 = 18.0;
@@ -23,6 +26,9 @@ const CARDS_PER_ROW: usize = 3;
 const CARD_SPACING: f32 = 10.0;
 const PREVIEW_HEIGHT: f32 = 74.0;
 const LABEL_HEIGHT: f32 = 30.0;
+const ANIMATIONS_PER_ROW: usize = 4;
+const ANIMATION_PREVIEW_HEIGHT: f32 = 58.0;
+const PICTURE_FILES: &[Pick] = &[Pick::File(&["png", "jpg", "jpeg", "webp"])];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ThemeOption {
@@ -74,15 +80,34 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
             gallery(state, look),
             "App theme gallery import css",
         ))
-        .push(
-            choice_row(
-                look,
-                "Background animation",
-                state.background_animation(),
-                |state, animation| state.set_background_animation(animation),
+        .push(animation_row(state, look))
+        .push_maybe(state.animation_picker_open().then(|| {
+            searchable(
+                animation_picker(state, look),
+                "Background animation picker preview",
             )
-            .subtitle("Pick any animation for any theme"),
-        )
+        }))
+        .push(file_row(
+            state,
+            look,
+            ChosenPath::BackgroundPicture,
+            "Background picture",
+            PICTURE_FILES,
+        ))
+        .push_maybe(has_picture(state).then(|| {
+            spin_row(
+                look,
+                "Picture dimming (%)",
+                state.background_dimming(),
+                SpinRange {
+                    values: BACKGROUND_DIMMINGS,
+                    step: BACKGROUND_DIMMING_STEP,
+                },
+                |state, dimming| state.set_background_dimming(dimming),
+                true,
+            )
+            .subtitle("Shades the picture in your theme's window colour so text stays readable")
+        }))
         .push(
             choice_row(
                 look,
@@ -132,6 +157,153 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
         group = group.push(row);
     }
     group.into()
+}
+
+fn has_picture(state: &AppState) -> bool {
+    !state.background_picture().is_empty()
+}
+
+fn animation_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let is_open = state.animation_picker_open();
+    let opener = button(
+        row![
+            text(state.background_animation().label())
+                .font(look.font)
+                .size(14),
+            icon::tinted(
+                if is_open {
+                    Symbol::Collapse
+                } else {
+                    Symbol::Expand
+                },
+                look.dimmed,
+            ),
+        ]
+        .spacing(10)
+        .align_y(Alignment::Center),
+    )
+    .padding([5, 10])
+    .on_press(act(move |state| state.set_animation_picker_open(!is_open)))
+    .style(move |_, status| button::Style {
+        background: Some(Background::Color(match status {
+            button::Status::Hovered | button::Status::Pressed => look.hovered,
+            button::Status::Active | button::Status::Disabled => look.raised,
+        })),
+        border: Border {
+            radius: look.radius.into(),
+            ..Border::default()
+        },
+        text_color: look.text,
+        ..button::Style::default()
+    });
+    preference_row(look, "Background animation")
+        .subtitle(if has_picture(state) {
+            "Your background picture covers it"
+        } else {
+            "Pick any animation for any theme. Hover one to play it"
+        })
+        .suffix(opener)
+        .into()
+}
+
+fn animation_picker<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let chosen = state.background_animation();
+    let cards = BackgroundAnimation::ALL
+        .iter()
+        .map(|&animation| animation_card(state, look, animation, animation == chosen));
+    let mut rows = column![].spacing(CARD_SPACING);
+    let mut cards = cards.peekable();
+    while cards.peek().is_some() {
+        let mut picker_row = row![].spacing(CARD_SPACING);
+        for _ in 0..ANIMATIONS_PER_ROW {
+            picker_row = picker_row.push(match cards.next() {
+                Some(card) => card,
+                None => space().width(Length::Fill).into(),
+            });
+        }
+        rows = rows.push(picker_row);
+    }
+    container(rows).padding(12).width(Length::Fill).into()
+}
+
+fn animation_scenery<'a>(
+    state: &AppState,
+    look: Look,
+    animation: BackgroundAnimation,
+) -> Element<'a, Message> {
+    let own = backdrop_for_theme(state, chosen_option(state).choice(), &look);
+    let still: Element<'a, Message> = match &own.still {
+        Still::Gradient(glow) => gradient_backdrop(glow),
+        Still::Nothing | Still::Grid | Still::LineField | Still::Scanlines => {
+            space().width(Length::Fill).height(Length::Fill).into()
+        }
+    };
+    let scene_and_palette = match animation {
+        BackgroundAnimation::None => None,
+        BackgroundAnimation::ThemeDefault => own.scene,
+        animation => Scene::chosen(animation).map(|scene| {
+            let theme_colors = theme_colors_for(state, scene);
+            let picked = picked_colors(state);
+            let colors: Vec<Option<Color>> = theme_colors
+                .iter()
+                .enumerate()
+                .map(|(index, &theme_color)| {
+                    let typed = picked.get(index).copied().flatten();
+                    Some(
+                        typed
+                            .filter(|_| state.background_animation() == animation)
+                            .unwrap_or(theme_color),
+                    )
+                })
+                .collect();
+            (scene, scene.palette(look.window, &colors))
+        }),
+    };
+    match scene_and_palette {
+        Some((scene, palette)) => gpu_or(scene.preview(palette, own.motion), still),
+        None => still,
+    }
+}
+
+fn animation_card<'a>(
+    state: &AppState,
+    look: Look,
+    animation: BackgroundAnimation,
+    is_chosen: bool,
+) -> Element<'a, Message> {
+    let preview = container(animation_scenery(state, look, animation))
+        .height(ANIMATION_PREVIEW_HEIGHT)
+        .width(Length::Fill)
+        .clip(true)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(look.window)),
+            border: Border {
+                radius: (look.radius - 2.0).max(0.0).into(),
+                ..Border::default()
+            },
+            ..container::Style::default()
+        });
+    let mut label = row![
+        text(animation.label())
+            .font(look.font)
+            .size(13)
+            .width(Length::Fill)
+            .wrapping(text::Wrapping::None)
+    ]
+    .align_y(Alignment::Center)
+    .height(LABEL_HEIGHT);
+    if is_chosen {
+        label = label.push(icon::tinted(Symbol::Check, look.accent_text));
+    }
+    button(column![preview, container(label).padding([2, 6])])
+        .padding(4)
+        .width(Length::Fill)
+        .on_press(act(move |state| {
+            state.set_background_animation(animation);
+            state.set_animation_picker_open(false);
+        }))
+        .style(card_button(look, is_chosen))
+        .into()
 }
 
 fn uses_grid(state: &AppState) -> bool {

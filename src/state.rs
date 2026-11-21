@@ -40,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 51] = [
+const SAVED_PROPERTIES: [&str; 53] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -90,6 +90,8 @@ const SAVED_PROPERTIES: [&str; 51] = [
     "cursor-effect",
     "cursor-effect-size",
     "grid-bulge",
+    "background-picture",
+    "background-dimming",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -269,6 +271,13 @@ pub const CURSOR_EFFECT_SIZES: RangeInclusive<u32> = 40..=200;
 pub const CURSOR_EFFECT_SIZE_STEP: u32 = 10;
 const DEFAULT_CURSOR_EFFECT_SIZE: u32 = 100;
 
+pub const BACKGROUND_DIMMINGS: RangeInclusive<u32> = 0..=80;
+pub const BACKGROUND_DIMMING_STEP: u32 = 5;
+const DEFAULT_BACKGROUND_DIMMING: u32 = 35;
+
+#[derive(Debug, Clone, Default)]
+pub struct BackgroundImage(pub Option<iced::widget::image::Handle>);
+
 #[derive(Debug, Clone, Default)]
 pub struct ImportedThemes(pub Rc<Vec<ImportedTheme>>);
 
@@ -372,6 +381,8 @@ struct SavedSettings {
     cursor_effect: Option<CursorEffect>,
     cursor_effect_size: u32,
     grid_bulge: bool,
+    background_picture: String,
+    background_dimming: u32,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -431,6 +442,8 @@ impl Default for SavedSettings {
             cursor_effect: None,
             cursor_effect_size: DEFAULT_CURSOR_EFFECT_SIZE,
             grid_bulge: false,
+            background_picture: String::new(),
+            background_dimming: DEFAULT_BACKGROUND_DIMMING,
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -565,6 +578,10 @@ properties! {
     cursor_effect set_cursor_effect: CursorEffect = "cursor-effect",
     cursor_effect_size set_cursor_effect_size: u32 = "cursor-effect-size",
     grid_bulge set_grid_bulge: bool = "grid-bulge",
+    background_picture set_background_picture: String = "background-picture",
+    background_dimming set_background_dimming: u32 = "background-dimming",
+    background_image set_background_image: BackgroundImage = "background-image",
+    animation_picker_open set_animation_picker_open: bool = "animation-picker-open",
     system_reduces_motion set_system_reduces_motion: bool = "system-reduces-motion",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
@@ -732,6 +749,12 @@ impl AppState {
                 .clamp(*CURSOR_EFFECT_SIZES.start(), *CURSOR_EFFECT_SIZES.end()),
         );
         properties.grid_bulge.replace(settings.grid_bulge);
+        properties
+            .background_picture
+            .replace(settings.background_picture);
+        properties
+            .background_dimming
+            .replace(settings.background_dimming.min(*BACKGROUND_DIMMINGS.end()));
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -989,6 +1012,8 @@ impl AppState {
             cursor_effect: Some(self.cursor_effect()),
             cursor_effect_size: self.cursor_effect_size(),
             grid_bulge: self.grid_bulge(),
+            background_picture: self.background_picture(),
+            background_dimming: self.background_dimming(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
         };
