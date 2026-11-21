@@ -108,13 +108,13 @@ pub fn symbol<'a>(symbol: Symbol, look: Look) -> Element<'a, Message> {
 }
 
 pub fn tinted<'a>(symbol: Symbol, color: iced::Color) -> Element<'a, Message> {
-    svg(handle(symbol))
-        .width(Length::Fixed(16.0))
-        .height(Length::Fixed(16.0))
-        .style(move |_, _| svg::Style { color: Some(color) })
-        .into()
+    sized(symbol, color, 16.0)
 }
 
-pub fn dimmed<'a>(symbol: Symbol, look: Look) -> Element<'a, Message> {
-    tinted(symbol, look.dimmed)
+pub fn sized<'a>(symbol: Symbol, color: iced::Color, size: f32) -> Element<'a, Message> {
+    svg(handle(symbol))
+        .width(Length::Fixed(size))
+        .height(Length::Fixed(size))
+        .style(move |_, _| svg::Style { color: Some(color) })
+        .into()
 }

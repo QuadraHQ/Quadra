@@ -14,6 +14,7 @@ const WIDE_WIDTH: f32 = 600.0;
 const LOGS_WIDTH: f32 = 720.0;
 const LOGS_HEIGHT: f32 = 480.0;
 const EDITOR_HEIGHT: f32 = 220.0;
+const STATUS_ICON_SIZE: f32 = 48.0;
 const QUADRA_VERSION: &str = env!("CARGO_PKG_VERSION");
 const WEBSITE: &str = "https://quadrahq.org";
 const DISCORD: &str = "https://discord.gg/W8jXfngc8z";
@@ -176,7 +177,8 @@ fn logs_view<'a>(live_log: &'a LiveLog, look: Look) -> Element<'a, Message> {
     let content: Element<'a, Message> = if live_log.is_empty() {
         center(
             column![
-                icon::dimmed(Symbol::Terminal, look),
+                icon::sized(Symbol::Terminal, look.dimmed, STATUS_ICON_SIZE),
+                space().height(6),
                 title(look, "No Logs Yet", 20.0),
                 caption(look, "Roblox's output shows up here while it runs."),
             ]
@@ -192,7 +194,8 @@ fn logs_view<'a>(live_log: &'a LiveLog, look: Look) -> Element<'a, Message> {
         header("Logs", look),
         container(content)
             .padding([0, 12])
-            .height(Length::Fixed(LOGS_HEIGHT))
+            .height(Length::Fill)
+            .max_height(LOGS_HEIGHT)
     ]
     .padding(iced::padding::bottom(12))
     .into()

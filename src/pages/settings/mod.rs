@@ -332,7 +332,10 @@ impl Settings {
                 search,
             ]
             .spacing(12)
-            .align_y(iced::Alignment::Center),
+            .align_y(iced::Alignment::Center)
+            .wrap()
+            .vertical_spacing(8)
+            .align_x(iced::Alignment::Center),
         )
         .center_x(Length::Fill)
         .padding(iced::padding::top(12).left(16).right(16));
