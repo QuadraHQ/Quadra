@@ -2,7 +2,7 @@ use super::gradient_backdrop::{self, Glow};
 use super::imported_theme::parse_color;
 use super::scene_backdrop::{Palette, Scene};
 use super::style::Look;
-use crate::state::{AppState, BackgroundAnimation, Theme};
+use crate::state::{Animations, AppState, BackgroundAnimation, Theme};
 use iced::Color;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +18,7 @@ pub enum Still {
 pub struct Backdrop {
     pub still: Still,
     pub scene: Option<(Scene, Palette)>,
+    pub motion: Animations,
 }
 
 struct ThemeOwn {
@@ -27,8 +28,28 @@ struct ThemeOwn {
 }
 
 fn theme_own(state: &AppState) -> ThemeOwn {
+    let imported_name = state.imported_theme();
+    let has_import = state.imported_themes().named(&imported_name).is_some();
+    let choice = if has_import {
+        ThemeChoice::Imported(&imported_name)
+    } else {
+        ThemeChoice::BuiltIn(state.theme())
+    };
+    theme_own_for(state, choice)
+}
+
+fn theme_own_for(state: &AppState, choice: ThemeChoice<'_>) -> ThemeOwn {
     let imported = state.imported_themes();
-    if let Some(theme) = imported.named(&state.imported_theme()) {
+    let built_in = match choice {
+        ThemeChoice::BuiltIn(theme) => theme,
+        ThemeChoice::Imported(name) => match imported.named(name) {
+            Some(_) => Theme::Adwaita,
+            None => state.theme(),
+        },
+    };
+    if let ThemeChoice::Imported(name) = choice
+        && let Some(theme) = imported.named(name)
+    {
         return ThemeOwn {
             still: theme
                 .background
@@ -38,7 +59,7 @@ fn theme_own(state: &AppState) -> ThemeOwn {
             colors: theme.animation_colors.clone(),
         };
     }
-    let (still, scene) = match state.theme() {
+    let (still, scene) = match built_in {
         Theme::Adwaita => (Still::Nothing, None),
         Theme::Grid => (Still::Grid, None),
         Theme::Monochrome => (Still::LineField, None),
@@ -68,8 +89,23 @@ pub fn chosen_scene(state: &AppState) -> Option<Scene> {
 }
 
 pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
-    let own = theme_own(state);
+    backdrop_of(state, theme_own(state), look)
+}
+
+pub fn backdrop_for_theme(state: &AppState, theme: ThemeChoice<'_>, look: &Look) -> Backdrop {
+    backdrop_of(state, theme_own_for(state, theme), look)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ThemeChoice<'a> {
+    BuiltIn(Theme),
+    Imported(&'a str),
+}
+
+fn backdrop_of(state: &AppState, own: ThemeOwn, look: &Look) -> Backdrop {
+    let motion = state.motion();
     let scene = match state.background_animation() {
+        _ if motion == Animations::Off => None,
         BackgroundAnimation::ThemeDefault => own.scene,
         animation => Scene::chosen(animation),
     };
@@ -78,7 +114,11 @@ pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
             (BackgroundAnimation::None, Still::LineField) => Still::Nothing,
             (_, still) => still,
         };
-        return Backdrop { still, scene: None };
+        return Backdrop {
+            still,
+            scene: None,
+            motion,
+        };
     };
 
     let picked = picked_colors(state);
@@ -97,6 +137,7 @@ pub fn chosen_backdrop(state: &AppState, look: &Look) -> Backdrop {
     Backdrop {
         still,
         scene: Some((scene, scene.palette(look.window, &colors))),
+        motion,
     }
 }
 

@@ -6,6 +6,7 @@ mod cache;
 mod controller_access;
 mod cpu_limit;
 mod desktop_entries;
+mod desktop_settings;
 mod destination;
 mod diagnostics;
 mod discord_access;
@@ -41,13 +42,13 @@ mod transport_patch;
 mod updater;
 mod vr;
 mod vr_access;
-mod window_buttons;
 
 pub use butter_access::missing as missing_butter_access;
 pub use controller_access::{
     command_to_change as controller_access_command, is_granted as controller_access_is_granted,
 };
 pub use desktop_entries::Shortcut;
+pub use desktop_settings::{load_layout as load_window_button_layout, load_motion_preference};
 pub use discord_access::missing as missing_discord_access;
 pub use handlers::Handler;
 pub use launch::launch_wrapper_problem;
@@ -56,7 +57,6 @@ pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folde
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 pub use themes::load as load_themes;
 pub use vr_access::missing as missing_vr_access;
-pub use window_buttons::load_layout as load_window_button_layout;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::{documents_directory, is_executable_file, open_with_default_app};

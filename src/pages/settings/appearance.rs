@@ -1,18 +1,26 @@
 use super::SettingsMessage;
-use super::bound_rows::choice_row;
-use crate::components::icon::Symbol;
+use super::bound_rows::{choice_row, switch_row};
+use crate::components::gpu_or::gpu_or;
+use crate::components::gradient_backdrop::gradient_backdrop;
+use crate::components::icon::{self, Symbol};
 use crate::components::imported_theme::{hex, parse_color};
-use crate::components::preferences::{icon_button, preference_row};
+use crate::components::preferences::{icon_button, preference_group, preference_row, searchable};
 use crate::components::style::{self, Look};
-use crate::components::theme_backdrop::{chosen_scene, theme_colors_for};
+use crate::components::theme_backdrop::{
+    Still, ThemeChoice, backdrop_for_theme, chosen_scene, theme_colors_for,
+};
 use crate::quadra::{Message, act};
 use crate::state::{AppState, Choice, Theme};
-use iced::widget::{container, pick_list, row, space, text_input};
-use iced::{Alignment, Background, Border, Element, Length};
-use std::fmt;
+use iced::font::Weight;
+use iced::widget::{button, column, container, row, space, stack, text, text_input};
+use iced::{Alignment, Background, Border, Element, Font, Length};
 
 const COLOR_INPUT_WIDTH: f32 = 96.0;
 const SWATCH_SIZE: f32 = 18.0;
+const CARDS_PER_ROW: usize = 3;
+const CARD_SPACING: f32 = 10.0;
+const PREVIEW_HEIGHT: f32 = 74.0;
+const LABEL_HEIGHT: f32 = 30.0;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ThemeOption {
@@ -20,39 +28,96 @@ enum ThemeOption {
     Imported(String),
 }
 
-impl fmt::Display for ThemeOption {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl ThemeOption {
+    fn name(&self) -> &str {
         match self {
-            Self::BuiltIn(theme) => formatter.write_str(theme.label()),
-            Self::Imported(name) => write!(formatter, "{name} (imported)"),
+            Self::BuiltIn(theme) => theme.label(),
+            Self::Imported(name) => name,
         }
+    }
+
+    fn choice(&self) -> ThemeChoice<'_> {
+        match self {
+            Self::BuiltIn(theme) => ThemeChoice::BuiltIn(*theme),
+            Self::Imported(name) => ThemeChoice::Imported(name),
+        }
+    }
+
+    fn look(&self, state: &AppState) -> Look {
+        match self {
+            Self::BuiltIn(theme) => Look::for_theme(*theme, state.system_prefers_dark()),
+            Self::Imported(name) => state
+                .imported_themes()
+                .named(name)
+                .map_or_else(|| Look::of(state), |theme| theme.look),
+        }
+    }
+
+    fn apply(&self) -> Message {
+        let option = self.clone();
+        act(move |state| match &option {
+            ThemeOption::BuiltIn(theme) => {
+                state.set_imported_theme("");
+                state.set_theme(*theme);
+            }
+            ThemeOption::Imported(name) => state.set_imported_theme(name.as_str()),
+        })
     }
 }
 
-pub fn appearance_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {
-    let mut rows = vec![
-        theme_row(state, look),
-        choice_row(
-            look,
-            "Background animation",
-            state.background_animation(),
-            |state, animation| state.set_background_animation(animation),
+pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let mut group = preference_group(look)
+        .title("Appearance")
+        .push(searchable(
+            gallery(state, look),
+            "App theme gallery import css",
+        ))
+        .push(
+            choice_row(
+                look,
+                "Background animation",
+                state.background_animation(),
+                |state, animation| state.set_background_animation(animation),
+            )
+            .subtitle("Pick any animation for any theme"),
         )
-        .subtitle("Animations pause while Quadra isn't focused or in use")
-        .into(),
-    ];
-    rows.extend(color_rows(state, look));
-    rows
+        .push(
+            choice_row(
+                look,
+                "Animations",
+                state.animations(),
+                |state, animations| state.set_animations(animations),
+            )
+            .subtitle(if state.system_reduces_motion() {
+                "Your desktop asks for less motion, so Full plays as Reduced"
+            } else {
+                "Reduced plays slowly and settles sooner, Off keeps backgrounds still"
+            }),
+        )
+        .push(
+            switch_row(look, "Cursor glow", state.cursor_glow(), |state, on| {
+                state.set_cursor_glow(on)
+            })
+            .subtitle("A soft light in your theme's accent follows the pointer"),
+        );
+    for row in color_rows(state, look) {
+        group = group.push(row);
+    }
+    group.into()
 }
 
-fn theme_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+fn chosen_option(state: &AppState) -> ThemeOption {
     let imported = state.imported_themes();
-    let chosen_import = state.imported_theme();
-    let chosen = match imported.named(&chosen_import) {
+    match imported.named(&state.imported_theme()) {
         Some(theme) => ThemeOption::Imported(theme.name.clone()),
         None => ThemeOption::BuiltIn(state.theme()),
-    };
-    let options: Vec<ThemeOption> = Theme::ALL
+    }
+}
+
+fn gallery<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let chosen = chosen_option(state);
+    let imported = state.imported_themes();
+    let mut cards: Vec<Element<'a, Message>> = Theme::ALL
         .iter()
         .copied()
         .map(ThemeOption::BuiltIn)
@@ -62,39 +127,147 @@ fn theme_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
                 .iter()
                 .map(|theme| ThemeOption::Imported(theme.name.clone())),
         )
-        .collect();
-    let picker = pick_list(options, Some(chosen.clone()), |option| {
-        act(move |state| match &option {
-            ThemeOption::BuiltIn(theme) => {
-                state.set_imported_theme("");
-                state.set_theme(*theme);
-            }
-            ThemeOption::Imported(name) => state.set_imported_theme(name.as_str()),
+        .map(|option| {
+            let is_chosen = option == chosen;
+            theme_card(state, option, is_chosen, look)
         })
-    })
-    .font(look.font)
-    .text_size(14)
-    .style(style::choice(look))
-    .menu_style(style::menu(look));
+        .collect();
+    cards.push(import_card(look));
 
-    let mut theme_row = preference_row(look, "App theme")
-        .subtitle("Pick a theme, or import your own written in CSS")
-        .suffix(picker)
-        .suffix(icon_button(
-            look,
-            Symbol::Add,
-            "Import a theme from a CSS file",
-            Some(Message::Settings(SettingsMessage::ImportTheme)),
-        ));
-    if let ThemeOption::Imported(name) = chosen {
-        theme_row = theme_row.suffix(icon_button(
+    let mut rows = column![].spacing(CARD_SPACING);
+    let mut cards = cards.into_iter().peekable();
+    while cards.peek().is_some() {
+        let mut gallery_row = row![].spacing(CARD_SPACING);
+        for _ in 0..CARDS_PER_ROW {
+            gallery_row = gallery_row.push(match cards.next() {
+                Some(card) => card,
+                None => space().width(Length::Fill).into(),
+            });
+        }
+        rows = rows.push(gallery_row);
+    }
+    container(rows).padding(12).width(Length::Fill).into()
+}
+
+fn theme_card<'a>(
+    state: &AppState,
+    option: ThemeOption,
+    is_chosen: bool,
+    look: Look,
+) -> Element<'a, Message> {
+    let card_look = option.look(state);
+    let backdrop = backdrop_for_theme(state, option.choice(), &card_look);
+    let still: Element<'a, Message> = match &backdrop.still {
+        Still::Gradient(glow) => gradient_backdrop(glow),
+        Still::Nothing | Still::Grid | Still::LineField | Still::Scanlines => {
+            space().width(Length::Fill).height(Length::Fill).into()
+        }
+    };
+    let scenery: Element<'a, Message> = match backdrop.scene {
+        Some((scene, palette)) => gpu_or(scene.preview(palette, backdrop.motion), still),
+        None => still,
+    };
+    let sample = row![
+        text("Aa")
+            .font(Font {
+                weight: Weight::Bold,
+                ..card_look.font
+            })
+            .size(18)
+            .color(card_look.text),
+        container(space().width(26).height(10)).style(move |_| container::Style {
+            background: Some(Background::Color(card_look.accent)),
+            border: Border {
+                radius: 5.0.into(),
+                ..Border::default()
+            },
+            ..container::Style::default()
+        }),
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+    let preview = container(stack![scenery, container(sample).padding([8, 10])])
+        .height(PREVIEW_HEIGHT)
+        .width(Length::Fill)
+        .clip(true)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(card_look.window)),
+            border: Border {
+                radius: (look.radius - 2.0).max(0.0).into(),
+                ..Border::default()
+            },
+            ..container::Style::default()
+        });
+
+    let mut label = row![
+        text(option.name().to_owned())
+            .font(look.font)
+            .size(13)
+            .width(Length::Fill)
+            .wrapping(text::Wrapping::None)
+    ]
+    .align_y(Alignment::Center)
+    .height(LABEL_HEIGHT);
+    if let ThemeOption::Imported(name) = &option {
+        label = label.push(icon_button(
             look,
             Symbol::Trash,
             "Remove this imported theme",
-            Some(Message::Settings(SettingsMessage::RemoveTheme(name))),
+            Some(Message::Settings(SettingsMessage::RemoveTheme(
+                name.clone(),
+            ))),
         ));
+    } else if is_chosen {
+        label = label.push(icon::tinted(Symbol::Check, look.accent_text));
     }
-    theme_row.into()
+
+    button(column![preview, container(label).padding([2, 6])])
+        .padding(4)
+        .width(Length::Fill)
+        .on_press(option.apply())
+        .style(card_button(look, is_chosen))
+        .into()
+}
+
+fn import_card<'a>(look: Look) -> Element<'a, Message> {
+    let content = column![
+        icon::tinted(Symbol::Add, look.dimmed),
+        text("Import CSS theme")
+            .font(look.font)
+            .size(13)
+            .color(look.dimmed),
+    ]
+    .spacing(6)
+    .align_x(Alignment::Center);
+    button(
+        container(content)
+            .center_x(Length::Fill)
+            .center_y(PREVIEW_HEIGHT + LABEL_HEIGHT + 4.0),
+    )
+    .padding(4)
+    .width(Length::Fill)
+    .on_press(Message::Settings(SettingsMessage::ImportTheme))
+    .style(card_button(look, false))
+    .into()
+}
+
+fn card_button(
+    look: Look,
+    is_chosen: bool,
+) -> impl Fn(&iced::Theme, button::Status) -> button::Style {
+    move |_, status| button::Style {
+        background: Some(Background::Color(match status {
+            button::Status::Hovered | button::Status::Pressed => look.hovered,
+            button::Status::Active | button::Status::Disabled => look.raised,
+        })),
+        border: Border {
+            color: if is_chosen { look.accent } else { look.border },
+            width: if is_chosen { 2.0 } else { 1.0 },
+            radius: look.radius.into(),
+        },
+        text_color: look.text,
+        ..button::Style::default()
+    }
 }
 
 fn color_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {
@@ -148,7 +321,7 @@ fn color_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {
                     ));
                 }
             }
-            container(color_row).width(Length::Fill).into()
+            color_row.into()
         })
         .collect()
 }

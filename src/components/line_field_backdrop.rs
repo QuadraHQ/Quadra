@@ -1,8 +1,10 @@
 use crate::quadra::Message;
+use crate::state::Animations;
 use iced::mouse::Cursor;
+use iced::time::Instant;
 use iced::wgpu;
 use iced::widget::shader::{self, Viewport};
-use iced::{Element, Length, Rectangle};
+use iced::{Element, Event, Length, Rectangle, window};
 use std::f64::consts::TAU;
 use std::fmt;
 use std::sync::Arc;
@@ -15,7 +17,7 @@ const WANDERERS: usize = 520;
 const SHORTEST_LIFE: i32 = 60;
 const LONGEST_LIFE: i32 = 260;
 const STEP_LENGTH: f64 = 1.15;
-pub const TICK_INTERVAL: Duration = Duration::from_millis(40);
+const TICK_INTERVAL: Duration = Duration::from_millis(40);
 const TICKS_UNTIL_DRAWN: u32 = 190;
 const STEPS_PER_TICK: u32 = 3;
 const BRIGHTNESS_PER_VISIT: f32 = 15.0;
@@ -106,7 +108,19 @@ fn lerp(from: f64, to: f64, t: f64) -> f64 {
     from + (to - from) * t
 }
 
+pub fn line_field_backdrop(motion: Animations) -> Element<'static, Message> {
+    shader::Shader::new(LineFieldBackdrop { motion })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+}
+
+struct LineFieldBackdrop {
+    motion: Animations,
+}
+
 pub struct LineField {
+    next_tick: Option<Instant>,
     id: u64,
     flow: FlowField,
     wanderers: Vec<Wanderer>,
@@ -119,6 +133,7 @@ impl Default for LineField {
     fn default() -> Self {
         let mut random = Random::seeded_by_clock();
         Self {
+            next_tick: None,
             id: NEXT_FIELD.fetch_add(1, Ordering::Relaxed),
             flow: FlowField::random(&mut random),
             wanderers: (0..WANDERERS)
@@ -132,11 +147,11 @@ impl Default for LineField {
 }
 
 impl LineField {
-    pub fn is_drawn(&self) -> bool {
+    fn is_drawn(&self) -> bool {
         self.ticks >= TICKS_UNTIL_DRAWN
     }
 
-    pub fn tick(&mut self) {
+    fn tick(&mut self) {
         if self.is_drawn() {
             return;
         }
@@ -147,11 +162,26 @@ impl LineField {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
-        shader::Shader::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+    fn draw_everything(&mut self) {
+        while !self.is_drawn() {
+            self.tick();
+        }
+    }
+
+    fn next_frame(&mut self, now: Instant, motion: Animations) -> Option<Instant> {
+        if self.is_drawn() {
+            return None;
+        }
+        if motion != Animations::Full {
+            self.draw_everything();
+            return Some(now);
+        }
+        let due = *self.next_tick.get_or_insert(now);
+        if now >= due {
+            self.tick();
+            self.next_tick = Some(due.max(now - TICK_INTERVAL) + TICK_INTERVAL);
+        }
+        self.next_tick.filter(|_| !self.is_drawn()).or(Some(now))
     }
 
     fn advance(&mut self) {
@@ -180,14 +210,29 @@ impl LineField {
     }
 }
 
-impl shader::Program<Message> for LineField {
-    type State = ();
+impl shader::Program<Message> for LineFieldBackdrop {
+    type State = LineField;
     type Primitive = LineFieldFrame;
 
-    fn draw(&self, _state: &(), _cursor: Cursor, _bounds: Rectangle) -> LineFieldFrame {
+    fn update(
+        &self,
+        field: &mut LineField,
+        event: &Event,
+        _bounds: Rectangle,
+        _cursor: Cursor,
+    ) -> Option<shader::Action<Message>> {
+        let Event::Window(window::Event::RedrawRequested(now)) = event else {
+            return None;
+        };
+        field
+            .next_frame(*now, self.motion)
+            .map(shader::Action::request_redraw_at)
+    }
+
+    fn draw(&self, field: &LineField, _cursor: Cursor, _bounds: Rectangle) -> LineFieldFrame {
         LineFieldFrame {
-            field: self.id,
-            visits: self.visits.clone(),
+            field: field.id,
+            visits: field.visits.clone(),
         }
     }
 }

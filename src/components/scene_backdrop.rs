@@ -1,5 +1,6 @@
+use crate::components::imported_theme::brightness;
 use crate::quadra::Message;
-use crate::state::BackgroundAnimation;
+use crate::state::{Animations, BackgroundAnimation};
 use iced::mouse::Cursor;
 use iced::time::{Duration, Instant};
 use iced::wgpu;
@@ -80,10 +81,25 @@ impl Scene {
         }
     }
 
-    pub fn view(self, palette: Palette) -> Element<'static, Message> {
+    pub fn view(self, palette: Palette, motion: Animations) -> Element<'static, Message> {
+        self.played(palette, motion, Playing::Backdrop)
+    }
+
+    pub fn preview(self, palette: Palette, motion: Animations) -> Element<'static, Message> {
+        self.played(palette, motion, Playing::Preview)
+    }
+
+    fn played(
+        self,
+        palette: Palette,
+        motion: Animations,
+        playing: Playing,
+    ) -> Element<'static, Message> {
         shader::Shader::new(SceneBackdrop {
             scene: self,
             palette,
+            motion,
+            playing,
         })
         .width(Length::Fill)
         .height(Length::Fill)
@@ -173,10 +189,6 @@ impl Scene {
         }
     }
 
-    fn frame_interval(self) -> Duration {
-        Duration::from_secs(1) / self.frames_per_second()
-    }
-
     fn pixels_per_glow_texel(self) -> Option<f32> {
         match self {
             Self::Aurora | Self::Waves => Some(4.0),
@@ -216,6 +228,13 @@ impl Scene {
         match self {
             Self::Bokeh => ("shine_disc", "shine_disc_on_srgb"),
             _ => ("shine", "shine_on_srgb"),
+        }
+    }
+
+    fn mote_shade(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Bokeh => ("shade_disc", "shade_disc_on_srgb"),
+            _ => ("shade", "shade_on_srgb"),
         }
     }
 
@@ -264,9 +283,58 @@ impl Scene {
     }
 }
 
+const WARMING_UP: Duration = Duration::from_millis(2500);
+const PREVIEW_STARTS_AT: Duration = Duration::from_secs(9);
+const REDUCED_PACE: f32 = 0.35;
+const REDUCED_FRAMES_PER_SECOND: u32 = 10;
+const REDUCED_SETTLES_AFTER_NO_INPUT_FOR: Duration = Duration::from_secs(15);
+const UNUSED_SLOTS_LAST: Duration = Duration::from_secs(3);
+const LIGHT_WINDOW_BRIGHTNESS: f32 = 0.55;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Playing {
+    Backdrop,
+    Preview,
+}
+
 struct SceneBackdrop {
     scene: Scene,
     palette: Palette,
+    motion: Animations,
+    playing: Playing,
+}
+
+impl SceneBackdrop {
+    fn rules(&self) -> Rules {
+        let reduced = self.motion != Animations::Full;
+        let frames_per_second = if reduced {
+            REDUCED_FRAMES_PER_SECOND
+        } else {
+            self.scene.frames_per_second()
+        };
+        Rules {
+            interval: Duration::from_secs(1) / frames_per_second,
+            top_pace: match self.motion {
+                Animations::Full => 1.0,
+                Animations::Reduced => REDUCED_PACE,
+                Animations::Off => 0.0,
+            },
+            settles_after: if reduced {
+                REDUCED_SETTLES_AFTER_NO_INPUT_FOR
+            } else {
+                SETTLES_AFTER_NO_INPUT_FOR
+            },
+            playing: self.playing,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Rules {
+    interval: Duration,
+    top_pace: f32,
+    settles_after: Duration,
+    playing: Playing,
 }
 
 #[derive(Default)]
@@ -276,7 +344,9 @@ struct Clock {
     last_frame: Option<Instant>,
     next_frame: Option<Instant>,
     last_input: Option<Instant>,
+    warm_until: Option<Instant>,
     is_unfocused: bool,
+    is_hovered: bool,
 }
 
 impl Clock {
@@ -288,15 +358,25 @@ impl Clock {
         self.last_frame.is_none()
     }
 
-    fn wants_motion(&self, now: Instant) -> bool {
-        !self.is_unfocused
-            && self.last_input.is_none_or(|input| {
-                now.saturating_duration_since(input) < SETTLES_AFTER_NO_INPUT_FOR
-            })
+    fn wants_motion(&self, now: Instant, rules: Rules) -> bool {
+        if self.is_unfocused || rules.top_pace == 0.0 {
+            return false;
+        }
+        match rules.playing {
+            Playing::Preview => self.is_hovered,
+            Playing::Backdrop => self
+                .last_input
+                .is_none_or(|input| now.saturating_duration_since(input) < rules.settles_after),
+        }
     }
 
-    fn advance(&mut self, now: Instant, interval: Duration) -> Option<Instant> {
-        if self.is_resting() && !self.wants_motion(now) {
+    fn advance(&mut self, now: Instant, rules: Rules) -> Option<Instant> {
+        if self.warm_until.is_none() && rules.playing == Playing::Preview {
+            self.shown = PREVIEW_STARTS_AT;
+        }
+        let is_warming_up = *self.warm_until.get_or_insert(now + WARMING_UP) > now;
+        let wants_motion = self.wants_motion(now, rules);
+        if self.is_resting() && !wants_motion && !is_warming_up {
             return None;
         }
         self.last_input.get_or_insert(now);
@@ -305,14 +385,15 @@ impl Clock {
             now.saturating_duration_since(last_frame).min(LONGEST_STEP)
         });
         self.last_frame = Some(now);
-        self.pace = if self.wants_motion(now) {
-            (self.pace + step.as_secs_f32() / WAKING_TIME.as_secs_f32()).min(1.0)
+        let target = if wants_motion { rules.top_pace } else { 0.0 };
+        self.pace = if self.pace < target {
+            (self.pace + step.as_secs_f32() / WAKING_TIME.as_secs_f32()).min(target)
         } else {
-            (self.pace - step.as_secs_f32() / SETTLING_TIME.as_secs_f32()).max(0.0)
+            (self.pace - step.as_secs_f32() / SETTLING_TIME.as_secs_f32()).max(target)
         };
         self.shown += step.mul_f32(self.pace);
 
-        if self.pace == 0.0 && !self.wants_motion(now) {
+        if self.pace == 0.0 && !wants_motion && !is_warming_up {
             self.last_frame = None;
             self.next_frame = None;
             return None;
@@ -322,11 +403,11 @@ impl Clock {
         if now < due {
             return Some(due);
         }
-        let following = due + interval;
+        let following = due + rules.interval;
         let next_frame = if following > now {
             following
         } else {
-            now + interval
+            now + rules.interval
         };
         self.next_frame = Some(next_frame);
         Some(next_frame)
@@ -346,13 +427,13 @@ impl shader::Program<Message> for SceneBackdrop {
         &self,
         clock: &mut Clock,
         event: &Event,
-        _bounds: Rectangle,
-        _cursor: Cursor,
+        bounds: Rectangle,
+        cursor: Cursor,
     ) -> Option<shader::Action<Message>> {
         let wakes = match event {
             Event::Window(window::Event::RedrawRequested(now)) => {
                 return clock
-                    .advance(*now, self.scene.frame_interval())
+                    .advance(*now, self.rules())
                     .map(shader::Action::request_redraw_at);
             }
             Event::Window(window::Event::Unfocused) => {
@@ -364,18 +445,26 @@ impl shader::Program<Message> for SceneBackdrop {
                 clock.notice_input(Instant::now())
             }
             Event::Mouse(_) | Event::Keyboard(_) | Event::Touch(_) => {
-                clock.notice_input(Instant::now())
+                let was_hovered = clock.is_hovered;
+                clock.is_hovered = cursor.is_over(bounds);
+                let noticed = clock.notice_input(Instant::now());
+                match self.playing {
+                    Playing::Backdrop => noticed,
+                    Playing::Preview => clock.is_hovered && !was_hovered && clock.is_resting(),
+                }
             }
             _ => false,
         };
         wakes.then(shader::Action::request_redraw)
     }
 
-    fn draw(&self, clock: &Clock, _cursor: Cursor, _bounds: Rectangle) -> SceneFrame {
+    fn draw(&self, clock: &Clock, _cursor: Cursor, bounds: Rectangle) -> SceneFrame {
         SceneFrame {
             scene: self.scene,
             palette: self.palette,
             seconds: clock.seconds(),
+            place: [bounds.x, bounds.y, bounds.width, bounds.height]
+                .map(|value| value.round() as i32),
         }
     }
 }
@@ -385,6 +474,7 @@ struct SceneFrame {
     scene: Scene,
     palette: Palette,
     seconds: f32,
+    place: [i32; 4],
 }
 
 const UNIFORM_FLOATS: usize = 36;
@@ -400,6 +490,10 @@ impl SceneFrame {
             uniforms[20 + index * 4..24 + index * 4].copy_from_slice(&color.into_linear());
         }
         uniforms
+    }
+
+    fn is_on_light_window(&self) -> bool {
+        brightness(self.palette.base) > LIGHT_WINDOW_BRIGHTNESS
     }
 }
 
@@ -418,30 +512,43 @@ impl shader::Primitive for SceneFrame {
             return;
         }
         let presence = pipeline.presence_of(self.scene);
+        let slot = pipeline.slot_for(device, self.place);
         let uniforms = self.uniforms(bounds, presence);
-        queue.write_buffer(&pipeline.uniforms, 0, bytemuck::cast_slice(&uniforms));
+        queue.write_buffer(
+            &pipeline.slots[slot].uniforms,
+            0,
+            bytemuck::cast_slice(&uniforms),
+        );
 
         if let Some(pixels_per_texel) = self.scene.pixels_per_glow_texel() {
             let texels_per_point = viewport.scale_factor() / pixels_per_texel;
-            pipeline.fit_glow_to(device, glow_size(bounds, texels_per_point));
-            pipeline.paint_glow(device, queue, self.scene);
+            pipeline.fit_glow_to(device, slot, glow_size(bounds, texels_per_point));
+            pipeline.paint_glow(device, queue, self.scene, slot);
         }
     }
 
     fn draw(&self, pipeline: &ScenePipeline, render_pass: &mut wgpu::RenderPass<'_>) -> bool {
-        let Some(painter) = pipeline.painter(self.scene) else {
+        let (Some(painter), Some(slot)) = (
+            pipeline.painter(self.scene),
+            pipeline.slots.iter().find(|slot| slot.place == self.place),
+        ) else {
             return true;
         };
-        render_pass.set_bind_group(0, &pipeline.scene_group, &[]);
+        render_pass.set_bind_group(0, &slot.scene_group, &[]);
         if painter.glow.is_some() {
-            let Some(glow) = &pipeline.glow else {
+            let Some(glow) = &slot.glow else {
                 return true;
             };
             render_pass.set_bind_group(1, &glow.group, &[]);
         }
         render_pass.set_pipeline(&painter.show);
         render_pass.draw(0..3, 0..1);
-        if let Some(motes) = &painter.motes {
+        let motes = if self.is_on_light_window() {
+            &painter.shades
+        } else {
+            &painter.motes
+        };
+        if let Some(motes) = motes {
             render_pass.set_pipeline(motes);
             render_pass.draw(0..4, 0..self.scene.motes());
         }
@@ -456,13 +563,20 @@ fn glow_size(bounds: &Rectangle, texels_per_point: f32) -> (u32, u32) {
 
 struct ScenePipeline {
     format: wgpu::TextureFormat,
-    uniforms: wgpu::Buffer,
-    scene_group: wgpu::BindGroup,
+    scene_layout: wgpu::BindGroupLayout,
     glow_layout: wgpu::BindGroupLayout,
     layouts: Layouts,
     sampler: wgpu::Sampler,
-    glow: Option<GlowTexture>,
+    slots: Vec<Slot>,
     painters: [PainterSlot; Scene::COUNT],
+}
+
+struct Slot {
+    place: [i32; 4],
+    uniforms: wgpu::Buffer,
+    scene_group: wgpu::BindGroup,
+    glow: Option<GlowTexture>,
+    used_at: Instant,
 }
 
 #[derive(Default)]
@@ -490,6 +604,7 @@ struct Painter {
     glow: Option<wgpu::RenderPipeline>,
     show: wgpu::RenderPipeline,
     motes: Option<wgpu::RenderPipeline>,
+    shades: Option<wgpu::RenderPipeline>,
 }
 
 impl ScenePipeline {
@@ -529,8 +644,45 @@ impl ScenePipeline {
         }
     }
 
-    fn fit_glow_to(&mut self, device: &wgpu::Device, size: (u32, u32)) {
-        if self.glow.as_ref().is_some_and(|glow| glow.size == size) {
+    fn slot_for(&mut self, device: &wgpu::Device, place: [i32; 4]) -> usize {
+        let now = Instant::now();
+        self.slots.retain(|slot| {
+            slot.place == place || now.duration_since(slot.used_at) < UNUSED_SLOTS_LAST
+        });
+        if let Some(index) = self.slots.iter().position(|slot| slot.place == place) {
+            self.slots[index].used_at = now;
+            return index;
+        }
+        let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("scene"),
+            size: std::mem::size_of::<[f32; UNIFORM_FLOATS]>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let scene_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("scene"),
+            layout: &self.scene_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniforms.as_entire_binding(),
+            }],
+        });
+        self.slots.push(Slot {
+            place,
+            uniforms,
+            scene_group,
+            glow: None,
+            used_at: now,
+        });
+        self.slots.len() - 1
+    }
+
+    fn fit_glow_to(&mut self, device: &wgpu::Device, slot: usize, size: (u32, u32)) {
+        if self.slots[slot]
+            .glow
+            .as_ref()
+            .is_some_and(|glow| glow.size == size)
+        {
             return;
         }
         let view = device
@@ -564,14 +716,15 @@ impl ScenePipeline {
                 },
             ],
         });
-        self.glow = Some(GlowTexture { size, view, group });
+        self.slots[slot].glow = Some(GlowTexture { size, view, group });
     }
 
-    fn paint_glow(&self, device: &wgpu::Device, queue: &wgpu::Queue, scene: Scene) {
+    fn paint_glow(&self, device: &wgpu::Device, queue: &wgpu::Queue, scene: Scene, slot: usize) {
         let Some(painter) = self.painter(scene) else {
             return;
         };
-        let (Some(paint), Some(glow)) = (&painter.glow, &self.glow) else {
+        let slot = &self.slots[slot];
+        let (Some(paint), Some(glow)) = (&painter.glow, &slot.glow) else {
             return;
         };
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -594,7 +747,7 @@ impl ScenePipeline {
                 occlusion_query_set: None,
             });
             pass.set_pipeline(paint);
-            pass.set_bind_group(0, &self.scene_group, &[]);
+            pass.set_bind_group(0, &slot.scene_group, &[]);
             pass.draw(0..3, 0..1);
         }
         queue.submit([encoder.finish()]);
@@ -649,21 +802,6 @@ impl shader::Pipeline for ScenePipeline {
                 push_constant_ranges: &[],
             }),
         };
-
-        let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scene"),
-            size: std::mem::size_of::<[f32; UNIFORM_FLOATS]>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let scene_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("scene"),
-            layout: &scene_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniforms.as_entire_binding(),
-            }],
-        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("scene glow"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -673,12 +811,11 @@ impl shader::Pipeline for ScenePipeline {
 
         Self {
             format,
-            uniforms,
-            scene_group,
+            scene_layout,
             glow_layout,
             layouts,
             sampler,
-            glow: None,
+            slots: Vec::new(),
             painters: Default::default(),
         }
     }
@@ -737,23 +874,31 @@ impl Painter {
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
         );
-        let (shine, shine_on_srgb) = scene.mote_shape();
-        let motes = (scene.motes() > 0).then(|| {
-            render_pipeline(
-                device,
-                &module,
-                Drawing {
-                    label: "scene motes",
-                    layout: &layouts.scene_only,
-                    vertex: "place_mote",
-                    fragment: if on_srgb { shine_on_srgb } else { shine },
-                    target: adding_light(format),
-                    topology: wgpu::PrimitiveTopology::TriangleStrip,
-                },
-            )
-        });
+        let mote_pipeline = |(fragment, fragment_on_srgb): (&str, &str), target| {
+            (scene.motes() > 0).then(|| {
+                render_pipeline(
+                    device,
+                    &module,
+                    Drawing {
+                        label: "scene motes",
+                        layout: &layouts.scene_only,
+                        vertex: "place_mote",
+                        fragment: if on_srgb { fragment_on_srgb } else { fragment },
+                        target,
+                        topology: wgpu::PrimitiveTopology::TriangleStrip,
+                    },
+                )
+            })
+        };
+        let motes = mote_pipeline(scene.mote_shape(), adding_light(format));
+        let shades = mote_pipeline(scene.mote_shade(), laying_ink(format));
 
-        Self { glow, show, motes }
+        Self {
+            glow,
+            show,
+            motes,
+            shades,
+        }
     }
 }
 
@@ -761,6 +906,14 @@ fn opaque(format: wgpu::TextureFormat) -> wgpu::ColorTargetState {
     wgpu::ColorTargetState {
         format,
         blend: None,
+        write_mask: wgpu::ColorWrites::ALL,
+    }
+}
+
+fn laying_ink(format: wgpu::TextureFormat) -> wgpu::ColorTargetState {
+    wgpu::ColorTargetState {
+        format,
+        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
         write_mask: wgpu::ColorWrites::ALL,
     }
 }
@@ -818,15 +971,24 @@ fn render_pipeline(
 #[cfg(test)]
 mod tests {
     use super::{
-        Clock, Duration, Instant, LONGEST_STEP, Rectangle, SETTLES_AFTER_NO_INPUT_FOR,
-        SETTLING_TIME, Scene, glow_size,
+        Clock, Duration, Instant, LONGEST_STEP, Playing, REDUCED_PACE, Rectangle, Rules,
+        SETTLES_AFTER_NO_INPUT_FOR, SETTLING_TIME, Scene, glow_size,
     };
 
     const INTERVAL: Duration = Duration::from_millis(50);
 
+    fn backdrop() -> Rules {
+        Rules {
+            interval: INTERVAL,
+            top_pace: 1.0,
+            settles_after: SETTLES_AFTER_NO_INPUT_FOR,
+            playing: Playing::Backdrop,
+        }
+    }
+
     fn run_until_settled(clock: &mut Clock, start: Instant) -> Instant {
         let mut now = start;
-        while let Some(frame) = clock.advance(now, INTERVAL) {
+        while let Some(frame) = clock.advance(now, backdrop()) {
             assert!(frame > now);
             now = frame;
             assert!(now < start + Duration::from_secs(600));
@@ -838,9 +1000,9 @@ mod tests {
     fn schedules_frames_at_the_scene_rate() {
         let start = Instant::now();
         let mut clock = Clock::default();
-        assert_eq!(clock.advance(start, INTERVAL), Some(start + INTERVAL));
+        assert_eq!(clock.advance(start, backdrop()), Some(start + INTERVAL));
         assert_eq!(
-            clock.advance(start + INTERVAL, INTERVAL),
+            clock.advance(start + INTERVAL, backdrop()),
             Some(start + INTERVAL * 2)
         );
     }
@@ -849,9 +1011,9 @@ mod tests {
     fn redraws_between_frames_keep_the_schedule() {
         let start = Instant::now();
         let mut clock = Clock::default();
-        clock.advance(start, INTERVAL);
+        clock.advance(start, backdrop());
         let early = start + INTERVAL / 3;
-        assert_eq!(clock.advance(early, INTERVAL), Some(start + INTERVAL));
+        assert_eq!(clock.advance(early, backdrop()), Some(start + INTERVAL));
     }
 
     #[test]
@@ -861,7 +1023,7 @@ mod tests {
         let settled_at = run_until_settled(&mut clock, start);
         assert!(settled_at >= start + SETTLES_AFTER_NO_INPUT_FOR);
         assert!(settled_at <= start + SETTLES_AFTER_NO_INPUT_FOR + SETTLING_TIME + INTERVAL * 2);
-        assert_eq!(clock.advance(settled_at + INTERVAL, INTERVAL), None);
+        assert_eq!(clock.advance(settled_at + INTERVAL, backdrop()), None);
     }
 
     #[test]
@@ -871,14 +1033,14 @@ mod tests {
         let settled_at = run_until_settled(&mut clock, start);
         let moved_at = settled_at + Duration::from_secs(5);
         assert!(clock.notice_input(moved_at));
-        assert!(clock.advance(moved_at, INTERVAL).is_some());
+        assert!(clock.advance(moved_at, backdrop()).is_some());
     }
 
     #[test]
     fn losing_focus_settles_the_scene_until_it_comes_back() {
         let start = Instant::now();
         let mut clock = Clock::default();
-        clock.advance(start, INTERVAL);
+        clock.advance(start, backdrop());
         clock.is_unfocused = true;
         let settled_at = run_until_settled(&mut clock, start + INTERVAL);
         assert!(settled_at <= start + SETTLING_TIME + INTERVAL * 3);
@@ -891,9 +1053,48 @@ mod tests {
     fn a_long_gap_moves_the_scene_by_at_most_one_step() {
         let start = Instant::now();
         let mut clock = Clock::default();
-        clock.advance(start, INTERVAL);
-        clock.advance(start + Duration::from_secs(30), INTERVAL);
+        clock.advance(start, backdrop());
+        clock.advance(start + Duration::from_secs(30), backdrop());
         assert!(clock.seconds() <= LONGEST_STEP.as_secs_f32());
+    }
+
+    #[test]
+    fn previews_only_move_while_hovered() {
+        let start = Instant::now();
+        let mut clock = Clock::default();
+        let preview = Rules {
+            playing: Playing::Preview,
+            ..backdrop()
+        };
+        let mut now = start;
+        while let Some(frame) = clock.advance(now, preview) {
+            now = frame;
+        }
+        let still = clock.seconds();
+        assert!(now < start + Duration::from_secs(4));
+        clock.is_hovered = true;
+        let hovered_at = now + Duration::from_secs(1);
+        let mut frame = clock.advance(hovered_at, preview);
+        for _ in 0..40 {
+            frame = frame.and_then(|frame| clock.advance(frame, preview));
+        }
+        assert!(clock.seconds() > still);
+    }
+
+    #[test]
+    fn reduced_motion_runs_slower() {
+        let start = Instant::now();
+        let mut clock = Clock::default();
+        let reduced = Rules {
+            top_pace: REDUCED_PACE,
+            ..backdrop()
+        };
+        let mut now = start;
+        for _ in 0..100 {
+            now = clock.advance(now, reduced).unwrap();
+        }
+        assert!(clock.pace <= REDUCED_PACE);
+        assert!(clock.seconds() < (now - start).as_secs_f32() * REDUCED_PACE + 0.01);
     }
 
     #[test]

@@ -157,3 +157,28 @@ fn shine_disc(mote: Mote) -> @location(0) vec4<f32> {
 fn shine_disc_on_srgb(mote: Mote) -> @location(0) vec4<f32> {
     return vec4<f32>(linear_from_srgb(mote.tint) * disc_light(mote), 0.0);
 }
+
+fn ink(tint: vec3<f32>, light: f32) -> vec4<f32> {
+    let cover = clamp(light * 0.75, 0.0, 0.8);
+    return vec4<f32>(tint * 0.5 * cover, cover);
+}
+
+@fragment
+fn shade(mote: Mote) -> @location(0) vec4<f32> {
+    return ink(mote.tint, mote_light(mote));
+}
+
+@fragment
+fn shade_on_srgb(mote: Mote) -> @location(0) vec4<f32> {
+    return ink(linear_from_srgb(mote.tint), mote_light(mote));
+}
+
+@fragment
+fn shade_disc(mote: Mote) -> @location(0) vec4<f32> {
+    return ink(mote.tint, disc_light(mote) * 2.5);
+}
+
+@fragment
+fn shade_disc_on_srgb(mote: Mote) -> @location(0) vec4<f32> {
+    return ink(linear_from_srgb(mote.tint), disc_light(mote) * 2.5);
+}

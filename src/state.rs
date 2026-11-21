@@ -40,7 +40,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 46] = [
+const SAVED_PROPERTIES: [&str; 48] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -85,6 +85,8 @@ const SAVED_PROPERTIES: [&str; 46] = [
     "imported-theme",
     "background-animation",
     "animation-colors",
+    "animations",
+    "cursor-glow",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -198,6 +200,27 @@ impl BackgroundAnimation {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Animations {
+    #[default]
+    Full,
+    Reduced,
+    Off,
+}
+
+impl Choice for Animations {
+    const ALL: &'static [Self] = &[Self::Full, Self::Reduced, Self::Off];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Full => "Full",
+            Self::Reduced => "Reduced",
+            Self::Off => "Off",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ImportedThemes(pub Rc<Vec<ImportedTheme>>);
 
@@ -290,6 +313,8 @@ struct SavedSettings {
     background_animation: BackgroundAnimation,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     animation_colors: Vec<String>,
+    animations: Animations,
+    cursor_glow: bool,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -343,6 +368,8 @@ impl Default for SavedSettings {
             imported_theme: String::new(),
             background_animation: BackgroundAnimation::default(),
             animation_colors: Vec::new(),
+            animations: Animations::default(),
+            cursor_glow: true,
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -456,6 +483,9 @@ properties! {
     imported_themes set_imported_themes: ImportedThemes = "imported-themes",
     background_animation set_background_animation: BackgroundAnimation = "background-animation",
     animation_colors set_animation_colors: Vec<String> = "animation-colors",
+    animations set_animations: Animations = "animations",
+    cursor_glow set_cursor_glow: bool = "cursor-glow",
+    system_reduces_motion set_system_reduces_motion: bool = "system-reduces-motion",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
     system_title_bar set_system_title_bar: bool = "system-title-bar",
@@ -498,6 +528,13 @@ struct Inner {
 pub struct AppState(Rc<Inner>);
 
 impl AppState {
+    pub fn motion(&self) -> Animations {
+        match self.animations() {
+            Animations::Full if self.system_reduces_motion() => Animations::Reduced,
+            chosen => chosen,
+        }
+    }
+
     pub fn load() -> Self {
         let LoadedSettings {
             settings,
@@ -604,6 +641,8 @@ impl AppState {
         properties
             .animation_colors
             .replace(settings.animation_colors);
+        properties.animations.replace(settings.animations);
+        properties.cursor_glow.replace(settings.cursor_glow);
 
         state.connect_properties_notify(&SAVED_PROPERTIES, Self::schedule_save);
         state.follow_properties(&PROPERTIES_THAT_DECIDE_CAN_PLAY, Self::update_can_play);
@@ -855,6 +894,8 @@ impl AppState {
             imported_theme: self.imported_theme(),
             background_animation: self.background_animation(),
             animation_colors: self.animation_colors(),
+            animations: self.animations(),
+            cursor_glow: self.cursor_glow(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
         };

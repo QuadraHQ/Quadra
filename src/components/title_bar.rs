@@ -18,7 +18,29 @@ const BUTTON_SPACING: f32 = 6.0;
 const DEFAULT_LAYOUT: &str = ":minimize,maximize,close";
 const SIZE_JUMP: f32 = 64.0;
 
+const FILLED_SHARE: f32 = 0.8;
+
 static LAST_SIZES: Mutex<Vec<(window::Id, Size)>> = Mutex::new(Vec::new());
+static MONITOR_SIZES: Mutex<Vec<(window::Id, Size)>> = Mutex::new(Vec::new());
+
+pub fn remember_monitor(window: window::Id, monitor: Size) {
+    if let Ok(mut monitors) = MONITOR_SIZES.lock() {
+        monitors.retain(|(known, _)| *known != window);
+        monitors.push((window, monitor));
+    }
+}
+
+fn monitor_of(window: window::Id) -> Option<Size> {
+    let monitors = MONITOR_SIZES.lock().ok()?;
+    monitors
+        .iter()
+        .find(|(known, _)| *known == window)
+        .map(|&(_, monitor)| monitor)
+}
+
+fn fills(size: Size, monitor: Size) -> bool {
+    size.width >= monitor.width * FILLED_SHARE && size.height >= monitor.height * FILLED_SHARE
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WindowButton {
@@ -273,15 +295,21 @@ fn jumped(window: window::Id, size: Size) -> bool {
             None
         }
     };
-    previous.is_none_or(|previous| {
-        (previous.width - size.width).abs() > SIZE_JUMP
-            || (previous.height - size.height).abs() > SIZE_JUMP
-    })
+    drop(last_sizes);
+    let Some(previous) = previous else {
+        return true;
+    };
+    let jumped_far = (previous.width - size.width).abs() > SIZE_JUMP
+        || (previous.height - size.height).abs() > SIZE_JUMP;
+    jumped_far
+        && monitor_of(window).is_none_or(|monitor| fills(size, monitor) || fills(previous, monitor))
 }
 
 fn forget(window: window::Id) {
-    if let Ok(mut last_sizes) = LAST_SIZES.lock() {
-        last_sizes.retain(|(known, _)| *known != window);
+    for sizes in [&LAST_SIZES, &MONITOR_SIZES] {
+        if let Ok(mut sizes) = sizes.lock() {
+            sizes.retain(|(known, _)| *known != window);
+        }
     }
 }
 
@@ -305,6 +333,18 @@ pub fn outline<'a>(look: Look) -> Element<'a, Message> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn only_maximise_and_restore_sized_jumps_are_reported() {
+        let window = super::window::Id::unique();
+        super::remember_monitor(window, super::Size::new(1920.0, 1080.0));
+        assert!(super::jumped(window, super::Size::new(800.0, 600.0)));
+        assert!(!super::jumped(window, super::Size::new(960.0, 1040.0)));
+        assert!(!super::jumped(window, super::Size::new(805.0, 600.0)));
+        assert!(super::jumped(window, super::Size::new(1920.0, 1040.0)));
+        assert!(super::jumped(window, super::Size::new(800.0, 600.0)));
+        super::forget(window);
+    }
     use super::*;
 
     #[test]

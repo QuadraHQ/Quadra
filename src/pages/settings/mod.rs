@@ -27,7 +27,7 @@ mod vr_access;
 
 use crate::backend::{self, Handler, Shortcut};
 use crate::components::file_dialog;
-use crate::components::preferences::page;
+use crate::components::preferences::{caption, page, searching};
 use crate::components::style::{self, Look};
 use crate::quadra::Message;
 use crate::state::{AppState, Client, QUADRA_PREFIX};
@@ -35,7 +35,7 @@ use crate::utils::is_running_in_flatpak;
 use bound_rows::keep_named_choice_valid;
 use custom_flags::CustomFlags;
 use environment_variables::EnvironmentVariableRows;
-use iced::widget::{button, column, container, row, scrollable, text};
+use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Element, Length, Task};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -44,7 +44,9 @@ use std::rc::Rc;
 
 pub use custom_flags::{EXPORT_FILE_NAME, export_dialog, import_flags, save_exported};
 
-pub const SCROLLER: &str = "settings-scroller";
+pub const SEARCH_WIDTH: f32 = 200.0;
+const SEARCH_FIELD: &str = "settings-search";
+const SCROLLER: &str = "settings-scroller";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Tab {
@@ -100,10 +102,12 @@ pub enum SettingsMessage {
     ThemeFilePicked(Option<PathBuf>),
     RemoveTheme(String),
     AnimationColorEdited(usize, String),
+    Search(String),
 }
 
 pub struct Settings {
     tab: Tab,
+    search: String,
     custom_flags: CustomFlags,
     variables: EnvironmentVariableRows,
     invalid_numbers: HashMap<&'static str, String>,
@@ -123,6 +127,7 @@ impl Settings {
     pub fn new(state: &AppState) -> Self {
         Self {
             tab: Tab::default(),
+            search: String::new(),
             custom_flags: CustomFlags::from_state(state),
             variables: EnvironmentVariableRows::from_state(state),
             invalid_numbers: HashMap::new(),
@@ -153,7 +158,9 @@ impl Settings {
 
     pub fn update(&mut self, state: &AppState, message: SettingsMessage) -> Task<Message> {
         match message {
+            SettingsMessage::Search(query) => self.search = query,
             SettingsMessage::ShowTab(tab) => {
+                self.search.clear();
                 self.tab = tab;
                 match tab {
                     Tab::Mods => self.refresh_set_aside_mods(),
@@ -291,7 +298,8 @@ impl Settings {
 
     pub fn view<'a>(&'a self, state: &AppState, look: Look) -> Element<'a, Message> {
         let shown_tab = self.shown_tab(state);
-        let tabs = [
+        let is_searching = !self.search.trim().is_empty();
+        let shown_tabs: Vec<Tab> = [
             Tab::General,
             Tab::Mods,
             Tab::Vr,
@@ -300,37 +308,82 @@ impl Settings {
         ]
         .into_iter()
         .filter(|tab| tab.is_shown(state))
-        .map(|tab| {
+        .collect();
+        let tabs = shown_tabs.iter().map(|&tab| {
             button(text(tab.title()).font(look.font).size(13))
                 .padding([5, 14])
-                .style(style::tab(look, tab == shown_tab))
+                .style(style::tab(look, tab == shown_tab && !is_searching))
                 .on_press(Message::Settings(SettingsMessage::ShowTab(tab)))
                 .into()
         });
-        let switcher = container(
-            container(row(tabs).spacing(4))
-                .padding(3)
-                .style(style::card(look)),
+        let search = text_input("Search settings", &self.search)
+            .id(SEARCH_FIELD)
+            .font(look.font)
+            .size(13)
+            .padding([6, 12])
+            .width(SEARCH_WIDTH)
+            .style(style::input(look, true))
+            .on_input(|query| Message::Settings(SettingsMessage::Search(query)));
+        let header = container(
+            row![
+                container(row(tabs).spacing(4))
+                    .padding(3)
+                    .style(style::card(look)),
+                search,
+            ]
+            .spacing(12)
+            .align_y(iced::Alignment::Center),
         )
         .center_x(Length::Fill)
-        .padding(iced::padding::top(12));
+        .padding(iced::padding::top(12).left(16).right(16));
 
-        let sections = match shown_tab {
-            Tab::General => general::general_section(self, state, look),
-            Tab::Mods => mods::mods_section(self, state, look),
-            Tab::Vr => vr::vr_section(state, look),
-            Tab::Integration => integration::integration_section(self, look),
-            Tab::Advanced => advanced::advanced_section(self, state, look),
+        let sections = if is_searching {
+            let (mut sections, found) = searching(&self.search, || {
+                shown_tabs
+                    .iter()
+                    .flat_map(|&tab| self.sections_of(tab, state, look))
+                    .collect::<Vec<_>>()
+            });
+            if !found {
+                sections = vec![
+                    container(caption(
+                        look,
+                        format!("No settings match “{}”", self.search.trim()),
+                    ))
+                    .center_x(Length::Fill)
+                    .into(),
+                ];
+            }
+            sections
+        } else {
+            self.sections_of(shown_tab, state, look)
         };
 
         column![
-            switcher,
+            header,
             scrollable(page(sections))
                 .id(SCROLLER)
                 .height(Length::Fill)
                 .style(style::scrollbar(look))
         ]
         .into()
+    }
+}
+
+impl Settings {
+    fn sections_of<'a>(
+        &'a self,
+        tab: Tab,
+        state: &AppState,
+        look: Look,
+    ) -> Vec<Element<'a, Message>> {
+        match tab {
+            Tab::General => general::general_section(self, state, look),
+            Tab::Mods => mods::mods_section(self, state, look),
+            Tab::Vr => vr::vr_section(state, look),
+            Tab::Integration => integration::integration_section(self, look),
+            Tab::Advanced => advanced::advanced_section(self, state, look),
+        }
     }
 }
 

@@ -6,6 +6,7 @@ use iced::widget::{
     Button, Column, Text, button, column, container, row, rule, space, text, tooltip,
 };
 use iced::{Alignment, Element, Length, Padding};
+use std::cell::{Cell, RefCell};
 
 const ROW_MIN_HEIGHT: f32 = 50.0;
 const ROW_PADDING: Padding = Padding {
@@ -15,7 +16,46 @@ const ROW_PADDING: Padding = Padding {
     left: 14.0,
 };
 const GROUP_SPACING: f32 = 6.0;
-pub const MAXIMUM_CONTENT_WIDTH: f32 = 600.0;
+pub const MAXIMUM_CONTENT_WIDTH: f32 = 640.0;
+
+thread_local! {
+    static SEARCHED_WORDS: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
+    static LAST_ROW_FOUND: Cell<Option<bool>> = const { Cell::new(None) };
+    static ANYTHING_FOUND: Cell<bool> = const { Cell::new(false) };
+}
+
+pub fn searching<T>(query: &str, build: impl FnOnce() -> T) -> (T, bool) {
+    let words = query.split_whitespace().map(str::to_lowercase).collect();
+    SEARCHED_WORDS.set(Some(words));
+    ANYTHING_FOUND.set(false);
+    let built = build();
+    SEARCHED_WORDS.set(None);
+    LAST_ROW_FOUND.set(None);
+    (built, ANYTHING_FOUND.take())
+}
+
+fn is_searching() -> bool {
+    SEARCHED_WORDS.with_borrow(Option::is_some)
+}
+
+fn is_found_in(text: &str) -> bool {
+    let text = text.to_lowercase();
+    SEARCHED_WORDS.with_borrow(|words| {
+        words
+            .as_ref()
+            .is_none_or(|words| words.iter().all(|word| text.contains(word.as_str())))
+    })
+}
+
+pub fn searchable<'a>(
+    content: impl Into<Element<'a, Message>>,
+    words: &str,
+) -> Element<'a, Message> {
+    if is_searching() {
+        LAST_ROW_FOUND.set(Some(is_found_in(words)));
+    }
+    content.into()
+}
 
 pub fn body<'a>(look: Look, content: impl IntoFragment<'a>) -> Text<'a> {
     text(content)
@@ -114,6 +154,7 @@ pub fn with_tooltip<'a>(
 
 pub struct PreferenceRow<'a> {
     look: Look,
+    words: String,
     title: Text<'a>,
     subtitle: Option<Text<'a>>,
     prefix: Option<Element<'a, Message>>,
@@ -122,8 +163,10 @@ pub struct PreferenceRow<'a> {
 }
 
 pub fn preference_row<'a>(look: Look, title: impl IntoFragment<'a>) -> PreferenceRow<'a> {
+    let title = title.into_fragment();
     PreferenceRow {
         look,
+        words: title.to_string(),
         title: body(look, title),
         subtitle: None,
         prefix: None,
@@ -134,6 +177,9 @@ pub fn preference_row<'a>(look: Look, title: impl IntoFragment<'a>) -> Preferenc
 
 impl<'a> PreferenceRow<'a> {
     pub fn subtitle(mut self, subtitle: impl IntoFragment<'a>) -> Self {
+        let subtitle = subtitle.into_fragment();
+        self.words.push(' ');
+        self.words.push_str(&subtitle);
         self.subtitle = Some(caption(self.look, subtitle));
         self
     }
@@ -146,6 +192,9 @@ impl<'a> PreferenceRow<'a> {
     }
 
     pub fn monospace_subtitle(mut self, subtitle: impl IntoFragment<'a>) -> Self {
+        let subtitle = subtitle.into_fragment();
+        self.words.push(' ');
+        self.words.push_str(&subtitle);
         self.subtitle = Some(caption(self.look, subtitle).font(self.look.mono).size(11));
         self
     }
@@ -168,6 +217,9 @@ impl<'a> PreferenceRow<'a> {
 
 impl<'a> From<PreferenceRow<'a>> for Element<'a, Message> {
     fn from(preference: PreferenceRow<'a>) -> Self {
+        if is_searching() {
+            LAST_ROW_FOUND.set(Some(is_found_in(&preference.words)));
+        }
         let look = preference.look;
         let dimmed_if_disabled = move |_: &iced::Theme| text::Style {
             color: Some(if preference.enabled {
@@ -209,6 +261,7 @@ pub fn row_height_floor<'a>(content: impl Into<Element<'a, Message>>) -> Element
 
 pub struct PreferenceGroup<'a> {
     look: Look,
+    title_is_found: bool,
     title: Option<Text<'a>>,
     description: Option<Text<'a>>,
     header_suffix: Option<Element<'a, Message>>,
@@ -218,6 +271,7 @@ pub struct PreferenceGroup<'a> {
 pub fn preference_group<'a>(look: Look) -> PreferenceGroup<'a> {
     PreferenceGroup {
         look,
+        title_is_found: false,
         title: None,
         description: None,
         header_suffix: None,
@@ -227,6 +281,8 @@ pub fn preference_group<'a>(look: Look) -> PreferenceGroup<'a> {
 
 impl<'a> PreferenceGroup<'a> {
     pub fn title(mut self, title: impl IntoFragment<'a>) -> Self {
+        let title = title.into_fragment();
+        self.title_is_found = is_searching() && is_found_in(&title);
         self.title = Some(heading(self.look, title));
         self
     }
@@ -242,7 +298,12 @@ impl<'a> PreferenceGroup<'a> {
     }
 
     pub fn push(mut self, row: impl Into<Element<'a, Message>>) -> Self {
-        self.rows.push(row_height_floor(row));
+        let row = row.into();
+        let is_found = LAST_ROW_FOUND.take() == Some(true);
+        if !is_searching() || self.title_is_found || is_found {
+            ANYTHING_FOUND.set(true);
+            self.rows.push(row_height_floor(row));
+        }
         self
     }
 
@@ -260,6 +321,9 @@ impl<'a> PreferenceGroup<'a> {
 
 impl<'a> From<PreferenceGroup<'a>> for Element<'a, Message> {
     fn from(group: PreferenceGroup<'a>) -> Self {
+        if is_searching() && group.rows.is_empty() {
+            return Element::from(None::<Element<'a, Message>>);
+        }
         let look = group.look;
         let has_header = group.title.is_some() || group.description.is_some();
         let labels = column![]
@@ -293,7 +357,9 @@ impl<'a> From<PreferenceGroup<'a>> for Element<'a, Message> {
 }
 
 pub fn page<'a>(sections: impl IntoIterator<Item = Element<'a, Message>>) -> Element<'a, Message> {
-    let content = Column::with_children(sections)
+    let content = sections
+        .into_iter()
+        .fold(Column::new(), Column::push)
         .spacing(24)
         .padding(Padding::from([18, 16]))
         .max_width(MAXIMUM_CONTENT_WIDTH);

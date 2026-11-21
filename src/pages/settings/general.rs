@@ -1,5 +1,5 @@
 use super::account::account_group;
-use super::appearance::appearance_rows;
+use super::appearance::appearance_group;
 use super::bound_rows::{choice_row, switch, switch_row};
 use super::privacy::privacy_group;
 use super::runtime::runtime_section;
@@ -39,9 +39,7 @@ pub fn general_section<'a>(
             )
             .subtitle("Keep Quadra in the system tray after its window closes"),
         );
-    let quadra_group = appearance_rows(state, look)
-        .into_iter()
-        .fold(quadra_group, |group, row| group.push(row))
+    let quadra_group = quadra_group
         .push(
             switch_row(
                 look,
@@ -69,7 +67,11 @@ pub fn general_section<'a>(
             })),
     );
 
-    let mut sections = vec![quadra_group.into(), discord_group.into()];
+    let mut sections = vec![
+        appearance_group(state, look),
+        quadra_group.into(),
+        discord_group.into(),
+    ];
     sections.extend(runtime_section(settings, state, look));
     sections.extend([
         session_group(state, look),

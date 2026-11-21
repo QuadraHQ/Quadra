@@ -1,17 +1,19 @@
 use crate::backend::{self, LaunchRequest};
 use crate::command_line::{self, Invocation};
 use crate::components::close_roblox_dialog::confirm_closing_roblox;
+use crate::components::cursor_glow::cursor_glow;
 use crate::components::dialog::{self, Alert, Dialog};
 use crate::components::error_dialog::error_dialog;
 use crate::components::file_dialog;
 use crate::components::file_row::{ChosenPath, Pick};
+use crate::components::flat_stack::flat_stack;
 use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
 use crate::components::grid_backdrop::GridBackdrop;
 use crate::components::header::bar;
 use crate::components::icon::app_icon_rgba;
 use crate::components::launch_window::{self, Pulse};
-use crate::components::line_field_backdrop::{self, LineField};
+use crate::components::line_field_backdrop::line_field_backdrop;
 use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
 use crate::components::scanline_backdrop::ScanlineBackdrop;
@@ -25,7 +27,7 @@ use crate::pages::home::home_page;
 use crate::pages::servers::{Servers, ServersMessage};
 use crate::pages::settings::{self, Settings, SettingsMessage};
 use crate::single_instance;
-use crate::state::{AppState, Client, LaunchMode, LogChange};
+use crate::state::{Animations, AppState, Client, LaunchMode, LogChange};
 use crate::utils::{BUNDLED_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
 use iced::widget::{Column, column, space, stack, text_editor};
@@ -47,7 +49,10 @@ const PROPERTIES_THAT_DECIDE_STAYING_OPEN: [&str; 5] = [
 const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launch-mode"];
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
-const PROPERTIES_THAT_DECIDE_LOOK: [&str; 6] = [
+const PROPERTIES_THAT_DECIDE_LOOK: [&str; 9] = [
+    "animations",
+    "system-reduces-motion",
+    "cursor-glow",
     "theme",
     "system-prefers-dark",
     "imported-theme",
@@ -117,6 +122,7 @@ pub enum Message {
     Window(window::Id, WindowAction),
     WindowSizeJumped(window::Id),
     WindowMaximized(window::Id, bool),
+    MonitorMeasured(window::Id, Option<Size>),
     ShowPage(Page),
     Alert(Alert),
     Respond(usize),
@@ -139,7 +145,6 @@ pub enum Message {
     Servers(ServersMessage),
     QuitClosingRoblox,
     Pulse,
-    LineFieldTick,
 }
 
 enum Reaction {
@@ -172,7 +177,6 @@ pub struct Quadra {
     backdrop: Backdrop,
     grid_backdrop: GridBackdrop,
     scanline_backdrop: ScanlineBackdrop,
-    line_field: Option<LineField>,
     pulse: Pulse,
     tray_icon: Option<TrayIcon>,
     launched_directly: bool,
@@ -204,6 +208,7 @@ impl Quadra {
         let reactions = Reactions::default();
         backend::initialize(&state);
         backend::load_window_button_layout(&state);
+        backend::load_motion_preference(&state);
         backend::load_themes(&state);
         settings::keep_choices_valid(&state);
         react_to_state(&state, &reactions);
@@ -225,7 +230,6 @@ impl Quadra {
             backdrop,
             grid_backdrop: GridBackdrop::default(),
             scanline_backdrop: ScanlineBackdrop::default(),
-            line_field: None,
             pulse: Pulse::default(),
             tray_icon: None,
             launched_directly: false,
@@ -300,6 +304,12 @@ impl Quadra {
             Message::Window(id, action) => self.act_on_window(id, action),
             Message::WindowSizeJumped(id) => window::is_maximized(id)
                 .map(move |maximized| Message::WindowMaximized(id, maximized)),
+            Message::MonitorMeasured(id, monitor) => {
+                if let Some(monitor) = monitor {
+                    title_bar::remember_monitor(id, monitor);
+                }
+                Task::none()
+            }
             Message::WindowMaximized(id, maximized) => {
                 if Some(id) == self.main_window {
                     self.main_window_is_maximized = maximized;
@@ -420,12 +430,6 @@ impl Quadra {
                 self.pulse.advance();
                 Task::none()
             }
-            Message::LineFieldTick => {
-                if let Some(line_field) = &mut self.line_field {
-                    line_field.tick();
-                }
-                Task::none()
-            }
         };
         Task::batch([task, self.react()])
     }
@@ -525,11 +529,6 @@ impl Quadra {
             self.iced_theme = look.iced_theme();
         }
         self.backdrop = chosen_backdrop(&self.state, &look);
-        let wants_line_field =
-            self.backdrop.scene.is_none() && self.backdrop.still == Still::LineField;
-        if wants_line_field != self.line_field.is_some() {
-            self.line_field = wants_line_field.then(LineField::default);
-        }
     }
 
     fn handle_tray(&mut self, request: TrayRequest) -> Task<Message> {
@@ -566,7 +565,9 @@ impl Quadra {
             self.state.system_title_bar(),
         ));
         self.main_window = Some(id);
-        opened.discard()
+        opened.then(|id| {
+            window::monitor_size(id).map(move |monitor| Message::MonitorMeasured(id, monitor))
+        })
     }
 
     fn hide_main_window(&mut self) -> Task<Message> {
@@ -740,7 +741,7 @@ impl Quadra {
 
         let Some(window) = self.main_window.filter(|_| self.uses_own_title_bar()) else {
             return stack![]
-                .push(self.backdrop())
+                .push(self.background())
                 .push(column![bar(look, page, &pages), below_title])
                 .into();
         };
@@ -755,7 +756,7 @@ impl Quadra {
             is_grabbed: self.grabbed_window == Some(window),
         };
         let mut layers = stack![]
-            .push(self.backdrop())
+            .push(self.background())
             .push(column![title_bar.view(), below_title]);
         if !self.main_window_is_maximized {
             layers = layers
@@ -765,17 +766,31 @@ impl Quadra {
         layers.into()
     }
 
+    fn background(&self) -> Option<Element<'_, Message>> {
+        let layers: Vec<Element<'_, Message>> = [self.backdrop(), self.cursor_glow()]
+            .into_iter()
+            .flatten()
+            .collect();
+        (!layers.is_empty()).then(|| flat_stack(layers))
+    }
+
+    fn cursor_glow(&self) -> Option<Element<'_, Message>> {
+        let motion = self.backdrop.motion;
+        (self.state.cursor_glow() && motion != Animations::Off)
+            .then(|| cursor_glow(self.look.accent, self.look.window, motion))
+    }
+
     fn backdrop(&self) -> Option<Element<'_, Message>> {
         let still = match &self.backdrop.still {
             Still::Nothing => None,
             Still::Gradient(glow) => Some(gradient_backdrop(glow)),
             Still::Grid => Some(self.grid_backdrop.view()),
-            Still::LineField => self.line_field.as_ref().map(LineField::view),
+            Still::LineField => Some(line_field_backdrop(self.backdrop.motion)),
             Still::Scanlines => Some(self.scanline_backdrop.view()),
         };
         match self.backdrop.scene {
             Some((scene, palette)) => Some(gpu_or(
-                scene.view(palette),
+                scene.view(palette, self.backdrop.motion),
                 still.unwrap_or_else(|| space().into()),
             )),
             None => still,
@@ -823,18 +838,6 @@ impl Quadra {
         if is_pulsing {
             subscriptions.push(
                 Subscription::run_with(PULSE_EVERY, main_loop::ticks).map(|()| Message::Pulse),
-            );
-        }
-
-        let is_drawing_line_field = self.main_window.is_some()
-            && self
-                .line_field
-                .as_ref()
-                .is_some_and(|line_field| !line_field.is_drawn());
-        if is_drawing_line_field {
-            subscriptions.push(
-                Subscription::run_with(line_field_backdrop::TICK_INTERVAL, main_loop::ticks)
-                    .map(|()| Message::LineFieldTick),
             );
         }
 
