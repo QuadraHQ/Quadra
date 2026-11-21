@@ -2994,6 +2994,7 @@ dependencies = [
  "shlex",
  "tar",
  "toml",
+ "ttf-parser",
  "ureq",
  "zbus",
  "zip",

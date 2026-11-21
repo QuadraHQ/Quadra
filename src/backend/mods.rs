@@ -6,6 +6,7 @@ mod folder_overlay;
 mod settings;
 mod sound_presets;
 
+pub use cursor_presets::arrow_of as cursor_arrow;
 pub use settings::ModSettings;
 
 use super::{paths, roblox};

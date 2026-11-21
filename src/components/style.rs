@@ -1,4 +1,6 @@
+use super::imported_theme::{brightness, parse_color};
 use crate::state::{AppState, Theme};
+use iced::font::Weight;
 use iced::widget::{
     button, container, pick_list, progress_bar, rule, scrollable, text, text_editor, text_input,
     toggler,
@@ -14,6 +16,7 @@ pub const HEADING_SIZE: f32 = 12.0;
 pub const TITLE_SIZE: f32 = 26.0;
 pub const DIALOG_TITLE_SIZE: f32 = 17.0;
 const READABLE_CONTRAST: f32 = 4.5;
+const ON_ACCENT_TURNS_DARK: f32 = 0.6;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Look {
@@ -44,6 +47,33 @@ pub struct Look {
 
 impl Look {
     pub fn of(state: &AppState) -> Self {
+        let mut look = Self::of_theme(state);
+        let family = state.ui_font();
+        if !family.is_empty() {
+            let imported = state.imported_fonts();
+            let weight = imported
+                .0
+                .iter()
+                .find(|font| font.family == family)
+                .map_or(Weight::Normal, |font| weight_of(font.weight));
+            look.font = Font {
+                weight,
+                ..Font::with_name(crate::utils::lasting_name(&family))
+            };
+        }
+        if let Some(accent) = parse_color(&state.accent_color()) {
+            look.accent = accent;
+            look.accent_text = accent;
+            look.on_accent = if brightness(accent) > ON_ACCENT_TURNS_DARK {
+                Color::BLACK
+            } else {
+                Color::WHITE
+            };
+        }
+        look
+    }
+
+    pub fn of_theme(state: &AppState) -> Self {
         let imported = state.imported_themes();
         match imported.named(&state.imported_theme()) {
             Some(theme) => theme.look,
@@ -731,6 +761,20 @@ fn darken(color: Color, amount: f32) -> Color {
         g: (color.g - amount).max(0.0),
         b: (color.b - amount).max(0.0),
         ..color
+    }
+}
+
+pub fn weight_of(number: u16) -> Weight {
+    match number {
+        0..=149 => Weight::Thin,
+        150..=249 => Weight::ExtraLight,
+        250..=349 => Weight::Light,
+        350..=449 => Weight::Normal,
+        450..=549 => Weight::Medium,
+        550..=649 => Weight::Semibold,
+        650..=749 => Weight::Bold,
+        750..=849 => Weight::ExtraBold,
+        _ => Weight::Black,
     }
 }
 

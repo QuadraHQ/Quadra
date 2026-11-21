@@ -1,6 +1,6 @@
 mod account;
 mod advanced;
-mod appearance;
+pub mod appearance;
 mod bound_rows;
 mod butter_access;
 mod controller_access;
@@ -104,6 +104,10 @@ pub enum SettingsMessage {
     ImportTheme,
     ThemeFilePicked(Option<PathBuf>),
     RemoveTheme(String),
+    ImportFont,
+    FontFilePicked(Option<PathBuf>),
+    RemoveFont(String),
+    AccentEdited(String),
     AnimationColorEdited(usize, String),
     Search(String),
 }
@@ -224,6 +228,17 @@ impl Settings {
                 }
             }
             SettingsMessage::RemoveTheme(name) => backend::remove_theme(state, &name),
+            SettingsMessage::ImportFont => {
+                return file_dialog::pick_file("Choose a font", &["ttf", "otf"])
+                    .map(|chosen| Message::Settings(SettingsMessage::FontFilePicked(chosen)));
+            }
+            SettingsMessage::FontFilePicked(chosen) => {
+                if let Some(file) = chosen {
+                    backend::import_font(state, &file);
+                }
+            }
+            SettingsMessage::RemoveFont(family) => backend::remove_font(state, &family),
+            SettingsMessage::AccentEdited(text) => state.set_accent_color(text.trim()),
             SettingsMessage::AnimationColorEdited(index, text) => {
                 let mut colors = state.animation_colors();
                 if colors.len() <= index {

@@ -190,7 +190,7 @@ fn look_from(declared: &Declared) -> Look {
 }
 
 fn font_named(family: &str) -> Font {
-    Font::with_name(Box::leak(family.to_owned().into_boxed_str()))
+    Font::with_name(crate::utils::lasting_name(family))
 }
 
 pub fn brightness(color: Color) -> f32 {

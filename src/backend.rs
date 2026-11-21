@@ -17,6 +17,7 @@ mod download;
 mod fast_flag_allowlist;
 mod fast_flags;
 mod flatpak_override;
+mod fonts;
 mod game_activity;
 mod game_details;
 mod handlers;
@@ -51,10 +52,13 @@ pub use controller_access::{
 pub use desktop_entries::Shortcut;
 pub use desktop_settings::{load_layout as load_window_button_layout, load_motion_preference};
 pub use discord_access::missing as missing_discord_access;
+pub use fonts::load as load_fonts;
 pub use handlers::Handler;
 pub use launch::launch_wrapper_problem;
 pub use launch_request::{LaunchRequest, StudioTarget};
-pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
+pub use mods::{
+    cursor_arrow, disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder,
+};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 pub use themes::load as load_themes;
 pub use vr_access::missing as missing_vr_access;
@@ -463,6 +467,18 @@ pub fn has_shortcut(shortcut: Shortcut) -> bool {
 pub fn import_theme(state: &AppState, file: &Path) {
     if let Err(error) = themes::import(state, file) {
         state.report_error(&format!("Couldn't import the theme: {error:#}"));
+    }
+}
+
+pub fn import_font(state: &AppState, file: &Path) {
+    if let Err(error) = fonts::import(state, file) {
+        state.report_error(&format!("Couldn't import the font: {error:#}"));
+    }
+}
+
+pub fn remove_font(state: &AppState, family: &str) {
+    if let Err(error) = fonts::remove(state, family) {
+        state.report_error(&format!("{error:#}"));
     }
 }
 

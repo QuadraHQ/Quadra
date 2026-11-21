@@ -17,6 +17,7 @@ pub mod imported_theme;
 pub mod launch_window;
 pub mod line_field_backdrop;
 pub mod logs;
+pub mod picker;
 pub mod play_action;
 pub mod preferences;
 pub mod roblox_status;

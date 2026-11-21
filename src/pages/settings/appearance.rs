@@ -5,17 +5,21 @@ use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
 use crate::components::icon::{self, Symbol};
 use crate::components::imported_theme::{hex, parse_color};
+use crate::components::picker::{
+    Card, Opener, adding_card, card_button, choosing, picker_card, picker_grid, picker_row,
+};
 use crate::components::preferences::{icon_button, preference_group, preference_row, searchable};
 use crate::components::scene_backdrop::Scene;
-use crate::components::style::{self, Look};
+use crate::components::style::{self, ARCHIVO, JETBRAINS_MONO, Look};
 use crate::components::theme_backdrop::{
     Still, ThemeChoice, backdrop_for_theme, chosen_scene, picked_colors, theme_colors_for,
 };
 use crate::quadra::{Message, act};
 use crate::state::{
     AppState, BACKGROUND_DIMMING_STEP, BACKGROUND_DIMMINGS, BackgroundAnimation,
-    CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Theme,
+    CURSOR_EFFECT_SIZE_STEP, CURSOR_EFFECT_SIZES, Choice, CursorEffect, Picker, Theme,
 };
+use crate::utils::{PRESET_FONTS, lasting_name};
 use iced::font::Weight;
 use iced::widget::{button, column, container, row, space, stack, text, text_input};
 use iced::{Alignment, Background, Border, Color, Element, Font, Length};
@@ -28,6 +32,8 @@ const PREVIEW_HEIGHT: f32 = 74.0;
 const LABEL_HEIGHT: f32 = 30.0;
 const ANIMATIONS_PER_ROW: usize = 4;
 const ANIMATION_PREVIEW_HEIGHT: f32 = 58.0;
+const FONT_PREVIEW_HEIGHT: f32 = 62.0;
+const THEMES_OWN_FONT: &str = "Theme's own";
 const PICTURE_FILES: &[Pick] = &[Pick::File(&["png", "jpg", "jpeg", "webp"])];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,13 +86,44 @@ pub fn appearance_group<'a>(state: &AppState, look: Look) -> Element<'a, Message
             gallery(state, look),
             "App theme gallery import css",
         ))
-        .push(animation_row(state, look))
-        .push_maybe(state.animation_picker_open().then(|| {
+        .push(picker_row(
+            state,
+            look,
+            Opener {
+                picker: Picker::Animation,
+                title: "Background animation",
+                subtitle: if has_picture(state) {
+                    "Plays over your background picture. Hover one to play it"
+                } else {
+                    "Pick any animation for any theme. Hover one to play it"
+                },
+                shown: text(state.background_animation().label())
+                    .font(look.font)
+                    .size(14)
+                    .into(),
+            },
+        ))
+        .push_maybe((state.open_picker() == Picker::Animation).then(|| {
             searchable(
                 animation_picker(state, look),
                 "Background animation picker preview",
             )
         }))
+        .push(picker_row(
+            state,
+            look,
+            Opener {
+                picker: Picker::AppFont,
+                title: "Font",
+                subtitle: "The font Quadra's own text uses",
+                shown: text(app_font_label(state)).font(look.font).size(14).into(),
+            },
+        ))
+        .push_maybe(
+            (state.open_picker() == Picker::AppFont)
+                .then(|| searchable(app_font_picker(state, look), "Font typeface import font")),
+        )
+        .push(accent_row(state, look))
         .push(file_row(
             state,
             look,
@@ -163,67 +200,153 @@ fn has_picture(state: &AppState) -> bool {
     !state.background_picture().is_empty()
 }
 
-fn animation_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
-    let is_open = state.animation_picker_open();
-    let opener = button(
-        row![
-            text(state.background_animation().label())
-                .font(look.font)
-                .size(14),
-            icon::tinted(
-                if is_open {
-                    Symbol::Collapse
-                } else {
-                    Symbol::Expand
-                },
-                look.dimmed,
-            ),
-        ]
-        .spacing(10)
-        .align_y(Alignment::Center),
-    )
-    .padding([5, 10])
-    .on_press(act(move |state| state.set_animation_picker_open(!is_open)))
-    .style(move |_, status| button::Style {
-        background: Some(Background::Color(match status {
-            button::Status::Hovered | button::Status::Pressed => look.hovered,
-            button::Status::Active | button::Status::Disabled => look.raised,
-        })),
-        border: Border {
-            radius: look.radius.into(),
-            ..Border::default()
-        },
-        text_color: look.text,
-        ..button::Style::default()
-    });
-    preference_row(look, "Background animation")
-        .subtitle(if has_picture(state) {
-            "Plays over your background picture. Hover one to play it"
-        } else {
-            "Pick any animation for any theme. Hover one to play it"
-        })
-        .suffix(opener)
-        .into()
-}
-
 fn animation_picker<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
     let chosen = state.background_animation();
-    let cards = BackgroundAnimation::ALL
-        .iter()
-        .map(|&animation| animation_card(state, look, animation, animation == chosen));
-    let mut rows = column![].spacing(CARD_SPACING);
-    let mut cards = cards.peekable();
-    while cards.peek().is_some() {
-        let mut picker_row = row![].spacing(CARD_SPACING);
-        for _ in 0..ANIMATIONS_PER_ROW {
-            picker_row = picker_row.push(match cards.next() {
-                Some(card) => card,
-                None => space().width(Length::Fill).into(),
-            });
-        }
-        rows = rows.push(picker_row);
+    picker_grid(
+        BackgroundAnimation::ALL.iter().map(|&animation| {
+            picker_card(
+                look,
+                Card {
+                    preview: animation_scenery(state, look, animation),
+                    preview_height: ANIMATION_PREVIEW_HEIGHT,
+                    preview_background: Background::Color(look.window),
+                    label: animation.label().to_owned(),
+                    is_chosen: animation == chosen,
+                    on_press: choosing(move |state| state.set_background_animation(animation)),
+                    trailing: None,
+                },
+            )
+        }),
+        ANIMATIONS_PER_ROW,
+    )
+}
+
+fn app_font_label(state: &AppState) -> String {
+    match state.ui_font().as_str() {
+        "" => THEMES_OWN_FONT.to_owned(),
+        family => family.to_owned(),
     }
-    container(rows).padding(12).width(Length::Fill).into()
+}
+
+fn app_font_picker<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let chosen = state.ui_font();
+    let theme_font = Look::of_theme(state).font;
+    let imported = state.imported_fonts();
+    let built_in = std::iter::once((String::new(), theme_font, false))
+        .chain(
+            [("Archivo", ARCHIVO), ("JetBrains Mono", JETBRAINS_MONO)]
+                .into_iter()
+                .map(|(family, font)| (family.to_owned(), font, false)),
+        )
+        .chain(PRESET_FONTS.iter().map(|preset| {
+            (
+                preset.family.to_owned(),
+                Font::with_name(preset.family),
+                false,
+            )
+        }))
+        .chain(imported.0.iter().map(|font| {
+            (
+                font.family.clone(),
+                Font {
+                    weight: style::weight_of(font.weight),
+                    ..Font::with_name(lasting_name(&font.family))
+                },
+                true,
+            )
+        }));
+    let mut cards: Vec<Element<'a, Message>> = built_in
+        .map(|(family, font, is_imported)| {
+            let label = if family.is_empty() {
+                THEMES_OWN_FONT.to_owned()
+            } else {
+                family.clone()
+            };
+            let trailing = is_imported.then(|| {
+                icon_button(
+                    look,
+                    Symbol::Trash,
+                    "Remove this imported font",
+                    Some(Message::Settings(SettingsMessage::RemoveFont(
+                        family.clone(),
+                    ))),
+                )
+            });
+            let is_chosen = family == chosen;
+            picker_card(
+                look,
+                Card {
+                    preview: font_sample(font, look),
+                    preview_height: FONT_PREVIEW_HEIGHT,
+                    preview_background: Background::Color(look.window),
+                    label,
+                    is_chosen,
+                    on_press: choosing(move |state| state.set_ui_font(family.as_str())),
+                    trailing,
+                },
+            )
+        })
+        .collect();
+    cards.push(adding_card(
+        look,
+        "Import font",
+        FONT_PREVIEW_HEIGHT,
+        Message::Settings(SettingsMessage::ImportFont),
+    ));
+    picker_grid(cards, CARDS_PER_ROW)
+}
+
+pub fn font_sample<'a>(font: Font, look: Look) -> Element<'a, Message> {
+    container(
+        column![
+            text("Aa").font(font).size(24).color(look.text),
+            text("Quick brown fox")
+                .font(font)
+                .size(13)
+                .color(look.dimmed)
+                .wrapping(text::Wrapping::None),
+        ]
+        .spacing(2),
+    )
+    .padding([8, 10])
+    .into()
+}
+
+fn accent_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
+    let typed = state.accent_color();
+    let parsed = parse_color(&typed);
+    let theme_accent = Look::of_theme(state).accent;
+    let shown = parsed.unwrap_or(theme_accent);
+    let input = text_input(&hex(theme_accent), &typed)
+        .font(look.mono)
+        .size(13)
+        .width(COLOR_INPUT_WIDTH)
+        .padding([6, 10])
+        .style(style::input(look, typed.is_empty() || parsed.is_some()))
+        .on_input(|text| Message::Settings(SettingsMessage::AccentEdited(text)));
+    let swatch = container(space().width(SWATCH_SIZE).height(SWATCH_SIZE)).style(move |_| {
+        container::Style {
+            background: Some(Background::Color(shown)),
+            border: Border {
+                color: look.strong_border,
+                width: 1.0,
+                radius: (SWATCH_SIZE / 2.0).into(),
+            },
+            ..container::Style::default()
+        }
+    });
+    let mut accent_row = preference_row(look, "Accent colour")
+        .subtitle("Leave empty for the theme's accent. Use #rrggbb or rgb(…)")
+        .suffix(row![swatch, input].spacing(8).align_y(Alignment::Center));
+    if !typed.is_empty() {
+        accent_row = accent_row.suffix(icon_button(
+            look,
+            Symbol::Clear,
+            "Use the theme's accent",
+            Some(act(|state| state.set_accent_color(""))),
+        ));
+    }
+    accent_row.into()
 }
 
 fn animation_scenery<'a>(
@@ -263,47 +386,6 @@ fn animation_scenery<'a>(
         Some((scene, palette)) => gpu_or(scene.preview(palette, own.motion), still),
         None => still,
     }
-}
-
-fn animation_card<'a>(
-    state: &AppState,
-    look: Look,
-    animation: BackgroundAnimation,
-    is_chosen: bool,
-) -> Element<'a, Message> {
-    let preview = container(animation_scenery(state, look, animation))
-        .height(ANIMATION_PREVIEW_HEIGHT)
-        .width(Length::Fill)
-        .clip(true)
-        .style(move |_| container::Style {
-            background: Some(Background::Color(look.window)),
-            border: Border {
-                radius: (look.radius - 2.0).max(0.0).into(),
-                ..Border::default()
-            },
-            ..container::Style::default()
-        });
-    let mut label = row![
-        text(animation.label())
-            .font(look.font)
-            .size(13)
-            .width(Length::Fill)
-            .wrapping(text::Wrapping::None)
-    ]
-    .align_y(Alignment::Center)
-    .height(LABEL_HEIGHT);
-    if is_chosen {
-        label = label.push(icon::tinted(Symbol::Check, look.accent_text));
-    }
-    button(column![preview, container(label).padding([2, 6])])
-        .padding(4)
-        .width(Length::Fill)
-        .on_press(act(move |state| {
-            state.set_background_animation(animation);
-            state.set_animation_picker_open(false);
-        }))
-        .style(card_button(look, is_chosen))
-        .into()
 }
 
 fn uses_grid(state: &AppState) -> bool {
@@ -353,7 +435,12 @@ fn gallery<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
             theme_card(state, option, is_chosen, look)
         })
         .collect();
-    cards.push(import_card(look));
+    cards.push(adding_card(
+        look,
+        "Import CSS theme",
+        PREVIEW_HEIGHT,
+        Message::Settings(SettingsMessage::ImportTheme),
+    ));
 
     let mut rows = column![].spacing(CARD_SPACING);
     let mut cards = cards.into_iter().peekable();
@@ -448,47 +535,6 @@ fn theme_card<'a>(
         .on_press(option.apply())
         .style(card_button(look, is_chosen))
         .into()
-}
-
-fn import_card<'a>(look: Look) -> Element<'a, Message> {
-    let content = column![
-        icon::tinted(Symbol::Add, look.dimmed),
-        text("Import CSS theme")
-            .font(look.font)
-            .size(13)
-            .color(look.dimmed),
-    ]
-    .spacing(6)
-    .align_x(Alignment::Center);
-    button(
-        container(content)
-            .center_x(Length::Fill)
-            .center_y(PREVIEW_HEIGHT + LABEL_HEIGHT + 4.0),
-    )
-    .padding(4)
-    .width(Length::Fill)
-    .on_press(Message::Settings(SettingsMessage::ImportTheme))
-    .style(card_button(look, false))
-    .into()
-}
-
-fn card_button(
-    look: Look,
-    is_chosen: bool,
-) -> impl Fn(&iced::Theme, button::Status) -> button::Style {
-    move |_, status| button::Style {
-        background: Some(Background::Color(match status {
-            button::Status::Hovered | button::Status::Pressed => look.hovered,
-            button::Status::Active | button::Status::Disabled => look.raised,
-        })),
-        border: Border {
-            color: if is_chosen { look.accent } else { look.border },
-            width: if is_chosen { 2.0 } else { 1.0 },
-            radius: look.radius.into(),
-        },
-        text_color: look.text,
-        ..button::Style::default()
-    }
 }
 
 fn color_rows<'a>(state: &AppState, look: Look) -> Vec<Element<'a, Message>> {

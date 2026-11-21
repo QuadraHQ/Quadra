@@ -109,11 +109,16 @@ Flake input:
 - `~/.cache/quadra/downloads`: Downloaded files, such as Rosemary and Roblox packages
 - `~/.cache/quadra/vr`: The VR library Rosemary loads into Roblox
 - `~/.config/quadra/themes`: Themes you imported from CSS files
+- `~/.config/quadra/fonts`: Fonts you imported for Quadra's own text
 - `~/.local/share/butter/runners` and `~/.var/app/io.github.microlift.butter/data/butter/runners`: Butter runner directories that Quadra also detects runners from
 
 ## Background picture
 
 Settings › General › Appearance › Background picture shows a PNG, JPEG or WebP picture behind Quadra instead of the theme's background. The chosen background animation plays over it, adding only its light, such as rain, petals or snow. Picture dimming shades the picture in the theme's window colour so text stays readable.
+
+## Font and accent colour
+
+Settings › General › Appearance › Font changes the font of Quadra's own text, whatever the theme. It offers Quadra's built-in fonts, the preset game fonts and any `.ttf` or `.otf` font you import; each one is shown in its own typeface. Accent colour replaces the theme's accent with any colour you type.
 
 ## Custom themes
 

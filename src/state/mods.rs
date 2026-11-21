@@ -85,6 +85,21 @@ pub enum FontStyle {
     Custom,
 }
 
+impl FontStyle {
+    pub fn preset(self) -> Option<&'static crate::utils::PresetFont> {
+        let index = match self {
+            Self::Stock | Self::Custom => return None,
+            Self::ComicNeue => 0,
+            Self::PressStart => 1,
+            Self::Bangers => 2,
+            Self::Vt323 => 3,
+            Self::PatrickHand => 4,
+            Self::AtkinsonHyperlegible => 5,
+        };
+        crate::utils::PRESET_FONTS.get(index)
+    }
+}
+
 impl Choice for FontStyle {
     const ALL: &'static [Self] = &[
         Self::Stock,

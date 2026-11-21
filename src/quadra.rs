@@ -29,7 +29,7 @@ use crate::pages::servers::{Servers, ServersMessage};
 use crate::pages::settings::{self, Settings, SettingsMessage};
 use crate::single_instance;
 use crate::state::{Animations, AppState, Client, LaunchMode, LogChange};
-use crate::utils::{BUNDLED_FONTS, open_with_default_app};
+use crate::utils::{BUNDLED_FONTS, PRESET_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
 use iced::widget::{Column, column, container, image, space, stack, text_editor};
 use iced::{
@@ -37,7 +37,7 @@ use iced::{
     window,
 };
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -54,12 +54,14 @@ const PROPERTIES_THAT_DECIDE_TRAY_ICON: [&str; 2] = ["run-in-background", "launc
 const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
     ["busy", "running", "roblox-graphics-started"];
 const LINEAR_LIGHT_GAMMA: f32 = 2.2;
-const PROPERTIES_THAT_DECIDE_LOOK: [&str; 11] = [
+const PROPERTIES_THAT_DECIDE_LOOK: [&str; 13] = [
     "animations",
     "system-reduces-motion",
     "cursor-effect",
     "cursor-effect-size",
     "grid-bulge",
+    "ui-font",
+    "accent-color",
     "theme",
     "system-prefers-dark",
     "imported-theme",
@@ -161,6 +163,7 @@ enum Reaction {
     TrayIconMayBeWanted,
     LaunchProgressChanged,
     LookChanged,
+    FontsImported,
     TitleBarChanged,
     ButtonLayoutChanged,
     Log(Option<String>),
@@ -189,6 +192,7 @@ pub struct Quadra {
     launched_directly: bool,
     quits_once_roblox_exits: bool,
     grabbed_window: Option<window::Id>,
+    loaded_fonts: HashSet<String>,
     main_window_is_maximized: bool,
     button_layout: ButtonLayout,
 }
@@ -206,6 +210,9 @@ pub fn run(invocation: Invocation) -> iced::Result {
     for font in BUNDLED_FONTS {
         daemon = daemon.font(font);
     }
+    for preset in &PRESET_FONTS {
+        daemon = daemon.font(preset.bytes);
+    }
     daemon.run()
 }
 
@@ -217,6 +224,7 @@ impl Quadra {
         backend::load_window_button_layout(&state);
         backend::load_motion_preference(&state);
         backend::load_themes(&state);
+        backend::load_fonts(&state);
         settings::keep_choices_valid(&state);
         react_to_state(&state, &reactions);
 
@@ -242,6 +250,7 @@ impl Quadra {
             launched_directly: false,
             quits_once_roblox_exits: false,
             grabbed_window: None,
+            loaded_fonts: HashSet::new(),
             main_window_is_maximized: false,
             button_layout: ButtonLayout::parse(""),
         };
@@ -250,8 +259,9 @@ impl Quadra {
 
         let handled = quadra.handle(invocation);
         let reacted = quadra.react();
+        let fonts = quadra.load_imported_fonts();
         let system_theme = system::theme().map(Message::SystemTheme);
-        (quadra, Task::batch([system_theme, handled, reacted]))
+        (quadra, Task::batch([system_theme, handled, reacted, fonts]))
     }
 
     fn handle(&mut self, invocation: Invocation) -> Task<Message> {
@@ -470,6 +480,7 @@ impl Quadra {
                     self.restyle();
                     Task::none()
                 }
+                Reaction::FontsImported => self.load_imported_fonts(),
                 Reaction::TitleBarChanged => self.redecorate_windows(),
                 Reaction::ButtonLayoutChanged => {
                     self.button_layout = ButtonLayout::parse(&self.state.window_button_layout());
@@ -486,6 +497,17 @@ impl Quadra {
             });
         }
         Task::batch(tasks)
+    }
+
+    fn load_imported_fonts(&mut self) -> Task<Message> {
+        let fonts = self.state.imported_fonts();
+        let loads: Vec<Task<Message>> = fonts
+            .0
+            .iter()
+            .filter(|font| self.loaded_fonts.insert(font.family.clone()))
+            .map(|font| iced::font::load(font.bytes.to_vec()).map(|_| Message::Ignored))
+            .collect();
+        Task::batch(loads)
     }
 
     fn act_on_window(&mut self, id: window::Id, action: WindowAction) -> Task<Message> {
@@ -925,6 +947,7 @@ fn react_to_state(state: &AppState, reactions: &Reactions) {
     );
     state.connect_properties_notify(&PROPERTIES_THAT_DECIDE_LOOK, push(|| Reaction::LookChanged));
     state.connect_property_notify("system-title-bar", push(|| Reaction::TitleBarChanged));
+    state.connect_property_notify("imported-fonts", push(|| Reaction::FontsImported));
     state.connect_property_notify(
         "window-button-layout",
         push(|| Reaction::ButtonLayoutChanged),

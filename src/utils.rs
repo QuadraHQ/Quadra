@@ -1,6 +1,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 
 pub const APP_ICON_PNG: &[u8] =
     include_bytes!("../data/icons/hicolor/256x256/apps/org.quadrahq.Quadra.png");
@@ -9,6 +10,42 @@ pub const BUNDLED_FONTS: [&[u8]; 2] = [
     include_bytes!("../assets/fonts/Archivo.ttf"),
     include_bytes!("../assets/fonts/JetBrainsMono.ttf"),
 ];
+
+pub struct PresetFont {
+    pub family: &'static str,
+    pub bytes: &'static [u8],
+}
+
+macro_rules! preset_font {
+    ($family:literal, $folder:literal) => {
+        PresetFont {
+            family: $family,
+            bytes: include_bytes!(concat!("../data/mods/fonts/", $folder, "/Font.ttf")),
+        }
+    };
+}
+
+pub const PRESET_FONTS: [PresetFont; 6] = [
+    preset_font!("Comic Neue", "comic_neue"),
+    preset_font!("Press Start 2P", "press_start"),
+    preset_font!("Bangers", "bangers"),
+    preset_font!("VT323", "vt323"),
+    preset_font!("Patrick Hand", "patrick_hand"),
+    preset_font!("Atkinson Hyperlegible", "atkinson_hyperlegible"),
+];
+
+pub fn lasting_name(name: &str) -> &'static str {
+    static NAMES: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
+    let mut names = NAMES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(&kept) = names.iter().find(|&&kept| kept == name) {
+        return kept;
+    }
+    let kept: &'static str = Box::leak(name.to_owned().into_boxed_str());
+    names.push(kept);
+    kept
+}
 
 pub fn home_directory() -> PathBuf {
     dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"))

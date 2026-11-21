@@ -33,6 +33,10 @@ pub fn apply(files: &mut ContentFiles, settings: &ModSettings) -> io::Result<()>
     }
 }
 
+pub fn arrow_of(style: CursorStyle) -> Option<&'static [u8]> {
+    preset_of(style).first().map(|cursor| cursor.image)
+}
+
 fn preset_of(style: CursorStyle) -> Vec<Cursor> {
     match style {
         CursorStyle::Classic2006 => vec![

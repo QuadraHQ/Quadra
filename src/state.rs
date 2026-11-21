@@ -25,6 +25,7 @@ use std::io::ErrorKind;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::components::imported_theme::ImportedTheme;
@@ -40,7 +41,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 53] = [
+const SAVED_PROPERTIES: [&str; 55] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -92,6 +93,8 @@ const SAVED_PROPERTIES: [&str; 53] = [
     "grid-bulge",
     "background-picture",
     "background-dimming",
+    "ui-font",
+    "accent-color",
     "advanced-settings-visible",
     "system-title-bar",
 ];
@@ -275,6 +278,27 @@ pub const BACKGROUND_DIMMINGS: RangeInclusive<u32> = 0..=80;
 pub const BACKGROUND_DIMMING_STEP: u32 = 5;
 const DEFAULT_BACKGROUND_DIMMING: u32 = 35;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Picker {
+    #[default]
+    None,
+    Animation,
+    AppFont,
+    GameFont,
+    Cursor,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportedFont {
+    pub family: String,
+    pub weight: u16,
+    pub file: PathBuf,
+    pub bytes: Arc<[u8]>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ImportedFonts(pub Rc<Vec<ImportedFont>>);
+
 #[derive(Debug, Clone, Default)]
 pub struct BackgroundImage(pub Option<iced::widget::image::Handle>);
 
@@ -383,6 +407,10 @@ struct SavedSettings {
     grid_bulge: bool,
     background_picture: String,
     background_dimming: u32,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    ui_font: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    accent_color: String,
     advanced_settings_visible: bool,
     system_title_bar: bool,
 }
@@ -444,6 +472,8 @@ impl Default for SavedSettings {
             grid_bulge: false,
             background_picture: String::new(),
             background_dimming: DEFAULT_BACKGROUND_DIMMING,
+            ui_font: String::new(),
+            accent_color: String::new(),
             advanced_settings_visible: false,
             system_title_bar: false,
         }
@@ -581,7 +611,10 @@ properties! {
     background_picture set_background_picture: String = "background-picture",
     background_dimming set_background_dimming: u32 = "background-dimming",
     background_image set_background_image: BackgroundImage = "background-image",
-    animation_picker_open set_animation_picker_open: bool = "animation-picker-open",
+    open_picker set_open_picker: Picker = "open-picker",
+    ui_font set_ui_font: String = "ui-font",
+    accent_color set_accent_color: String = "accent-color",
+    imported_fonts set_imported_fonts: ImportedFonts = "imported-fonts",
     system_reduces_motion set_system_reduces_motion: bool = "system-reduces-motion",
     system_prefers_dark set_system_prefers_dark: bool = "system-prefers-dark",
     window_button_layout set_window_button_layout: String = "window-button-layout",
@@ -752,6 +785,8 @@ impl AppState {
         properties
             .background_picture
             .replace(settings.background_picture);
+        properties.ui_font.replace(settings.ui_font);
+        properties.accent_color.replace(settings.accent_color);
         properties
             .background_dimming
             .replace(settings.background_dimming.min(*BACKGROUND_DIMMINGS.end()));
@@ -1013,6 +1048,8 @@ impl AppState {
             cursor_effect_size: self.cursor_effect_size(),
             grid_bulge: self.grid_bulge(),
             background_picture: self.background_picture(),
+            ui_font: self.ui_font(),
+            accent_color: self.accent_color(),
             background_dimming: self.background_dimming(),
             advanced_settings_visible: self.advanced_settings_visible(),
             system_title_bar: self.system_title_bar(),
