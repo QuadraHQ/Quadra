@@ -89,11 +89,15 @@ impl Scene {
     }
 
     pub fn view(self, palette: Palette, motion: Animations) -> Element<'static, Message> {
-        self.played(palette, motion, Playing::Backdrop)
+        self.played(palette, motion, Playing::Backdrop, Ground::Own)
+    }
+
+    pub fn over_picture(self, palette: Palette, motion: Animations) -> Element<'static, Message> {
+        self.played(palette, motion, Playing::Backdrop, Ground::Picture)
     }
 
     pub fn preview(self, palette: Palette, motion: Animations) -> Element<'static, Message> {
-        self.played(palette, motion, Playing::Preview)
+        self.played(palette, motion, Playing::Preview, Ground::Own)
     }
 
     fn played(
@@ -101,12 +105,14 @@ impl Scene {
         palette: Palette,
         motion: Animations,
         playing: Playing,
+        ground: Ground,
     ) -> Element<'static, Message> {
         shader::Shader::new(SceneBackdrop {
             scene: self,
             palette,
             motion,
             playing,
+            ground,
         })
         .width(Length::Fill)
         .height(Length::Fill)
@@ -327,11 +333,18 @@ enum Playing {
     Preview,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ground {
+    Own,
+    Picture,
+}
+
 struct SceneBackdrop {
     scene: Scene,
     palette: Palette,
     motion: Animations,
     playing: Playing,
+    ground: Ground,
 }
 
 impl SceneBackdrop {
@@ -496,6 +509,7 @@ impl shader::Program<Message> for SceneBackdrop {
             scene: self.scene,
             palette: self.palette,
             seconds: clock.seconds(),
+            ground: self.ground,
             place: [bounds.x, bounds.y, bounds.width, bounds.height]
                 .map(|value| value.round() as i32),
         }
@@ -507,6 +521,7 @@ struct SceneFrame {
     scene: Scene,
     palette: Palette,
     seconds: f32,
+    ground: Ground,
     place: [i32; 4],
 }
 
@@ -574,7 +589,10 @@ impl shader::Primitive for SceneFrame {
             };
             render_pass.set_bind_group(1, &glow.group, &[]);
         }
-        render_pass.set_pipeline(&painter.show);
+        render_pass.set_pipeline(match self.ground {
+            Ground::Own => &painter.show,
+            Ground::Picture => &painter.light_only,
+        });
         render_pass.draw(0..3, 0..1);
         let motes = if self.is_on_light_window() {
             &painter.shades
@@ -636,6 +654,7 @@ struct GlowTexture {
 struct Painter {
     glow: Option<wgpu::RenderPipeline>,
     show: wgpu::RenderPipeline,
+    light_only: wgpu::RenderPipeline,
     motes: Option<wgpu::RenderPipeline>,
     shades: Option<wgpu::RenderPipeline>,
 }
@@ -896,21 +915,35 @@ impl Painter {
                 },
             )
         });
-        let show = render_pipeline(
-            device,
-            &module,
-            Drawing {
-                label: scene.name(),
-                layout: if has_glow {
-                    &layouts.with_glow
-                } else {
-                    &layouts.scene_only
+        let covering = |fragment, target| {
+            render_pipeline(
+                device,
+                &module,
+                Drawing {
+                    label: scene.name(),
+                    layout: if has_glow {
+                        &layouts.with_glow
+                    } else {
+                        &layouts.scene_only
+                    },
+                    vertex: "cover",
+                    fragment,
+                    target,
+                    topology: wgpu::PrimitiveTopology::TriangleList,
                 },
-                vertex: "cover",
-                fragment: if on_srgb { "show_on_srgb" } else { "show" },
-                target: opaque(format),
-                topology: wgpu::PrimitiveTopology::TriangleList,
+            )
+        };
+        let show = covering(
+            if on_srgb { "show_on_srgb" } else { "show" },
+            opaque(format),
+        );
+        let light_only = covering(
+            if on_srgb {
+                "light_only_on_srgb"
+            } else {
+                "light_only"
             },
+            adding_light(format),
         );
         let mote_pipeline = |(fragment, fragment_on_srgb): (&str, &str), target| {
             (scene.motes() > 0).then(|| {
@@ -934,6 +967,7 @@ impl Painter {
         Self {
             glow,
             show,
+            light_only,
             motes,
             shades,
         }

@@ -198,7 +198,7 @@ fn animation_row<'a>(state: &AppState, look: Look) -> Element<'a, Message> {
     });
     preference_row(look, "Background animation")
         .subtitle(if has_picture(state) {
-            "Your background picture covers it"
+            "Plays over your background picture. Hover one to play it"
         } else {
             "Pick any animation for any theme. Hover one to play it"
         })

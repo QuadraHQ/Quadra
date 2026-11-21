@@ -139,6 +139,16 @@ fn show_on_srgb(covering: Covering) -> @location(0) vec4<f32> {
 }
 
 @fragment
+fn light_only(covering: Covering) -> @location(0) vec4<f32> {
+    return vec4<f32>(max(srgb_from_linear(finished(covering)) - scene.base.rgb, vec3<f32>(0.0)), 0.0);
+}
+
+@fragment
+fn light_only_on_srgb(covering: Covering) -> @location(0) vec4<f32> {
+    return vec4<f32>(max(finished(covering) - scene.base_light.rgb, vec3<f32>(0.0)), 0.0);
+}
+
+@fragment
 fn shine(mote: Mote) -> @location(0) vec4<f32> {
     return vec4<f32>(mote.tint * mote_light(mote), 0.0);
 }

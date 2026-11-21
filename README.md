@@ -113,7 +113,7 @@ Flake input:
 
 ## Background picture
 
-Settings › General › Appearance › Background picture shows a PNG, JPEG or WebP picture behind Quadra instead of the theme's background. Picture dimming shades it in the theme's window colour so text stays readable.
+Settings › General › Appearance › Background picture shows a PNG, JPEG or WebP picture behind Quadra instead of the theme's background. The chosen background animation plays over it, adding only its light, such as rain, petals or snow. Picture dimming shades the picture in the theme's window colour so text stays readable.
 
 ## Custom themes
 

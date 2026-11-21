@@ -33,8 +33,8 @@ use crate::utils::{BUNDLED_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
 use iced::widget::{Column, column, container, image, space, stack, text_editor};
 use iced::{
-    Background, Color, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system,
-    theme, window,
+    Background, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system, theme,
+    window,
 };
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -800,30 +800,36 @@ impl Quadra {
     fn picture(&self) -> Option<Element<'_, Message>> {
         let handle = self.state.background_image().0?;
         let dimming = self.state.background_dimming() as f32 / 100.0;
-        let shade = Color {
-            a: 1.0 - (1.0 - dimming).powf(LINEAR_LIGHT_GAMMA),
-            ..self.look.window
-        };
+        let window = self.look.window;
         Some(
-            stack![
+            container(
                 image(handle)
                     .content_fit(ContentFit::Cover)
+                    .opacity((1.0 - dimming).powf(LINEAR_LIGHT_GAMMA))
                     .width(Length::Fill)
                     .height(Length::Fill),
-                container(space().width(Length::Fill).height(Length::Fill)).style(move |_| {
-                    container::Style {
-                        background: Some(Background::Color(shade)),
-                        ..container::Style::default()
-                    }
-                }),
-            ]
+            )
+            .style(move |_| container::Style {
+                background: Some(Background::Color(window)),
+                ..container::Style::default()
+            })
             .into(),
         )
     }
 
     fn backdrop(&self) -> Option<Element<'_, Message>> {
         if let Some(picture) = self.picture() {
-            return Some(picture);
+            return Some(match self.backdrop.scene {
+                Some((scene, palette)) => stack![
+                    picture,
+                    gpu_or(
+                        scene.over_picture(palette, self.backdrop.motion),
+                        Element::from(space()),
+                    ),
+                ]
+                .into(),
+                None => picture,
+            });
         }
         let still = match &self.backdrop.still {
             Still::Nothing => None,
