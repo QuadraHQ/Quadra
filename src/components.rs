@@ -1,3 +1,4 @@
+pub mod built_in_themes;
 pub mod close_roblox_dialog;
 pub mod command_dialog;
 pub mod cursor_effect;
@@ -24,6 +25,7 @@ pub mod roblox_status;
 pub mod scanline_backdrop;
 pub mod scene_backdrop;
 pub mod style;
+pub mod switch;
 pub mod theme_backdrop;
 pub mod title_bar;
 pub mod tray;

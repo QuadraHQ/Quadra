@@ -1,0 +1,26 @@
+:root {
+  --name: "Ember";
+  --window: #16110e;
+  --title-bar: rgba(22, 17, 14, 0.7);
+  --card: #211913;
+  --dialog: #221a14;
+  --field: rgba(0, 0, 0, 0.3);
+  --raised: #2b2119;
+  --hovered: #352920;
+  --pressed: #403128;
+  --border: #2f251e;
+  --strong-border: #403228;
+  --shade: rgba(0, 0, 0, 0.6);
+  --text: #f5ebe3;
+  --dimmed: #b4a597;
+  --accent: #ff8a3d;
+  --on-accent: #1f0f04;
+  --accent-text: #ffae75;
+  --success: #9ad48f;
+  --warning: #f2c14e;
+  --destructive: #ff6d5a;
+  --radius: 10px;
+  --mono-font: "JetBrains Mono";
+  --background: linear-gradient(180deg, #2a1a10, #16110e 60%);
+  --animation: embers;
+}

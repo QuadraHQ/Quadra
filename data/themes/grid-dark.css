@@ -1,0 +1,27 @@
+:root {
+  --name: "Grid Dark";
+  --window: #10141b;
+  --title-bar: rgba(16, 20, 27, 0.86);
+  --card: rgba(24, 33, 44, 0.94);
+  --dialog: #18212c;
+  --field: rgba(0, 0, 0, 0.45);
+  --raised: #202b38;
+  --hovered: #2a3747;
+  --pressed: rgba(240, 240, 240, 0.12);
+  --border: #263343;
+  --strong-border: #344458;
+  --shade: rgba(0, 0, 0, 0.7);
+  --text: #edf2f8;
+  --dimmed: #acb9ca;
+  --accent: #9cc3ff;
+  --on-accent: #0c1829;
+  --accent-text: #a6c8ff;
+  --success: #a6c8ff;
+  --warning: #b0c3de;
+  --destructive: #edf2f8;
+  --radius: 0px;
+  --font: "Archivo";
+  --mono-font: "JetBrains Mono";
+  --pattern: grid;
+  --pattern-color: rgba(128, 158, 197, 0.09);
+}

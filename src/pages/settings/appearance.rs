@@ -13,6 +13,7 @@ use crate::components::scene_backdrop::Scene;
 use crate::components::style::{self, ARCHIVO, JETBRAINS_MONO, Look};
 use crate::components::theme_backdrop::{
     Still, ThemeChoice, backdrop_for_theme, chosen_scene, picked_colors, theme_colors_for,
+    theme_has_grid,
 };
 use crate::quadra::{Message, act};
 use crate::state::{
@@ -60,7 +61,7 @@ impl ThemeOption {
 
     fn look(&self, state: &AppState) -> Look {
         match self {
-            Self::BuiltIn(theme) => Look::for_theme(*theme, state.system_prefers_dark()),
+            Self::BuiltIn(theme) => Look::for_theme(*theme),
             Self::Imported(name) => state
                 .imported_themes()
                 .named(name)
@@ -73,6 +74,7 @@ impl ThemeOption {
         act(move |state| match &option {
             ThemeOption::BuiltIn(theme) => {
                 state.set_imported_theme("");
+                state.set_theme_follows_system(false);
                 state.set_theme(*theme);
             }
             ThemeOption::Imported(name) => state.set_imported_theme(name.as_str()),
@@ -378,7 +380,7 @@ fn animation_scenery<'a>(
     let own = backdrop_for_theme(state, chosen_option(state).choice(), &look);
     let still: Element<'a, Message> = match &own.still {
         Still::Gradient(glow) => gradient_backdrop(glow),
-        Still::Nothing | Still::Grid | Still::LineField | Still::Scanlines => {
+        Still::Nothing | Still::Grid(_) | Still::LineField | Still::Scanlines(_) => {
             space().width(Length::Fill).height(Length::Fill).into()
         }
     };
@@ -410,11 +412,7 @@ fn animation_scenery<'a>(
 }
 
 fn uses_grid(state: &AppState) -> bool {
-    state.theme() == Theme::Grid
-        && state
-            .imported_themes()
-            .named(&state.imported_theme())
-            .is_none()
+    theme_has_grid(state)
 }
 
 fn cursor_effect_description(effect: CursorEffect) -> &'static str {
@@ -488,7 +486,7 @@ fn theme_card<'a>(
     let backdrop = backdrop_for_theme(state, option.choice(), &card_look);
     let still: Element<'a, Message> = match &backdrop.still {
         Still::Gradient(glow) => gradient_backdrop(glow),
-        Still::Nothing | Still::Grid | Still::LineField | Still::Scanlines => {
+        Still::Nothing | Still::Grid(_) | Still::LineField | Still::Scanlines(_) => {
             space().width(Length::Fill).height(Length::Fill).into()
         }
     };

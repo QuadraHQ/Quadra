@@ -1,0 +1,26 @@
+:root {
+  --name: "Paper";
+  --window: #f5f0e6;
+  --title-bar: #ede6d8;
+  --card: #fffcf6;
+  --dialog: #fffcf6;
+  --field: rgba(60, 45, 20, 0.05);
+  --raised: rgba(60, 45, 20, 0.07);
+  --hovered: rgba(60, 45, 20, 0.11);
+  --pressed: rgba(60, 45, 20, 0.17);
+  --border: rgba(60, 45, 20, 0.12);
+  --strong-border: rgba(60, 45, 20, 0.24);
+  --shade: rgba(40, 30, 15, 0.25);
+  --text: #2b2620;
+  --dimmed: #6f6558;
+  --accent: #1f6f6b;
+  --on-accent: #ffffff;
+  --accent-text: #1a5c58;
+  --success: #2e7d4f;
+  --warning: #b7791f;
+  --destructive: #b3261e;
+  --radius: 6px;
+  --font: "Archivo";
+  --mono-font: "JetBrains Mono";
+  --animation: leaves;
+}

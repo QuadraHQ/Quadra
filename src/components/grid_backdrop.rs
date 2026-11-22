@@ -1,19 +1,32 @@
+use super::theme_backdrop::PatternColors;
 use crate::quadra::Message;
 use iced::mouse::Cursor;
 use iced::widget::canvas::{self, Cache, Frame, Geometry};
-use iced::{Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, color};
+use iced::{Element, Length, Point, Rectangle, Renderer, Size, Theme};
 
 const CELL_SIZE: usize = 32;
 const LINE_WIDTH: f32 = 1.0;
-pub const BACKGROUND: Color = color!(0x10141b);
-pub const LINE: Color = Color::from_rgba(128.0 / 255.0, 158.0 / 255.0, 197.0 / 255.0, 0.09);
 
-#[derive(Default)]
 pub struct GridBackdrop {
     cache: Cache,
+    colors: PatternColors,
 }
 
 impl GridBackdrop {
+    pub fn new(colors: PatternColors) -> Self {
+        Self {
+            cache: Cache::new(),
+            colors,
+        }
+    }
+
+    pub fn paint_with(&mut self, colors: PatternColors) {
+        if self.colors != colors {
+            self.colors = colors;
+            self.cache.clear();
+        }
+    }
+
     pub fn view(&self) -> Element<'_, Message> {
         canvas::Canvas::new(self)
             .width(Length::Fill)
@@ -37,19 +50,19 @@ impl canvas::Program<Message> for GridBackdrop {
             .cache
             .draw(renderer, bounds.size(), |frame: &mut Frame| {
                 let Size { width, height } = frame.size();
-                frame.fill_rectangle(Point::ORIGIN, frame.size(), BACKGROUND);
+                frame.fill_rectangle(Point::ORIGIN, frame.size(), self.colors.background);
                 for x in (0..width as usize).step_by(CELL_SIZE) {
                     frame.fill_rectangle(
                         Point::new(x as f32, 0.0),
                         Size::new(LINE_WIDTH, height),
-                        LINE,
+                        self.colors.line,
                     );
                 }
                 for y in (0..height as usize).step_by(CELL_SIZE) {
                     frame.fill_rectangle(
                         Point::new(0.0, y as f32),
                         Size::new(width, LINE_WIDTH),
-                        LINE,
+                        self.colors.line,
                     );
                 }
             });

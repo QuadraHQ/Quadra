@@ -1,19 +1,32 @@
+use super::theme_backdrop::PatternColors;
 use crate::quadra::Message;
 use iced::mouse::Cursor;
 use iced::widget::canvas::{self, Cache, Frame, Geometry};
-use iced::{Color, Element, Length, Point, Rectangle, Renderer, Size, Theme, color};
+use iced::{Element, Length, Point, Rectangle, Renderer, Size, Theme};
 
 const LINE_SPACING: usize = 3;
 const LINE_HEIGHT: f32 = 1.0;
-const BACKGROUND: Color = color!(0x030805);
-const LINE: Color = Color::from_rgba(57.0 / 255.0, 1.0, 122.0 / 255.0, 0.035);
 
-#[derive(Default)]
 pub struct ScanlineBackdrop {
     cache: Cache,
+    colors: PatternColors,
 }
 
 impl ScanlineBackdrop {
+    pub fn new(colors: PatternColors) -> Self {
+        Self {
+            cache: Cache::new(),
+            colors,
+        }
+    }
+
+    pub fn paint_with(&mut self, colors: PatternColors) {
+        if self.colors != colors {
+            self.colors = colors;
+            self.cache.clear();
+        }
+    }
+
     pub fn view(&self) -> Element<'_, Message> {
         canvas::Canvas::new(self)
             .width(Length::Fill)
@@ -37,12 +50,12 @@ impl canvas::Program<Message> for ScanlineBackdrop {
             .cache
             .draw(renderer, bounds.size(), |frame: &mut Frame| {
                 let Size { width, height } = frame.size();
-                frame.fill_rectangle(Point::ORIGIN, frame.size(), BACKGROUND);
+                frame.fill_rectangle(Point::ORIGIN, frame.size(), self.colors.background);
                 for y in (0..height as usize).step_by(LINE_SPACING) {
                     frame.fill_rectangle(
                         Point::new(0.0, y as f32),
                         Size::new(width, LINE_HEIGHT),
-                        LINE,
+                        self.colors.line,
                     );
                 }
             });

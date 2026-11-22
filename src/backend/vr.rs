@@ -208,7 +208,7 @@ fn check_requirements(rosemary: &Path) -> Result<OpenXrRuntime, String> {
     }
     if !rosemary_supports_vr(rosemary) {
         return Err(
-            "The selected Rosemary can't load VR. Choose Quadra's Rosemary under Runtime."
+            "The selected Rosemary can't load VR. Choose Quadra's Rosemary as the runner."
                 .to_owned(),
         );
     }

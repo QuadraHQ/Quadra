@@ -1,3 +1,4 @@
+use super::built_in_themes::built_in;
 use super::imported_theme::{brightness, parse_color};
 use crate::state::{AppState, Theme};
 use iced::font::Weight;
@@ -44,12 +45,14 @@ pub struct Look {
     pub font: Font,
     pub mono: Font,
     pub text_scale: f32,
+    pub animates: bool,
 }
 
 impl Look {
     pub fn of(state: &AppState) -> Self {
         let mut look = Self::of_theme(state);
         look.text_scale = state.text_size() as f32 / 100.0;
+        look.animates = state.motion() != crate::state::Animations::Off;
         let family = state.ui_font();
         if !family.is_empty() {
             let imported = state.imported_fonts();
@@ -83,26 +86,16 @@ impl Look {
         let imported = state.imported_themes();
         match imported.named(&state.imported_theme()) {
             Some(theme) => theme.look,
-            None => Self::for_theme(state.theme(), state.system_prefers_dark()),
+            None => Self::for_theme(state.theme()),
         }
     }
 
-    pub fn adwaita(dark: bool) -> Self {
-        if dark { ADWAITA_DARK } else { ADWAITA_LIGHT }
+    pub fn fallback(dark: bool) -> Self {
+        if dark { FALLBACK_DARK } else { FALLBACK_LIGHT }
     }
 
-    pub fn for_theme(theme: Theme, system_prefers_dark: bool) -> Self {
-        match theme {
-            Theme::Adwaita if system_prefers_dark => ADWAITA_DARK,
-            Theme::Adwaita => ADWAITA_LIGHT,
-            Theme::Grid => GRID,
-            Theme::Monochrome => MONOCHROME,
-            Theme::Aurora => AURORA,
-            Theme::Ember => EMBER,
-            Theme::Paper => PAPER,
-            Theme::Phosphor => PHOSPHOR,
-            Theme::Prism => PRISM,
-        }
+    pub fn for_theme(theme: Theme) -> Self {
+        built_in(theme).look
     }
 
     pub fn iced_theme(&self) -> iced::Theme {
@@ -149,7 +142,7 @@ impl Look {
     }
 }
 
-const ADWAITA_LIGHT: Look = Look {
+const FALLBACK_LIGHT: Look = Look {
     dark: false,
     window: color!(0xfafafb),
     card: color!(0xffffff),
@@ -174,9 +167,10 @@ const ADWAITA_LIGHT: Look = Look {
     font: Font::DEFAULT,
     mono: Font::MONOSPACE,
     text_scale: 1.0,
+    animates: true,
 };
 
-const ADWAITA_DARK: Look = Look {
+const FALLBACK_DARK: Look = Look {
     dark: true,
     window: color!(0x222226),
     card: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
@@ -201,195 +195,7 @@ const ADWAITA_DARK: Look = Look {
     font: Font::DEFAULT,
     mono: Font::MONOSPACE,
     text_scale: 1.0,
-};
-
-const GRID: Look = Look {
-    dark: true,
-    window: color!(0x10141b),
-    card: Color::from_rgba(24.0 / 255.0, 33.0 / 255.0, 44.0 / 255.0, 0.94),
-    border: color!(0x263343),
-    strong_border: color!(0x344458),
-    text: color!(0xedf2f8),
-    dimmed: color!(0xacb9ca),
-    accent: color!(0x9cc3ff),
-    on_accent: color!(0x0c1829),
-    accent_text: color!(0xa6c8ff),
-    raised: color!(0x202b38),
-    hovered: color!(0x2a3747),
-    pressed: Color::from_rgba(240.0 / 255.0, 240.0 / 255.0, 240.0 / 255.0, 0.12),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
-    dialog: color!(0x18212c),
-    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.7),
-    bar: Color::from_rgba(16.0 / 255.0, 20.0 / 255.0, 27.0 / 255.0, 0.86),
-    destructive: color!(0xedf2f8),
-    success: color!(0xa6c8ff),
-    warning: color!(0xb0c3de),
-    radius: 0.0,
-    font: ARCHIVO,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const MONOCHROME: Look = Look {
-    dark: true,
-    window: color!(0x000000),
-    card: Color::from_rgba(30.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 0.75),
-    border: color!(0x1e1e1e),
-    strong_border: color!(0x2f2f2f),
-    text: color!(0xe8e8e8),
-    dimmed: color!(0x9a9a9a),
-    accent: color!(0xf0f0f0),
-    on_accent: color!(0x000000),
-    accent_text: color!(0xf0f0f0),
-    raised: color!(0x1c1c1c),
-    hovered: color!(0x262626),
-    pressed: Color::from_rgba(240.0 / 255.0, 240.0 / 255.0, 240.0 / 255.0, 0.12),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.45),
-    dialog: color!(0x121212),
-    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.7),
-    bar: Color::from_rgba(0.0, 0.0, 0.0, 0.86),
-    destructive: color!(0xe8e8e8),
-    success: color!(0xf0f0f0),
-    warning: color!(0xbdbdbd),
-    radius: 0.0,
-    font: ARCHIVO,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const AURORA: Look = Look {
-    dark: true,
-    window: color!(0x140d24),
-    card: Color::from_rgba(1.0, 1.0, 1.0, 0.06),
-    border: Color::from_rgba(196.0 / 255.0, 160.0 / 255.0, 1.0, 0.16),
-    strong_border: Color::from_rgba(196.0 / 255.0, 160.0 / 255.0, 1.0, 0.3),
-    text: color!(0xf4eefe),
-    dimmed: color!(0xb5a8d2),
-    accent: color!(0xff5fa2),
-    on_accent: color!(0x24081c),
-    accent_text: color!(0xff9ccb),
-    raised: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
-    hovered: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
-    pressed: Color::from_rgba(1.0, 1.0, 1.0, 0.14),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.25),
-    dialog: color!(0x1e1535),
-    shade: Color::from_rgba(5.0 / 255.0, 2.0 / 255.0, 12.0 / 255.0, 0.6),
-    bar: Color::from_rgba(20.0 / 255.0, 13.0 / 255.0, 36.0 / 255.0, 0.55),
-    destructive: color!(0xff7a7a),
-    success: color!(0x7ee8b8),
-    warning: color!(0xffd36e),
-    radius: 12.0,
-    font: Font::DEFAULT,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const EMBER: Look = Look {
-    dark: true,
-    window: color!(0x16110e),
-    card: color!(0x211913),
-    border: color!(0x2f251e),
-    strong_border: color!(0x403228),
-    text: color!(0xf5ebe3),
-    dimmed: color!(0xb4a597),
-    accent: color!(0xff8a3d),
-    on_accent: color!(0x1f0f04),
-    accent_text: color!(0xffae75),
-    raised: color!(0x2b2119),
-    hovered: color!(0x352920),
-    pressed: color!(0x403128),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
-    dialog: color!(0x221a14),
-    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.6),
-    bar: Color::from_rgba(22.0 / 255.0, 17.0 / 255.0, 14.0 / 255.0, 0.7),
-    destructive: color!(0xff6d5a),
-    success: color!(0x9ad48f),
-    warning: color!(0xf2c14e),
-    radius: 10.0,
-    font: Font::DEFAULT,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const PAPER: Look = Look {
-    dark: false,
-    window: color!(0xf5f0e6),
-    card: color!(0xfffcf6),
-    border: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.12),
-    strong_border: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.24),
-    text: color!(0x2b2620),
-    dimmed: color!(0x6f6558),
-    accent: color!(0x1f6f6b),
-    on_accent: color!(0xffffff),
-    accent_text: color!(0x1a5c58),
-    raised: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.07),
-    hovered: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.11),
-    pressed: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.17),
-    field: Color::from_rgba(60.0 / 255.0, 45.0 / 255.0, 20.0 / 255.0, 0.05),
-    dialog: color!(0xfffcf6),
-    shade: Color::from_rgba(40.0 / 255.0, 30.0 / 255.0, 15.0 / 255.0, 0.25),
-    bar: color!(0xede6d8),
-    destructive: color!(0xb3261e),
-    success: color!(0x2e7d4f),
-    warning: color!(0xb7791f),
-    radius: 6.0,
-    font: ARCHIVO,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const PHOSPHOR: Look = Look {
-    dark: true,
-    window: color!(0x030805),
-    card: Color::from_rgba(10.0 / 255.0, 30.0 / 255.0, 16.0 / 255.0, 0.78),
-    border: color!(0x12361d),
-    strong_border: color!(0x1d5a30),
-    text: color!(0xa6ffbf),
-    dimmed: color!(0x52a86b),
-    accent: color!(0x39ff7a),
-    on_accent: color!(0x001a08),
-    accent_text: color!(0x6dff9c),
-    raised: color!(0x0b2213),
-    hovered: color!(0x103019),
-    pressed: color!(0x174022),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
-    dialog: color!(0x061309),
-    shade: Color::from_rgba(0.0, 0.0, 0.0, 0.75),
-    bar: Color::from_rgba(3.0 / 255.0, 8.0 / 255.0, 5.0 / 255.0, 0.85),
-    destructive: color!(0xff6b6b),
-    success: color!(0x39ff7a),
-    warning: color!(0xe6ff5c),
-    radius: 0.0,
-    font: JETBRAINS_MONO,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
-};
-
-const PRISM: Look = Look {
-    dark: true,
-    window: color!(0x0d0e22),
-    card: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.06),
-    border: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.1),
-    strong_border: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.22),
-    text: color!(0xe9ebff),
-    dimmed: color!(0x9aa0cf),
-    accent: color!(0x6f7bff),
-    on_accent: color!(0x06081f),
-    accent_text: color!(0xa9b1ff),
-    raised: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.07),
-    hovered: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.1),
-    pressed: Color::from_rgba(150.0 / 255.0, 160.0 / 255.0, 1.0, 0.14),
-    field: Color::from_rgba(0.0, 0.0, 0.0, 0.3),
-    dialog: color!(0x15173a),
-    shade: Color::from_rgba(2.0 / 255.0, 3.0 / 255.0, 12.0 / 255.0, 0.62),
-    bar: Color::from_rgba(13.0 / 255.0, 14.0 / 255.0, 34.0 / 255.0, 0.6),
-    destructive: color!(0xff6b8a),
-    success: color!(0x4fe0b0),
-    warning: color!(0xffc56b),
-    radius: 2.0,
-    font: ARCHIVO,
-    mono: JETBRAINS_MONO,
-    text_scale: 1.0,
+    animates: true,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -517,15 +323,6 @@ pub fn card(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
     }
 }
 
-pub fn code_block(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
-    move |_| container::Style {
-        background: Some(Background::Color(look.field)),
-        border: look.border(look.border),
-        text_color: Some(look.text),
-        ..container::Style::default()
-    }
-}
-
 pub fn dialog(look: Look) -> impl Fn(&iced::Theme) -> container::Style {
     move |_| container::Style {
         background: Some(Background::Color(look.dialog)),
@@ -630,6 +427,19 @@ pub fn editor(look: Look) -> impl Fn(&iced::Theme, text_editor::Status) -> text_
             text_editor::Status::Focused { .. } => look.accent,
             _ => look.border,
         }),
+        placeholder: look.dimmed,
+        value: look.text,
+        selection: Color {
+            a: 0.3,
+            ..look.accent
+        },
+    }
+}
+
+pub fn code(look: Look) -> impl Fn(&iced::Theme, text_editor::Status) -> text_editor::Style {
+    move |_, _| text_editor::Style {
+        background: Background::Color(look.field),
+        border: look.border(look.border),
         placeholder: look.dimmed,
         value: look.text,
         selection: Color {
@@ -809,20 +619,15 @@ fn contrast(first: f32, second: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::Choice;
 
     #[test]
     fn selected_tabs_stay_readable_in_every_theme() {
-        for look in [
-            ADWAITA_LIGHT,
-            ADWAITA_DARK,
-            GRID,
-            MONOCHROME,
-            AURORA,
-            EMBER,
-            PAPER,
-            PHOSPHOR,
-            PRISM,
-        ] {
+        let looks = Theme::ALL
+            .iter()
+            .map(|&theme| Look::for_theme(theme))
+            .chain([FALLBACK_LIGHT, FALLBACK_DARK]);
+        for look in looks {
             let fill = luminance_over(look.pressed, look.window);
             let shown = luminance(look.selected_text());
             assert!(contrast(shown, fill) >= READABLE_CONTRAST, "{look:?}");
@@ -831,7 +636,9 @@ mod tests {
 
     #[test]
     fn selected_tabs_keep_the_accent_where_it_reads() {
-        assert_eq!(EMBER.selected_text(), EMBER.accent_text);
-        assert_eq!(AURORA.selected_text(), AURORA.text);
+        let ember = Look::for_theme(Theme::Ember);
+        let aurora = Look::for_theme(Theme::Aurora);
+        assert_eq!(ember.selected_text(), ember.accent_text);
+        assert_eq!(aurora.selected_text(), aurora.text);
     }
 }

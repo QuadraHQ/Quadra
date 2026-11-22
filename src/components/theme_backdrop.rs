@@ -1,5 +1,7 @@
-use super::gradient_backdrop::{self, Glow};
+use super::built_in_themes::built_in;
+use super::gradient_backdrop::Glow;
 use super::imported_theme::parse_color;
+use super::imported_theme::{ImportedTheme, Pattern};
 use super::scene_backdrop::{Palette, Scene};
 use super::style::Look;
 use crate::state::{Animations, AppState, BackgroundAnimation, Theme};
@@ -9,9 +11,15 @@ use iced::Color;
 pub enum Still {
     Nothing,
     Gradient(Glow),
-    Grid,
+    Grid(PatternColors),
     LineField,
-    Scanlines,
+    Scanlines(PatternColors),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PatternColors {
+    pub background: Color,
+    pub line: Color,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,49 +48,40 @@ fn theme_own(state: &AppState) -> ThemeOwn {
 
 fn theme_own_for(state: &AppState, choice: ThemeChoice<'_>) -> ThemeOwn {
     let imported = state.imported_themes();
-    let built_in = match choice {
-        ThemeChoice::BuiltIn(theme) => theme,
-        ThemeChoice::Imported(name) => match imported.named(name) {
-            Some(_) => Theme::Adwaita,
-            None => state.theme(),
-        },
+    let theme = match choice {
+        ThemeChoice::Imported(name) => imported.named(name),
+        ThemeChoice::BuiltIn(_) => None,
     };
-    if let ThemeChoice::Imported(name) = choice
-        && let Some(theme) = imported.named(name)
-    {
-        return ThemeOwn {
-            still: theme
-                .background
-                .clone()
-                .map_or(Still::Nothing, Still::Gradient),
-            scene: Scene::chosen(theme.animation),
-            colors: theme.animation_colors.clone(),
-        };
-    }
-    let (still, scene) = match built_in {
-        Theme::Adwaita => (Still::Nothing, None),
-        Theme::Grid => (Still::Grid, None),
-        Theme::Monochrome => (Still::LineField, Some(Scene::Lines)),
-        Theme::Aurora => (
-            Still::Gradient(gradient_backdrop::AURORA),
-            Some(Scene::Aurora),
-        ),
-        Theme::Ember => (
-            Still::Gradient(gradient_backdrop::EMBER),
-            Some(Scene::Embers),
-        ),
-        Theme::Paper => (Still::Nothing, Some(Scene::Leaves)),
-        Theme::Phosphor => (Still::Scanlines, Some(Scene::Scanlines)),
-        Theme::Prism => (
-            Still::Gradient(gradient_backdrop::PRISM),
-            Some(Scene::Facets),
-        ),
+    let theme = theme.unwrap_or_else(|| {
+        built_in(match choice {
+            ThemeChoice::BuiltIn(theme) => theme,
+            ThemeChoice::Imported(_) => state.theme(),
+        })
+    });
+    own_of(theme)
+}
+
+fn own_of(theme: &ImportedTheme) -> ThemeOwn {
+    let pattern = PatternColors {
+        background: theme.look.window,
+        line: theme.pattern_color,
+    };
+    let still = match (theme.pattern, &theme.background) {
+        (Some(Pattern::Grid), _) => Still::Grid(pattern),
+        (Some(Pattern::Lines), _) => Still::LineField,
+        (Some(Pattern::Scanlines), _) => Still::Scanlines(pattern),
+        (None, Some(glow)) => Still::Gradient(glow.clone()),
+        (None, None) => Still::Nothing,
     };
     ThemeOwn {
         still,
-        scene,
-        colors: Vec::new(),
+        scene: Scene::chosen(theme.animation),
+        colors: theme.animation_colors.clone(),
     }
+}
+
+pub fn theme_has_grid(state: &AppState) -> bool {
+    matches!(theme_own(state).still, Still::Grid(_))
 }
 
 pub fn chosen_scene(state: &AppState) -> Option<Scene> {

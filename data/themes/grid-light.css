@@ -1,0 +1,27 @@
+:root {
+  --name: "Grid Light";
+  --window: #f3f5f8;
+  --title-bar: rgba(243, 245, 248, 0.86);
+  --card: rgba(255, 255, 255, 0.94);
+  --dialog: #ffffff;
+  --field: rgba(255, 255, 255, 0.9);
+  --raised: #e7ecf2;
+  --hovered: #dde4ed;
+  --pressed: rgba(16, 20, 27, 0.12);
+  --border: #d3dae4;
+  --strong-border: #b9c3d0;
+  --shade: rgba(16, 20, 27, 0.4);
+  --text: #10141b;
+  --dimmed: #536173;
+  --accent: #1f5fbf;
+  --on-accent: #ffffff;
+  --accent-text: #1a56ad;
+  --success: #1a7f52;
+  --warning: #8a5a00;
+  --destructive: #c01c28;
+  --radius: 0px;
+  --font: "Archivo";
+  --mono-font: "JetBrains Mono";
+  --pattern: grid;
+  --pattern-color: rgba(16, 20, 27, 0.07);
+}

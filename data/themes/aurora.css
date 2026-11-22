@@ -1,0 +1,26 @@
+:root {
+  --name: "Aurora";
+  --window: #140d24;
+  --title-bar: rgba(20, 13, 36, 0.55);
+  --card: rgba(255, 255, 255, 0.06);
+  --dialog: #1e1535;
+  --field: rgba(0, 0, 0, 0.25);
+  --raised: rgba(255, 255, 255, 0.08);
+  --hovered: rgba(255, 255, 255, 0.1);
+  --pressed: rgba(255, 255, 255, 0.14);
+  --border: rgba(196, 160, 255, 0.16);
+  --strong-border: rgba(196, 160, 255, 0.3);
+  --shade: rgba(5, 2, 12, 0.6);
+  --text: #f4eefe;
+  --dimmed: #b5a8d2;
+  --accent: #ff5fa2;
+  --on-accent: #24081c;
+  --accent-text: #ff9ccb;
+  --success: #7ee8b8;
+  --warning: #ffd36e;
+  --destructive: #ff7a7a;
+  --radius: 12px;
+  --mono-font: "JetBrains Mono";
+  --background: linear-gradient(135deg, #2b1552, #140d24 50%, #3b1036);
+  --animation: aurora;
+}

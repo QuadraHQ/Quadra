@@ -5,15 +5,25 @@ use iced::{Color, Degrees, Font};
 
 const MOST_GRADIENT_STOPS: usize = 8;
 const MOST_ANIMATION_COLORS: usize = 3;
+const DEFAULT_PATTERN_ALPHA: f32 = 0.08;
 
 #[derive(Debug, Clone)]
 pub struct ImportedTheme {
     pub name: String,
     pub look: Look,
     pub background: Option<Glow>,
+    pub pattern: Option<Pattern>,
+    pub pattern_color: Color,
     pub animation: BackgroundAnimation,
     pub animation_colors: Vec<Color>,
     pub problems: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pattern {
+    Grid,
+    Lines,
+    Scanlines,
 }
 
 #[derive(Default)]
@@ -24,6 +34,8 @@ struct Declared {
     font: Option<String>,
     mono_font: Option<String>,
     background: Option<Glow>,
+    pattern: Option<Pattern>,
+    pattern_color: Option<Color>,
     animation: Option<BackgroundAnimation>,
     animation_colors: Vec<Color>,
 }
@@ -72,13 +84,19 @@ pub fn parse_theme(file_name: &str, css: &str) -> Result<ImportedTheme, String> 
         });
     }
 
+    let look = look_from(&declared);
     Ok(ImportedTheme {
         name: declared
             .name
             .clone()
             .unwrap_or_else(|| file_name.to_owned()),
-        look: look_from(&declared),
+        look,
         background: declared.background.clone(),
+        pattern: declared.pattern,
+        pattern_color: declared.pattern_color.unwrap_or(Color {
+            a: DEFAULT_PATTERN_ALPHA,
+            ..look.text
+        }),
         animation: declared.animation.unwrap_or(BackgroundAnimation::None),
         animation_colors: declared.animation_colors.clone(),
         problems,
@@ -122,6 +140,18 @@ fn declare(declared: &mut Declared, property: &str, value: &str) -> Result<(), S
         "font" => declared.font = Some(first_family(value).ok_or("isn't a font name")?),
         "mono-font" => declared.mono_font = Some(first_family(value).ok_or("isn't a font name")?),
         "background" => declared.background = Some(parse_background(value)?),
+        "pattern" => {
+            declared.pattern = match unquoted(value).to_ascii_lowercase().as_str() {
+                "grid" => Some(Pattern::Grid),
+                "lines" => Some(Pattern::Lines),
+                "scanlines" => Some(Pattern::Scanlines),
+                "none" => None,
+                _ => return Err("isn't grid, lines, scanlines or none".to_owned()),
+            }
+        }
+        "pattern-color" => {
+            declared.pattern_color = Some(parse_color(value).ok_or("isn't a colour")?)
+        }
         "animation" => {
             declared.animation = Some(
                 BackgroundAnimation::named(value.trim())
@@ -152,7 +182,7 @@ fn look_from(declared: &Declared) -> Look {
     };
     let window = declared_color("window");
     let dark = window.is_none_or(|window| brightness(window) < 0.5);
-    let base = Look::adwaita(dark);
+    let base = Look::fallback(dark);
     let window = window.unwrap_or(base.window);
     let text = declared_color("text").unwrap_or(base.text);
     let accent = declared_color("accent").unwrap_or(base.accent);
@@ -187,6 +217,7 @@ fn look_from(declared: &Declared) -> Look {
         font: declared.font.as_deref().map_or(base.font, font_named),
         mono: declared.mono_font.as_deref().map_or(base.mono, font_named),
         text_scale: base.text_scale,
+        animates: base.animates,
     }
 }
 

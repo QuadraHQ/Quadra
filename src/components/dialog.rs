@@ -5,7 +5,7 @@ use super::style::{self, DIALOG_TITLE_SIZE, Emphasis, Look};
 use crate::quadra::Message;
 use iced::widget::text::Wrapping;
 use iced::widget::{
-    Column, center, column, container, mouse_area, opaque, row, space, text, text_editor,
+    Column, center, column, container, mouse_area, opaque, row, space, text_editor,
 };
 use iced::{Alignment, Element, Length};
 
@@ -15,6 +15,7 @@ const LOGS_WIDTH: f32 = 720.0;
 const LOGS_HEIGHT: f32 = 480.0;
 const EDITOR_HEIGHT: f32 = 220.0;
 const STATUS_ICON_SIZE: f32 = 48.0;
+const CODE_HEIGHT: f32 = 220.0;
 const QUADRA_VERSION: &str = env!("CARGO_PKG_VERSION");
 const WEBSITE: &str = "https://quadrahq.org";
 const DISCORD: &str = "https://discord.gg/W8jXfngc8z";
@@ -82,8 +83,15 @@ impl Alert {
     }
 }
 
+impl Dialog {
+    pub fn alert(alert: Alert) -> Self {
+        let code = alert.code.as_deref().map(text_editor::Content::with_text);
+        Self::Alert(alert, code)
+    }
+}
+
 pub enum Dialog {
-    Alert(Alert),
+    Alert(Alert, Option<text_editor::Content>),
     Logs,
     About,
     ImportFlags(text_editor::Content),
@@ -93,7 +101,7 @@ pub enum Dialog {
 impl Dialog {
     pub fn responses(&self) -> &[Response] {
         match self {
-            Self::Alert(alert) => &alert.responses,
+            Self::Alert(alert, _) => &alert.responses,
             Self::Logs | Self::About | Self::ImportFlags(_) | Self::ExportFlags(_) => &[],
         }
     }
@@ -101,7 +109,7 @@ impl Dialog {
 
 pub fn view<'a>(dialog: &'a Dialog, live_log: &'a LiveLog, look: Look) -> Element<'a, Message> {
     let (content, width) = match dialog {
-        Dialog::Alert(alert) => (alert_view(alert, look), alert_width(alert)),
+        Dialog::Alert(alert, code) => (alert_view(alert, code.as_ref(), look), alert_width(alert)),
         Dialog::Logs => (logs_view(live_log, look), LOGS_WIDTH),
         Dialog::About => (about_view(look), NARROW_WIDTH),
         Dialog::ImportFlags(content) => (import_view(content, look), WIDE_WIDTH),
@@ -124,14 +132,18 @@ fn alert_width(alert: &Alert) -> f32 {
     }
 }
 
-fn alert_view<'a>(alert: &'a Alert, look: Look) -> Element<'a, Message> {
+fn alert_view<'a>(
+    alert: &'a Alert,
+    code: Option<&'a text_editor::Content>,
+    look: Look,
+) -> Element<'a, Message> {
     let mut content = Column::new()
         .spacing(12)
         .padding([24, 24])
         .align_x(Alignment::Center)
         .push(title(look, &alert.heading, DIALOG_TITLE_SIZE).center())
         .push(body(look, &alert.body).center().style(style::dimmed(look)));
-    if let Some(code) = &alert.code {
+    if let Some(code) = code {
         content = content.push(code_block(code, look));
     }
 
@@ -150,17 +162,16 @@ fn alert_view<'a>(alert: &'a Alert, look: Look) -> Element<'a, Message> {
     column![content, responses, space().height(20)].into()
 }
 
-pub fn code_block<'a>(code: &'a str, look: Look) -> Element<'a, Message> {
-    container(
-        text(code)
-            .font(look.mono)
-            .size(look.sized(13.0))
-            .wrapping(Wrapping::Glyph),
-    )
-    .padding(12)
-    .width(Length::Fill)
-    .style(style::code_block(look))
-    .into()
+fn code_block<'a>(code: &'a text_editor::Content, look: Look) -> Element<'a, Message> {
+    text_editor(code)
+        .on_action(|action| Message::DialogEditor(action, false))
+        .font(look.mono)
+        .size(look.sized(13.0))
+        .max_height(CODE_HEIGHT)
+        .padding(12)
+        .wrapping(Wrapping::Glyph)
+        .style(style::code(look))
+        .into()
 }
 
 fn header<'a>(heading: &'a str, look: Look) -> Element<'a, Message> {

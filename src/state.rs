@@ -41,11 +41,10 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 56] = [
+const SAVED_PROPERTIES: [&str; 55] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
-    "runtime",
     "runner",
     "custom-runner-path",
     "prefix",
@@ -108,33 +107,32 @@ const PROPERTIES_THAT_DECIDE_CAN_PLAY: [&str; 4] = [
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Runtime {
-    #[default]
-    Rosemary,
-}
-
-impl Choice for Runtime {
-    const ALL: &'static [Self] = &[Self::Rosemary];
-
-    fn label(self) -> &'static str {
-        match self {
-            Self::Rosemary => "Rosemary",
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
 pub enum Theme {
+    #[serde(rename = "grid-light")]
+    GridLight,
     #[default]
-    Adwaita,
-    Grid,
+    #[serde(rename = "grid-dark", alias = "grid")]
+    GridDark,
     Monochrome,
     Aurora,
     Ember,
     Paper,
     Phosphor,
     Prism,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+enum SavedTheme {
+    FollowsSystem(FollowsSystem),
+    Chosen(Theme),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum FollowsSystem {
+    #[serde(alias = "adwaita")]
+    System,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -317,8 +315,8 @@ impl ImportedThemes {
 
 impl Choice for Theme {
     const ALL: &'static [Self] = &[
-        Self::Adwaita,
-        Self::Grid,
+        Self::GridLight,
+        Self::GridDark,
         Self::Monochrome,
         Self::Aurora,
         Self::Ember,
@@ -329,8 +327,8 @@ impl Choice for Theme {
 
     fn label(self) -> &'static str {
         match self {
-            Self::Adwaita => "Adwaita",
-            Self::Grid => "Grid",
+            Self::GridLight => "Grid Light",
+            Self::GridDark => "Grid Dark",
             Self::Monochrome => "Monochrome",
             Self::Aurora => "Aurora",
             Self::Ember => "Ember",
@@ -347,7 +345,6 @@ struct SavedSettings {
     launch_mode: LaunchMode,
     run_in_background: bool,
     discord_rich_presence: bool,
-    runtime: Runtime,
     runner: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     custom_runner_path: String,
@@ -396,7 +393,8 @@ struct SavedSettings {
     cpu_core_limit: u32,
     block_telemetry: bool,
     force_raknet: bool,
-    theme: Theme,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    theme: Option<SavedTheme>,
     #[serde(skip_serializing_if = "String::is_empty")]
     imported_theme: String,
     background_animation: BackgroundAnimation,
@@ -426,7 +424,6 @@ impl Default for SavedSettings {
             launch_mode: LaunchMode::default(),
             run_in_background: false,
             discord_rich_presence: false,
-            runtime: Runtime::default(),
             runner: QUADRA_RUNNER.to_owned(),
             custom_runner_path: String::new(),
             prefix: QUADRA_PREFIX.to_owned(),
@@ -466,7 +463,7 @@ impl Default for SavedSettings {
             cpu_core_limit: 0,
             block_telemetry: false,
             force_raknet: false,
-            theme: Theme::default(),
+            theme: None,
             imported_theme: String::new(),
             background_animation: BackgroundAnimation::default(),
             animation_colors: Vec::new(),
@@ -538,7 +535,6 @@ properties! {
     launch_mode set_launch_mode: LaunchMode = "launch-mode",
     run_in_background set_run_in_background: bool = "run-in-background",
     discord_rich_presence set_discord_rich_presence: bool = "discord-rich-presence",
-    runtime set_runtime: Runtime = "runtime",
     runner set_runner: String = "runner",
     custom_runner_path set_custom_runner_path: String = "custom-runner-path",
     available_runners set_available_runners: Vec<String> = "available-runners",
@@ -606,6 +602,7 @@ properties! {
     can_play set_can_play: bool = "can-play",
     can_open_studio set_can_open_studio: bool = "can-open-studio",
     theme set_theme: Theme = "theme",
+    theme_follows_system set_theme_follows_system: bool = "theme-follows-system",
     imported_theme set_imported_theme: String = "imported-theme",
     imported_themes set_imported_themes: ImportedThemes = "imported-themes",
     background_animation set_background_animation: BackgroundAnimation = "background-animation",
@@ -693,7 +690,6 @@ impl AppState {
         properties
             .discord_rich_presence
             .replace(settings.discord_rich_presence);
-        properties.runtime.replace(settings.runtime);
         properties.runner.replace(settings.runner);
         properties
             .custom_runner_path
@@ -774,7 +770,11 @@ impl AppState {
         properties.first_launch.replace(first_launch);
         properties.cursor_effect.replace(cursor_effect);
         properties.font_style.replace(font_style);
-        properties.theme.replace(settings.theme);
+        let follows_system = !matches!(settings.theme, Some(SavedTheme::Chosen(_)));
+        properties.theme_follows_system.replace(follows_system);
+        if let Some(SavedTheme::Chosen(theme)) = settings.theme {
+            properties.theme.replace(theme);
+        }
         properties.imported_theme.replace(settings.imported_theme);
         properties
             .background_animation
@@ -1010,7 +1010,6 @@ impl AppState {
             launch_mode: self.launch_mode(),
             run_in_background: self.run_in_background(),
             discord_rich_presence: self.discord_rich_presence(),
-            runtime: self.runtime(),
             runner: self.runner(),
             custom_runner_path: self.custom_runner_path(),
             prefix: self.prefix(),
@@ -1050,7 +1049,11 @@ impl AppState {
             cpu_core_limit: self.cpu_core_limit(),
             block_telemetry: self.block_telemetry(),
             force_raknet: self.force_raknet(),
-            theme: self.theme(),
+            theme: Some(if self.theme_follows_system() {
+                SavedTheme::FollowsSystem(FollowsSystem::System)
+            } else {
+                SavedTheme::Chosen(self.theme())
+            }),
             imported_theme: self.imported_theme(),
             background_animation: self.background_animation(),
             animation_colors: self.animation_colors(),
@@ -1214,6 +1217,24 @@ fn write_saved_settings(settings: &SavedSettings) -> Result<(), Box<dyn Error>> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn old_and_new_theme_names_load() {
+        let theme_of = |value: &str| parse_settings(&format!("theme = \"{value}\"\n")).0.theme;
+        let follows_system = Some(SavedTheme::FollowsSystem(FollowsSystem::System));
+        assert_eq!(theme_of("adwaita"), follows_system);
+        assert_eq!(theme_of("system"), follows_system);
+        assert_eq!(theme_of("grid"), Some(SavedTheme::Chosen(Theme::GridDark)));
+        assert_eq!(
+            theme_of("grid-dark"),
+            Some(SavedTheme::Chosen(Theme::GridDark))
+        );
+        assert_eq!(
+            theme_of("grid-light"),
+            Some(SavedTheme::Chosen(Theme::GridLight))
+        );
+        assert_eq!(theme_of("aurora"), Some(SavedTheme::Chosen(Theme::Aurora)));
+    }
 
     #[test]
     fn reads_a_valid_settings_file() {

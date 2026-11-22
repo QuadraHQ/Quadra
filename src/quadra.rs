@@ -9,7 +9,7 @@ use crate::components::file_row::{ChosenPath, Pick};
 use crate::components::flat_stack::flat_stack;
 use crate::components::gpu_or::gpu_or;
 use crate::components::gradient_backdrop::gradient_backdrop;
-use crate::components::grid_backdrop::{self, GridBackdrop};
+use crate::components::grid_backdrop::GridBackdrop;
 use crate::components::grid_bulge::grid_bulge;
 use crate::components::header::bar;
 use crate::components::icon::app_icon_rgba;
@@ -19,7 +19,7 @@ use crate::components::logs::LiveLog;
 use crate::components::play_action::PlayAction;
 use crate::components::scanline_backdrop::ScanlineBackdrop;
 use crate::components::style::Look;
-use crate::components::theme_backdrop::{Backdrop, Still, chosen_backdrop};
+use crate::components::theme_backdrop::{Backdrop, PatternColors, Still, chosen_backdrop};
 use crate::components::title_bar::{self, ButtonLayout, TitleBar};
 use crate::components::tray::{TrayIcon, TrayRequest};
 use crate::components::update_banner::update_banner;
@@ -28,13 +28,13 @@ use crate::pages::home::home_page;
 use crate::pages::servers::{Servers, ServersMessage};
 use crate::pages::settings::{self, Settings, SettingsMessage};
 use crate::single_instance;
-use crate::state::{Animations, AppState, Client, LaunchMode, LogChange};
+use crate::state::{Animations, AppState, Client, LaunchMode, LogChange, Theme};
 use crate::utils::{BUNDLED_FONTS, PRESET_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
 use iced::widget::{Column, column, container, image, space, stack, text_editor};
 use iced::{
-    Background, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system, theme,
-    window,
+    Background, Color, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system,
+    theme, window,
 };
 use std::cell::RefCell;
 use std::collections::{HashSet, VecDeque};
@@ -231,6 +231,7 @@ impl Quadra {
 
         let look = Look::of(&state);
         let backdrop = chosen_backdrop(&state, &look);
+        let patterns = pattern_colors(&backdrop);
         let mut quadra = Self {
             servers: Servers::default(),
             settings: Settings::new(&state),
@@ -244,8 +245,8 @@ impl Quadra {
             iced_theme: look.iced_theme(),
             look,
             backdrop,
-            grid_backdrop: GridBackdrop::default(),
-            scanline_backdrop: ScanlineBackdrop::default(),
+            grid_backdrop: GridBackdrop::new(patterns),
+            scanline_backdrop: ScanlineBackdrop::new(patterns),
             pulse: Pulse::default(),
             tray_icon: None,
             launched_directly: false,
@@ -312,6 +313,13 @@ impl Quadra {
                 if self.state.system_prefers_dark() != prefers_dark {
                     self.state.set_system_prefers_dark(prefers_dark);
                 }
+                if self.state.theme_follows_system() {
+                    self.state.set_theme(if prefers_dark {
+                        Theme::GridDark
+                    } else {
+                        Theme::GridLight
+                    });
+                }
                 Task::none()
             }
             Message::CloseRequested(id) if Some(id) == self.main_window => self.close_main_window(),
@@ -347,7 +355,7 @@ impl Quadra {
             }
             Message::ShowPage(page) => self.show(page),
             Message::Alert(alert) => {
-                self.dialogs.push(Dialog::Alert(alert));
+                self.dialogs.push(Dialog::alert(alert));
                 Task::none()
             }
             Message::Respond(position) => {
@@ -412,8 +420,11 @@ impl Quadra {
                 Task::none()
             }
             Message::DialogEditor(action, editable) => {
-                if let Some(Dialog::ImportFlags(content) | Dialog::ExportFlags(content)) =
-                    self.dialogs.last_mut()
+                if let Some(
+                    Dialog::ImportFlags(content)
+                    | Dialog::ExportFlags(content)
+                    | Dialog::Alert(_, Some(content)),
+                ) = self.dialogs.last_mut()
                     && (editable || !action.is_edit())
                 {
                     content.perform(action);
@@ -461,7 +472,7 @@ impl Quadra {
             tasks.push(match reaction {
                 Reaction::ErrorReported => {
                     let message = self.state.error_message();
-                    self.dialogs.push(Dialog::Alert(error_dialog(&message)));
+                    self.dialogs.push(Dialog::alert(error_dialog(&message)));
                     self.present_main_window()
                 }
                 Reaction::RunningChanged => self.adjust_window_to_running_roblox(),
@@ -559,6 +570,11 @@ impl Quadra {
             self.iced_theme = look.iced_theme();
         }
         self.backdrop = chosen_backdrop(&self.state, &look);
+        match &self.backdrop.still {
+            Still::Grid(colors) => self.grid_backdrop.paint_with(*colors),
+            Still::Scanlines(colors) => self.scanline_backdrop.paint_with(*colors),
+            Still::Nothing | Still::Gradient(_) | Still::LineField => {}
+        }
     }
 
     fn handle_tray(&mut self, request: TrayRequest) -> Task<Message> {
@@ -640,7 +656,7 @@ impl Quadra {
         if !self.state.running() {
             return self.exit();
         }
-        self.dialogs.push(Dialog::Alert(confirm_closing_roblox()));
+        self.dialogs.push(Dialog::alert(confirm_closing_roblox()));
         self.present_main_window()
     }
 
@@ -857,17 +873,13 @@ impl Quadra {
         let still = match &self.backdrop.still {
             Still::Nothing => None,
             Still::Gradient(glow) => Some(gradient_backdrop(glow)),
-            Still::Grid if self.grid_bulges() => Some(gpu_or(
-                grid_bulge(
-                    grid_backdrop::BACKGROUND,
-                    grid_backdrop::LINE,
-                    self.look.accent,
-                ),
+            Still::Grid(colors) if self.grid_bulges() => Some(gpu_or(
+                grid_bulge(colors.background, colors.line, self.look.accent),
                 self.grid_backdrop.view(),
             )),
-            Still::Grid => Some(self.grid_backdrop.view()),
+            Still::Grid(_) => Some(self.grid_backdrop.view()),
             Still::LineField => Some(line_field_backdrop(self.backdrop.motion)),
-            Still::Scanlines => Some(self.scanline_backdrop.view()),
+            Still::Scanlines(_) => Some(self.scanline_backdrop.view()),
         };
         match self.backdrop.scene {
             Some((scene, palette)) => Some(gpu_or(
@@ -923,6 +935,16 @@ impl Quadra {
         }
 
         Subscription::batch(subscriptions)
+    }
+}
+
+fn pattern_colors(backdrop: &Backdrop) -> PatternColors {
+    match &backdrop.still {
+        Still::Grid(colors) | Still::Scanlines(colors) => *colors,
+        Still::Nothing | Still::Gradient(_) | Still::LineField => PatternColors {
+            background: Color::TRANSPARENT,
+            line: Color::TRANSPARENT,
+        },
     }
 }
 

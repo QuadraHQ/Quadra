@@ -1,9 +1,10 @@
 use crate::components::icon::Symbol;
 use crate::components::preferences::{PreferenceRow, icon_button, preference_row};
 use crate::components::style::{self, Look};
+use crate::components::switch::switch as animated_switch;
 use crate::quadra::{Message, act};
 use crate::state::{AppState, Choice};
-use iced::widget::{pick_list, row, text, toggler};
+use iced::widget::{pick_list, row, text};
 use iced::{Alignment, Element};
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -25,11 +26,11 @@ pub fn switch<'a>(
     enabled: bool,
     on_toggle: impl Fn(bool) -> Message + 'a,
 ) -> Element<'a, Message> {
-    toggler(value)
-        .size(22)
-        .style(style::switch(look))
-        .on_toggle_maybe(enabled.then_some(on_toggle))
-        .into()
+    animated_switch(
+        look,
+        value,
+        enabled.then(|| Box::new(on_toggle) as Box<dyn Fn(bool) -> Message + 'a>),
+    )
 }
 
 pub fn switch_row<'a>(
