@@ -30,3 +30,4 @@ pub mod theme_backdrop;
 pub mod title_bar;
 pub mod tray;
 pub mod update_banner;
+pub mod wheel_passthrough;

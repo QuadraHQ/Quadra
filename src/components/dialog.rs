@@ -2,10 +2,11 @@ use super::icon::{self, Symbol, app_icon};
 use super::logs::LiveLog;
 use super::preferences::{body, caption, push_button, symbol_button, title};
 use super::style::{self, DIALOG_TITLE_SIZE, Emphasis, Look};
+use super::wheel_passthrough::wheel_passthrough;
 use crate::quadra::Message;
 use iced::widget::text::Wrapping;
 use iced::widget::{
-    Column, center, column, container, mouse_area, opaque, row, space, text_editor,
+    Column, center, column, container, mouse_area, opaque, row, scrollable, space, text_editor,
 };
 use iced::{Alignment, Element, Length};
 
@@ -16,6 +17,7 @@ const LOGS_HEIGHT: f32 = 480.0;
 const EDITOR_HEIGHT: f32 = 220.0;
 const STATUS_ICON_SIZE: f32 = 48.0;
 const CODE_HEIGHT: f32 = 220.0;
+const CODE_SCROLLBAR_GAP: f32 = 4.0;
 const QUADRA_VERSION: &str = env!("CARGO_PKG_VERSION");
 const WEBSITE: &str = "https://quadrahq.org";
 const DISCORD: &str = "https://discord.gg/W8jXfngc8z";
@@ -163,15 +165,24 @@ fn alert_view<'a>(
 }
 
 fn code_block<'a>(code: &'a text_editor::Content, look: Look) -> Element<'a, Message> {
-    text_editor(code)
+    let editor = text_editor(code)
         .on_action(|action| Message::DialogEditor(action, false))
         .font(look.mono)
         .size(look.sized(13.0))
-        .max_height(CODE_HEIGHT)
+        .height(Length::Shrink)
         .padding(12)
         .wrapping(Wrapping::Glyph)
-        .style(style::code(look))
-        .into()
+        .style(style::code(look));
+    container(
+        scrollable(wheel_passthrough(editor))
+            .direction(scrollable::Direction::Vertical(
+                scrollable::Scrollbar::new().spacing(CODE_SCROLLBAR_GAP),
+            ))
+            .height(Length::Shrink)
+            .style(style::scrollbar(look)),
+    )
+    .max_height(CODE_HEIGHT)
+    .into()
 }
 
 fn header<'a>(heading: &'a str, look: Look) -> Element<'a, Message> {

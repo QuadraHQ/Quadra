@@ -31,7 +31,7 @@ use crate::single_instance;
 use crate::state::{Animations, AppState, Client, LaunchMode, LogChange, Theme};
 use crate::utils::{BUNDLED_FONTS, PRESET_FONTS, open_with_default_app};
 use iced::futures::StreamExt;
-use iced::widget::{Column, column, container, image, space, stack, text_editor};
+use iced::widget::{Column, column, container, image, scrollable, space, stack, text_editor};
 use iced::{
     Background, Color, ContentFit, Element, Length, Size, Subscription, Task, keyboard, system,
     theme, window,
@@ -146,6 +146,7 @@ pub enum Message {
     SaveExportedFlags,
     ExportPathChosen(Option<PathBuf>),
     LogAction(text_editor::Action),
+    LogScrolled(scrollable::Viewport),
     DialogEditor(text_editor::Action, bool),
     CopyToClipboard(String),
     Open(String),
@@ -375,7 +376,7 @@ impl Quadra {
             }
             Message::ShowLogs => {
                 self.dialogs.push(Dialog::Logs);
-                Task::none()
+                self.live_log.opened()
             }
             Message::ShowAbout => {
                 self.dialogs.push(Dialog::About);
@@ -413,6 +414,10 @@ impl Quadra {
                     let json = self.state.fast_flags().as_json();
                     settings::save_exported(&self.state, &path, &json);
                 }
+                Task::none()
+            }
+            Message::LogScrolled(viewport) => {
+                self.live_log.scrolled(viewport);
                 Task::none()
             }
             Message::LogAction(action) => {
@@ -498,13 +503,10 @@ impl Quadra {
                     self.button_layout = ButtonLayout::parse(&self.state.window_button_layout());
                     Task::none()
                 }
-                Reaction::Log(appended) => {
-                    match &appended {
-                        Some(text) => self.live_log.follow(LogChange::Appended(text)),
-                        None => self.live_log.follow(LogChange::Cleared),
-                    }
-                    Task::none()
-                }
+                Reaction::Log(appended) => match &appended {
+                    Some(text) => self.live_log.follow(LogChange::Appended(text)),
+                    None => self.live_log.follow(LogChange::Cleared),
+                },
                 Reaction::Tray(request) => self.handle_tray(request),
             });
         }
