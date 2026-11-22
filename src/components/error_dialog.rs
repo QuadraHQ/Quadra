@@ -1,16 +1,17 @@
-use crate::state::AppState;
-use adw::prelude::*;
-use gtk::glib;
+use super::dialog::{Alert, Response};
 
-pub fn show_errors_from(state: &AppState, window: &adw::ApplicationWindow) {
-    state.connect_error_message_notify(glib::clone!(
-        #[weak]
-        window,
-        move |state| {
-            let dialog =
-                adw::AlertDialog::new(Some("Something went wrong"), Some(&state.error_message()));
-            dialog.add_response("close", "Close");
-            dialog.present(Some(&window));
-        }
-    ));
+const LONGEST_PLAIN_MESSAGE: usize = 160;
+
+pub fn error_dialog(message: &str) -> Alert {
+    let is_long = message.len() > LONGEST_PLAIN_MESSAGE || message.trim().contains('\n');
+    let alert = if is_long {
+        Alert::new(
+            "Something went wrong",
+            "Here's what happened. You can select and copy it.",
+        )
+        .with_code(message.trim())
+    } else {
+        Alert::new("Something went wrong", message)
+    };
+    alert.with_response(Response::close("Close"))
 }

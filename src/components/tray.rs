@@ -1,17 +1,13 @@
-use super::icon::app_icon_texture;
+use super::icon::app_icon_rgba;
 use super::play_action::{PROPERTIES_THAT_DECIDE_PLAY_ACTION, PlayAction};
 use super::roblox_status::{PROPERTIES_THAT_DECIDE_STATUS, status_text};
-use crate::state::AppState;
+use crate::main_loop::spawn_local;
+use crate::state::{AppState, HandlerId};
 use crate::utils::is_running_in_flatpak;
-use gtk::gdk;
-use gtk::glib;
-use gtk::prelude::*;
 use ksni::blocking::{Handle, TrayMethods};
 use ksni::menu::{MenuItem, StandardItem};
 
-const BYTES_PER_ARGB_PIXEL: usize = 4;
-
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum TrayRequest {
     OpenHome,
     OpenSettings,
@@ -105,7 +101,7 @@ impl ksni::Tray for QuadraTray {
 pub struct TrayIcon {
     handle: Handle<QuadraTray>,
     state: AppState,
-    watchers: Vec<glib::SignalHandlerId>,
+    watchers: Vec<HandlerId>,
 }
 
 impl TrayIcon {
@@ -121,7 +117,7 @@ impl TrayIcon {
         };
         let handle = tray.disable_dbus_name(is_running_in_flatpak()).spawn()?;
 
-        glib::spawn_future_local(async move {
+        spawn_local(async move {
             while let Ok(request) = received_requests.recv().await {
                 on_request(request);
             }
@@ -144,7 +140,7 @@ impl Drop for TrayIcon {
     }
 }
 
-fn keep_status_shown(state: &AppState, handle: Handle<QuadraTray>) -> Vec<glib::SignalHandlerId> {
+fn keep_status_shown(state: &AppState, handle: Handle<QuadraTray>) -> Vec<HandlerId> {
     let (status_changes, received_status_changes) = async_channel::unbounded();
 
     std::thread::spawn(move || {
@@ -166,27 +162,19 @@ fn keep_status_shown(state: &AppState, handle: Handle<QuadraTray>) -> Vec<glib::
 }
 
 fn app_icon_pixmap() -> Vec<ksni::Icon> {
-    let texture = match app_icon_texture() {
-        Ok(texture) => texture,
-        Err(error) => {
-            eprintln!("Failed to load the tray icon: {error}");
-            return Vec::new();
-        }
+    let Some((rgba, width, height)) = app_icon_rgba() else {
+        return Vec::new();
     };
-
-    let mut downloader = gdk::TextureDownloader::new(&texture);
-    downloader.set_format(gdk::MemoryFormat::A8r8g8b8);
-    let (pixels, stride) = downloader.download_bytes();
-    let row_length = texture.width() as usize * BYTES_PER_ARGB_PIXEL;
-    let data = pixels
-        .chunks(stride)
-        .flat_map(|row| &row[..row_length])
-        .copied()
+    let data = rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .flat_map(|&[red, green, blue, alpha]| [alpha, red, green, blue])
         .collect();
 
     vec![ksni::Icon {
-        width: texture.width(),
-        height: texture.height(),
+        width: width as i32,
+        height: height as i32,
         data,
     }]
 }

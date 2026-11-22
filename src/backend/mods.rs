@@ -6,6 +6,7 @@ mod folder_overlay;
 mod settings;
 mod sound_presets;
 
+pub use cursor_presets::arrow_of as cursor_arrow;
 pub use settings::ModSettings;
 
 use super::{paths, roblox};
@@ -41,10 +42,7 @@ pub fn prepare(settings: &ModSettings) -> anyhow::Result<()> {
         sound_presets::apply_old_character_sounds(&mut files, settings),
     );
     report("cursors", cursor_presets::apply(&mut files, settings));
-    report(
-        "font",
-        custom_font::apply(&mut files, &settings.custom_font),
-    );
+    report("font", custom_font::apply(&mut files, settings));
     if settings.custom_mods {
         report(
             "modifications folder",

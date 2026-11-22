@@ -1,6 +1,5 @@
 use super::flatpak_override;
-use crate::utils::is_running_in_flatpak;
-use gtk::glib;
+use crate::utils::{is_running_in_flatpak, runtime_directory};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -54,7 +53,7 @@ pub fn missing() -> Option<MissingDiscordAccess> {
     if !is_running_in_flatpak() {
         return None;
     }
-    let runtime_directory = glib::user_runtime_dir();
+    let runtime_directory = runtime_directory();
     let socket_table = fs::read_to_string(SOCKET_TABLE).unwrap_or_default();
     let flatpak_id = flatpak_override::quadra_id();
     missing_from(&socket_table, &runtime_directory, &flatpak_id, |path| {

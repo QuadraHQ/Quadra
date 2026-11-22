@@ -33,6 +33,10 @@ pub fn apply(files: &mut ContentFiles, settings: &ModSettings) -> io::Result<()>
     }
 }
 
+pub fn arrow_of(style: CursorStyle) -> Option<&'static [u8]> {
+    preset_of(style).first().map(|cursor| cursor.image)
+}
+
 fn preset_of(style: CursorStyle) -> Vec<Cursor> {
     match style {
         CursorStyle::Classic2006 => vec![
@@ -52,6 +56,28 @@ fn preset_of(style: CursorStyle) -> Vec<Cursor> {
             cursor!("dot", "ArrowCursor.png"),
             cursor!("dot", "ArrowFarCursor.png"),
             cursor!("dot", "IBeamCursor.png"),
+        ],
+        CursorStyle::Modern => vec![
+            cursor!("modern", "ArrowCursor.png"),
+            cursor!("modern", "ArrowFarCursor.png"),
+        ],
+        CursorStyle::Dark => vec![
+            cursor!("dark", "ArrowCursor.png"),
+            cursor!("dark", "ArrowFarCursor.png"),
+        ],
+        CursorStyle::Neon => vec![
+            cursor!("neon", "ArrowCursor.png"),
+            cursor!("neon", "ArrowFarCursor.png"),
+        ],
+        CursorStyle::Crosshair => vec![
+            cursor!("crosshair", "ArrowCursor.png"),
+            cursor!("crosshair", "ArrowFarCursor.png"),
+            cursor!("crosshair", "IBeamCursor.png"),
+        ],
+        CursorStyle::Ring => vec![
+            cursor!("ring", "ArrowCursor.png"),
+            cursor!("ring", "ArrowFarCursor.png"),
+            cursor!("ring", "IBeamCursor.png"),
         ],
         CursorStyle::Stock | CursorStyle::Custom => Vec::new(),
     }

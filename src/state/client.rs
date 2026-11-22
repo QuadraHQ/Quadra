@@ -1,7 +1,4 @@
-use gtk::glib;
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
-#[enum_type(name = "QuadraClient")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Client {
     #[default]
     Player,

@@ -8,7 +8,7 @@ use std::process::Command;
 const PLACE_MIME_TYPES_FILE: &str = "org.quadrahq.Quadra.xml";
 const PLACE_MIME_TYPES: &str = include_str!("../../data/org.quadrahq.Quadra.xml");
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Handler {
     RobloxLinks,
     StudioLinks,

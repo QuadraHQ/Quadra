@@ -1,6 +1,6 @@
+use crate::main_loop::spawn_local;
 use crate::state::AppState;
 use anyhow::anyhow;
-use gtk::glib;
 use std::cell::Cell;
 
 const TASK_STOPPED_UNEXPECTEDLY: &str = "The background task stopped unexpectedly.";
@@ -52,7 +52,7 @@ pub fn run_task<T: Send + 'static>(
 
     state.set_busy(true);
     let state = state.clone();
-    glib::spawn_future_local(async move {
+    spawn_local(async move {
         while let Ok(update) = update_receiver.recv().await {
             match update {
                 ProgressUpdate::Step(description) => {
@@ -89,7 +89,7 @@ pub fn run_quietly<T: Send + 'static>(
         let _ = result_sender.send_blocking(work());
     });
 
-    glib::spawn_future_local(async move {
+    spawn_local(async move {
         let result = result_receiver
             .recv()
             .await

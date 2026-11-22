@@ -1,0 +1,27 @@
+:root {
+  --name: "Monochrome";
+  --window: #000000;
+  --title-bar: rgba(0, 0, 0, 0.86);
+  --card: rgba(30, 30, 30, 0.4);
+  --dialog: #121212;
+  --field: rgba(0, 0, 0, 0.45);
+  --raised: #1c1c1c;
+  --hovered: #262626;
+  --pressed: #1d1d1d;
+  --border: #1e1e1e;
+  --strong-border: #2f2f2f;
+  --shade: rgba(0, 0, 0, 0.7);
+  --text: #e8e8e8;
+  --dimmed: #9a9a9a;
+  --accent: #f0f0f0;
+  --on-accent: #000000;
+  --accent-text: #f0f0f0;
+  --success: #f0f0f0;
+  --warning: #bdbdbd;
+  --destructive: #e8e8e8;
+  --radius: 0px;
+  --font: "Archivo";
+  --mono-font: "JetBrains Mono";
+  --pattern: lines;
+  --animation: lines;
+}

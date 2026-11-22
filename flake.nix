@@ -26,16 +26,29 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           nativeBuildInputs = with pkgs; [
-            pkg-config
-            wrapGAppsHook4
             lld
             clang
+            makeWrapper
           ];
-          buildInputs = with pkgs; [
-            gtk4
-            gtk4-layer-shell
-            libadwaita
-          ];
+
+          postFixup = ''
+            patchelf --add-rpath ${
+              pkgs.lib.makeLibraryPath (
+                with pkgs;
+                [
+                  libGL
+                  libxkbcommon
+                  vulkan-loader
+                  wayland
+                  xorg.libX11
+                  xorg.libXcursor
+                  xorg.libXi
+                  xorg.libXrandr
+                ]
+              )
+            } "$out/bin/quadra"
+            wrapProgram "$out/bin/quadra" --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.xdg-utils ]}
+          '';
 
           postInstall = ''
             install -Dm644 data/org.quadrahq.Quadra.desktop \

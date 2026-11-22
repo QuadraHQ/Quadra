@@ -1,9 +1,7 @@
 use super::Choice;
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraDeathSound")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeathSound {
     #[default]
@@ -24,8 +22,7 @@ impl Choice for DeathSound {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum, Serialize, Deserialize)]
-#[enum_type(name = "QuadraCursorStyle")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CursorStyle {
     #[default]
@@ -34,6 +31,11 @@ pub enum CursorStyle {
     Classic2013,
     PurpleCross,
     Dot,
+    Modern,
+    Dark,
+    Neon,
+    Crosshair,
+    Ring,
     Custom,
 }
 
@@ -42,6 +44,11 @@ impl Choice for CursorStyle {
         Self::Stock,
         Self::Classic2006,
         Self::Classic2013,
+        Self::Modern,
+        Self::Dark,
+        Self::Neon,
+        Self::Crosshair,
+        Self::Ring,
         Self::PurpleCross,
         Self::Dot,
         Self::Custom,
@@ -54,7 +61,67 @@ impl Choice for CursorStyle {
             Self::Classic2013 => "2013",
             Self::PurpleCross => "Purple cross",
             Self::Dot => "Dot",
+            Self::Modern => "Modern arrow",
+            Self::Dark => "Dark arrow",
+            Self::Neon => "Neon arrow",
+            Self::Crosshair => "Crosshair",
+            Self::Ring => "Ring",
             Self::Custom => "Custom file or folder",
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FontStyle {
+    #[default]
+    Stock,
+    ComicNeue,
+    PressStart,
+    Bangers,
+    Vt323,
+    PatrickHand,
+    AtkinsonHyperlegible,
+    Custom,
+}
+
+impl FontStyle {
+    pub fn preset(self) -> Option<&'static crate::utils::PresetFont> {
+        let index = match self {
+            Self::Stock | Self::Custom => return None,
+            Self::ComicNeue => 0,
+            Self::PressStart => 1,
+            Self::Bangers => 2,
+            Self::Vt323 => 3,
+            Self::PatrickHand => 4,
+            Self::AtkinsonHyperlegible => 5,
+        };
+        crate::utils::PRESET_FONTS.get(index)
+    }
+}
+
+impl Choice for FontStyle {
+    const ALL: &'static [Self] = &[
+        Self::Stock,
+        Self::ComicNeue,
+        Self::PressStart,
+        Self::Bangers,
+        Self::Vt323,
+        Self::PatrickHand,
+        Self::AtkinsonHyperlegible,
+        Self::Custom,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Stock => "Default",
+            Self::ComicNeue => "Comic Neue",
+            Self::PressStart => "Press Start 2P",
+            Self::Bangers => "Bangers",
+            Self::Vt323 => "VT323",
+            Self::PatrickHand => "Patrick Hand",
+            Self::AtkinsonHyperlegible => "Atkinson Hyperlegible",
+            Self::Custom => "Custom file",
         }
     }
 }

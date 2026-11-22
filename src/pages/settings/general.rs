@@ -1,52 +1,83 @@
 use super::account::account_group;
-use super::bound_rows::{choice_row, switch_row};
-use super::discord_access::ask_for_discord_access_when_turned_on;
+use super::appearance::appearance_group;
+use super::bound_rows::{choice_row, switch, switch_row};
+use super::privacy::privacy_group;
 use super::runtime::runtime_section;
 use super::session::session_group;
 use super::support::support_group;
 use super::updates::launcher_version_row;
-use crate::state::{AppState, LaunchMode, Theme};
-use adw::prelude::*;
+use super::{Settings, SettingsMessage};
+use crate::components::preferences::{preference_group, preference_row};
+use crate::components::style::Look;
+use crate::quadra::Message;
+use crate::state::AppState;
+use iced::Element;
 
-pub fn general_section(state: &AppState) -> gtk::Box {
-    let group = adw::PreferencesGroup::builder().title("Quadra").build();
+pub fn general_section<'a>(
+    settings: &'a Settings,
+    state: &AppState,
+    look: Look,
+) -> Vec<Element<'a, Message>> {
+    let quadra_group = preference_group(look)
+        .title("Quadra")
+        .push(launcher_version_row(state, look))
+        .push(
+            choice_row(
+                look,
+                "When Quadra starts",
+                state.launch_mode(),
+                |state, mode| state.set_launch_mode(mode),
+            )
+            .subtitle("Settings stay available from the system tray"),
+        )
+        .push(
+            switch_row(
+                look,
+                "Run in the background",
+                state.run_in_background(),
+                |state, on| state.set_run_in_background(on),
+            )
+            .subtitle("Keep Quadra in the system tray after its window closes"),
+        );
+    let quadra_group = quadra_group
+        .push(
+            switch_row(
+                look,
+                "Use the system title bar",
+                state.system_title_bar(),
+                |state, on| state.set_system_title_bar(on),
+            )
+            .subtitle("Let your desktop draw the window's title bar and borders"),
+        )
+        .push(
+            switch_row(
+                look,
+                "Advanced settings",
+                state.advanced_settings_visible(),
+                |state, visible| state.set_advanced_settings_visible(visible),
+            )
+            .subtitle("Only enable if you know what you're doing."),
+        );
 
-    let launch_mode_row = choice_row::<LaunchMode>(state, "launch-mode", "When Quadra starts");
-    launch_mode_row.set_subtitle("Settings stay available from the system tray");
+    let discord_group = preference_group(look).title("Discord").push(
+        preference_row(look, "Show what you're playing")
+            .subtitle("Show the Roblox game you're in on your Discord profile")
+            .suffix(switch(look, state.discord_rich_presence(), true, |on| {
+                Message::Settings(SettingsMessage::DiscordPresenceToggled(on))
+            })),
+    );
 
-    let run_in_background_row = switch_row(state, "run-in-background", "Run in the background");
-    run_in_background_row.set_subtitle("Keep Quadra in the system tray after its window closes");
-
-    let theme_row = choice_row::<Theme>(state, "theme", "App theme");
-    theme_row.set_subtitle("Change the theme to what you like.");
-
-    let advanced_row = switch_row(state, "advanced-settings-visible", "Advanced settings");
-    advanced_row.set_subtitle("Only enable if you know what you're doing.");
-
-    group.add(&launcher_version_row(state));
-    group.add(&launch_mode_row);
-    group.add(&run_in_background_row);
-    group.add(&theme_row);
-    group.add(&advanced_row);
-
-    let discord_rich_presence_row =
-        switch_row(state, "discord-rich-presence", "Show what you're playing");
-    discord_rich_presence_row
-        .set_subtitle("Show the Roblox game you're in on your Discord profile");
-    ask_for_discord_access_when_turned_on(&discord_rich_presence_row);
-
-    let discord_group = adw::PreferencesGroup::builder().title("Discord").build();
-    discord_group.add(&discord_rich_presence_row);
-
-    let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    section.append(&group);
-    section.append(&discord_group);
-    section.append(&runtime_section(state));
-
-    section.append(&session_group(state));
-    section.append(&super::privacy::privacy_group(state));
-    section.append(&account_group(state));
-    section.append(&support_group(state));
-
-    section
+    let mut sections = vec![
+        appearance_group(state, look),
+        quadra_group.into(),
+        discord_group.into(),
+    ];
+    sections.extend(runtime_section(settings, state, look));
+    sections.extend([
+        session_group(state, look),
+        privacy_group(state, look),
+        account_group(state, look),
+        support_group(settings, state, look),
+    ]);
+    sections
 }

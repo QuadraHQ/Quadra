@@ -1,4 +1,6 @@
 use super::content_files::ContentFiles;
+use super::settings::ModSettings;
+use crate::state::FontStyle;
 use serde_json::Value;
 use std::ffi::OsStr;
 use std::io;
@@ -7,7 +9,19 @@ use std::path::Path;
 const FONTS_DIRECTORY: &str = "fonts";
 const FAMILIES_DIRECTORY: &str = "fonts/families";
 
-pub fn apply(files: &mut ContentFiles, font: &Path) -> io::Result<()> {
+pub fn apply(files: &mut ContentFiles, settings: &ModSettings) -> io::Result<()> {
+    if settings.font_style == FontStyle::Custom {
+        return apply_file(files, &settings.custom_font);
+    }
+    let Some(preset) = settings.font_style.preset() else {
+        return Ok(());
+    };
+    let name = "CustomFont.ttf";
+    files.place_bytes(&Path::new(FONTS_DIRECTORY).join(name), preset.bytes)?;
+    use_font_everywhere(files, name)
+}
+
+fn apply_file(files: &mut ContentFiles, font: &Path) -> io::Result<()> {
     let extension = font
         .extension()
         .and_then(OsStr::to_str)
@@ -22,7 +36,10 @@ pub fn apply(files: &mut ContentFiles, font: &Path) -> io::Result<()> {
 
     let name = format!("CustomFont.{extension}");
     files.place_file(&Path::new(FONTS_DIRECTORY).join(&name), font)?;
+    use_font_everywhere(files, &name)
+}
 
+fn use_font_everywhere(files: &mut ContentFiles, name: &str) -> io::Result<()> {
     let asset_uri = format!("rbxasset://fonts/{name}");
     for family in files.list(Path::new(FAMILIES_DIRECTORY)) {
         if family

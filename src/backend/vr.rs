@@ -208,7 +208,7 @@ fn check_requirements(rosemary: &Path) -> Result<OpenXrRuntime, String> {
     }
     if !rosemary_supports_vr(rosemary) {
         return Err(
-            "The selected Rosemary can't load VR. Choose Quadra's Rosemary under Runtime."
+            "The selected Rosemary can't load VR. Choose Quadra's Rosemary as the runner."
                 .to_owned(),
         );
     }
@@ -333,7 +333,7 @@ fn runtime_manifest_candidates() -> Vec<PathBuf> {
     if let Some(chosen) = std::env::var_os("XR_RUNTIME_JSON").filter(|value| !value.is_empty()) {
         candidates.push(PathBuf::from(chosen));
     }
-    candidates.push(gtk::glib::user_config_dir().join(ACTIVE_RUNTIME_MANIFEST));
+    candidates.push(crate::utils::config_directory().join(ACTIVE_RUNTIME_MANIFEST));
     let config_directories = std::env::var("XDG_CONFIG_DIRS")
         .ok()
         .filter(|directories| !directories.is_empty())

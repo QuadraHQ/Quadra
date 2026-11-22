@@ -4,15 +4,17 @@ use super::req_agent::api_agent;
 use super::server_history;
 use crate::state::AppState;
 use anyhow::Context;
-use gtk::gio;
-use gtk::gio::prelude::*;
+use notify_rust::{Hint, Notification};
 use serde_json::Value;
 use std::cell::RefCell;
 use std::net::Ipv4Addr;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 const GEOLOCATION_URL: &str = "https://apis.rovalra.com/v1/geolocation";
-const NOTIFICATION_ID: &str = "server-location";
+const NOTIFICATION_SUMMARY: &str = "Server joined";
 const MAX_PART_LENGTH: usize = 64;
+
+static SHOWN_NOTIFICATION: AtomicU32 = AtomicU32::new(0);
 
 thread_local! {
     static CURRENT_JOB_ID: RefCell<Option<String>> = const { RefCell::new(None) };
@@ -79,13 +81,24 @@ fn fetch_location(address: Ipv4Addr) -> anyhow::Result<String> {
 }
 
 fn notify(location: &str) {
-    let Some(application) = gio::Application::default() else {
-        return;
-    };
-    let notification = gio::Notification::new("Server joined");
-    notification.set_body(Some(&format!("Your server is located in {location}")));
-    notification.set_icon(&gio::ThemedIcon::new(crate::APP_ID));
-    application.send_notification(Some(NOTIFICATION_ID), &notification);
+    let body = format!("Your server is located in {location}");
+    std::thread::spawn(move || {
+        let mut notification = Notification::new();
+        notification
+            .appname("Quadra")
+            .summary(NOTIFICATION_SUMMARY)
+            .body(&body)
+            .icon(crate::APP_ID)
+            .hint(Hint::DesktopEntry(crate::APP_ID.to_owned()));
+        let previous = SHOWN_NOTIFICATION.load(Ordering::Relaxed);
+        if previous != 0 {
+            notification.id(previous);
+        }
+        match notification.show() {
+            Ok(shown) => SHOWN_NOTIFICATION.store(shown.id(), Ordering::Relaxed),
+            Err(error) => eprintln!("Couldn't show the server location: {error}"),
+        }
+    });
 }
 
 fn is_public(address: &Ipv4Addr) -> bool {

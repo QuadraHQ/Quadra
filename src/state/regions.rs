@@ -1,4 +1,3 @@
-use gtk::glib;
 use serde::{Deserialize, Serialize};
 
 const COUNTRY_AND_CITY_SEPARATOR: char = ':';
@@ -33,8 +32,7 @@ pub fn country_and_city_of(region_key: &str) -> (&str, Option<&str>) {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, glib::Boxed)]
-#[boxed_type(name = "QuadraRegions")]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Regions(pub Vec<Region>);
 
 impl Regions {

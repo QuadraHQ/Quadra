@@ -1,147 +1,99 @@
 use super::icon::app_icon;
-use super::roblox_status::{PROPERTIES_THAT_DECIDE_STATUS, status_text};
+use super::preferences::{caption, title};
+use super::roblox_status::status_text;
+use super::style::{self, Look};
+use crate::quadra::Message;
 use crate::state::AppState;
-use adw::prelude::*;
-use gtk::glib;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::Duration;
+use iced::widget::{column, container, progress_bar, row, space};
+use iced::{Alignment, Element, Length, Size};
 
-const PULSE_EVERY: Duration = Duration::from_millis(100);
+pub const SIZE: Size = Size::new(360.0, 280.0);
+const PULSE_STEPS: u32 = 40;
+const PULSE_WIDTH: u16 = 10;
 
-const PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED: [&str; 3] =
-    ["busy", "running", "roblox-graphics-started"];
-
-fn launch_finished(state: &AppState) -> bool {
+pub fn launch_finished(state: &AppState) -> bool {
     let roblox_is_open_or_gone = state.roblox_graphics_started() || !state.running();
     !state.busy() && roblox_is_open_or_gone
 }
 
-fn has_measurable_progress(state: &AppState) -> bool {
+pub fn has_measurable_progress(state: &AppState) -> bool {
     state.task_progress() > 0.0
 }
 
-fn starting_text(state: &AppState) -> String {
+pub fn starting_text(state: &AppState) -> String {
     format!("Starting {}", state.current_client().name())
 }
 
-#[derive(Clone)]
-struct LaunchProgress {
-    title: gtk::Label,
-    status: gtk::Label,
-    progress_bar: gtk::ProgressBar,
-    pulsing: Rc<RefCell<Option<glib::SourceId>>>,
-}
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Pulse(u32);
 
-impl LaunchProgress {
-    fn show(&self, state: &AppState) {
-        self.title.set_label(&starting_text(state));
-        self.status
-            .set_label(&status_text(state, state.current_client()));
-        if has_measurable_progress(state) {
-            self.progress_bar.set_fraction(state.task_progress());
-        }
+impl Pulse {
+    pub fn advance(&mut self) {
+        self.0 = (self.0 + 1) % (PULSE_STEPS * 2);
     }
 
-    fn start_pulsing(&self, state: &AppState) {
-        let progress_bar = self.progress_bar.downgrade();
-        let state = state.downgrade();
-        let pulsing = glib::timeout_add_local(PULSE_EVERY, move || {
-            let (Some(progress_bar), Some(state)) = (progress_bar.upgrade(), state.upgrade())
-            else {
-                return glib::ControlFlow::Break;
-            };
-            if !has_measurable_progress(&state) {
-                progress_bar.pulse();
-            }
-            glib::ControlFlow::Continue
-        });
-        self.stop_pulsing();
-        self.pulsing.replace(Some(pulsing));
-    }
-
-    fn stop_pulsing(&self) {
-        if let Some(pulsing) = self.pulsing.take() {
-            pulsing.remove();
-        }
+    fn offset(self) -> u16 {
+        let position = if self.0 < PULSE_STEPS {
+            self.0
+        } else {
+            PULSE_STEPS * 2 - self.0
+        };
+        (position * u32::from(100 - PULSE_WIDTH) / PULSE_STEPS) as u16
     }
 }
 
-pub fn launch_window(app: &adw::Application, state: &AppState) -> adw::ApplicationWindow {
-    let progress = LaunchProgress {
-        title: gtk::Label::builder().css_classes(["title-2"]).build(),
-        status: gtk::Label::builder()
-            .css_classes(["dimmed"])
-            .wrap(true)
-            .justify(gtk::Justification::Center)
-            .build(),
-        progress_bar: gtk::ProgressBar::new(),
-        pulsing: Rc::default(),
+pub fn view<'a>(state: &AppState, pulse: Pulse) -> Element<'a, Message> {
+    let look = Look::of(state);
+    let progress: Element<'a, Message> = if has_measurable_progress(state) {
+        progress_bar(0.0..=1.0, state.task_progress() as f32)
+            .girth(6)
+            .style(style::progress(look))
+            .into()
+    } else {
+        pulsing_bar(look, pulse)
     };
 
-    progress.progress_bar.connect_map(glib::clone!(
-        #[strong]
-        progress,
-        #[weak]
-        state,
-        move |_| progress.start_pulsing(&state)
-    ));
-    progress.progress_bar.connect_unmap(glib::clone!(
-        #[strong]
-        progress,
-        move |_| progress.stop_pulsing()
-    ));
-
-    let content = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(12)
-        .margin_top(32)
-        .margin_start(32)
-        .margin_end(32)
-        .margin_bottom(32)
-        .build();
-    content.append(&app_icon(64));
-    content.append(&progress.title);
-    content.append(&progress.status);
-    content.append(&progress.progress_bar);
-
-    let toolbar_view = adw::ToolbarView::new();
-    toolbar_view.set_content(Some(&content));
-
-    let window = adw::ApplicationWindow::builder()
-        .application(app)
-        .title(starting_text(state))
-        .default_width(360)
-        .resizable(false)
-        .hide_on_close(true)
-        .content(&toolbar_view)
-        .build();
-
-    state.follow_properties(
-        &PROPERTIES_THAT_DECIDE_STATUS,
-        glib::clone!(
-            #[strong]
+    container(
+        column![
+            app_icon(64.0),
+            title(look, starting_text(state), 20.0),
+            caption(look, status_text(state, state.current_client())).center(),
             progress,
-            #[weak]
-            window,
-            move |state| {
-                progress.show(state);
-                window.set_title(Some(&starting_text(state)));
-            }
-        ),
-    );
-    state.connect_properties_notify(
-        &PROPERTIES_THAT_DECIDE_LAUNCH_FINISHED,
-        glib::clone!(
-            #[weak]
-            window,
-            move |state| {
-                if launch_finished(state) {
-                    window.set_visible(false);
-                }
-            }
-        ),
-    );
+        ]
+        .spacing(12)
+        .align_x(Alignment::Center),
+    )
+    .padding(32)
+    .center(Length::Fill)
+    .into()
+}
 
-    window
+fn pulsing_bar<'a>(look: Look, pulse: Pulse) -> Element<'a, Message> {
+    let offset = pulse.offset();
+    let block = container(space().height(6))
+        .width(Length::FillPortion(PULSE_WIDTH))
+        .style(move |_| container::Style {
+            background: Some(look.accent.into()),
+            border: iced::Border {
+                radius: (look.radius * 0.5).into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+    let trough = row![
+        space().width(Length::FillPortion(offset.max(1))),
+        block,
+        space().width(Length::FillPortion((100 - PULSE_WIDTH - offset).max(1))),
+    ];
+    container(trough)
+        .width(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(look.pressed.into()),
+            border: iced::Border {
+                radius: (look.radius * 0.5).into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .into()
 }

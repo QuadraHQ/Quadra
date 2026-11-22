@@ -1,0 +1,28 @@
+:root {
+  --name: "Phosphor";
+  --window: #030805;
+  --title-bar: rgba(3, 8, 5, 0.85);
+  --card: rgba(10, 30, 16, 0.78);
+  --dialog: #061309;
+  --field: rgba(0, 0, 0, 0.5);
+  --raised: #0b2213;
+  --hovered: #103019;
+  --pressed: #174022;
+  --border: #12361d;
+  --strong-border: #1d5a30;
+  --shade: rgba(0, 0, 0, 0.75);
+  --text: #a6ffbf;
+  --dimmed: #52a86b;
+  --accent: #39ff7a;
+  --on-accent: #001a08;
+  --accent-text: #6dff9c;
+  --success: #39ff7a;
+  --warning: #e6ff5c;
+  --destructive: #ff6b6b;
+  --radius: 0px;
+  --font: "JetBrains Mono";
+  --mono-font: "JetBrains Mono";
+  --pattern: scanlines;
+  --pattern-color: rgba(57, 255, 122, 0.035);
+  --animation: scanlines;
+}

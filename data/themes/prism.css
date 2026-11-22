@@ -1,0 +1,27 @@
+:root {
+  --name: "Prism";
+  --window: #0d0e22;
+  --title-bar: rgba(13, 14, 34, 0.6);
+  --card: rgba(150, 160, 255, 0.06);
+  --dialog: #15173a;
+  --field: rgba(0, 0, 0, 0.3);
+  --raised: rgba(150, 160, 255, 0.07);
+  --hovered: rgba(150, 160, 255, 0.1);
+  --pressed: rgba(150, 160, 255, 0.14);
+  --border: rgba(150, 160, 255, 0.1);
+  --strong-border: rgba(150, 160, 255, 0.22);
+  --shade: rgba(2, 3, 12, 0.62);
+  --text: #e9ebff;
+  --dimmed: #9aa0cf;
+  --accent: #6f7bff;
+  --on-accent: #06081f;
+  --accent-text: #a9b1ff;
+  --success: #4fe0b0;
+  --warning: #ffc56b;
+  --destructive: #ff6b8a;
+  --radius: 2px;
+  --font: "Archivo";
+  --mono-font: "JetBrains Mono";
+  --background: linear-gradient(150deg, #1a1c44, #0d0e22 55%, #14102e);
+  --animation: facets;
+}
