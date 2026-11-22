@@ -55,6 +55,21 @@ pub enum Symbol {
     WindowClose,
 }
 
+macro_rules! adwaita_icon {
+    ($file:literal) => {
+        LazyLock::new(|| {
+            svg::Handle::from_memory(include_bytes!(concat!(
+                "../../assets/icons/adwaita/",
+                $file
+            )))
+        })
+    };
+}
+
+static ADWAITA_HOME: LazyLock<svg::Handle> = adwaita_icon!("go-home-symbolic.svg");
+static ADWAITA_SERVER: LazyLock<svg::Handle> = adwaita_icon!("network-server-symbolic.svg");
+static ADWAITA_SETTINGS: LazyLock<svg::Handle> = adwaita_icon!("emblem-system-symbolic.svg");
+
 macro_rules! symbols {
     ($($symbol:ident => $paths:literal,)*) => {
         fn handle(symbol: Symbol) -> svg::Handle {
@@ -73,15 +88,15 @@ macro_rules! symbols {
             )*
             match symbol {
                 $(Symbol::$symbol => $symbol.clone(),)*
+                Symbol::Home => ADWAITA_HOME.clone(),
+                Symbol::Server => ADWAITA_SERVER.clone(),
+                Symbol::Settings => ADWAITA_SETTINGS.clone(),
             }
         }
     };
 }
 
 symbols! {
-    Home => r#"<path d="M2.5 7.5 8 2.5l5.5 5"/><path d="M4 6.5v7h3v-4h2v4h3v-7"/>"#,
-    Server => r#"<rect x="2.5" y="2.5" width="11" height="4.5" rx="1"/><rect x="2.5" y="9" width="11" height="4.5" rx="1"/><path d="M5 4.75h.01M5 11.25h.01"/>"#,
-    Settings => r#"<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>"#,
     Play => r#"<path d="M4.5 2.75v10.5L13 8z" fill="currentColor"/>"#,
     Stop => r#"<rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="currentColor"/>"#,
     Download => r#"<path d="M8 2v8M4.5 6.75 8 10.25l3.5-3.5M2.5 13.5h11"/>"#,
