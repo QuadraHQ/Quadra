@@ -44,5 +44,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: Quadra-x86_64.AppImage
-          path: appimage/Quadra-x86_64.AppImage
+          path: build/appimage/Quadra-x86_64.AppImage
           if-no-files-found: error
