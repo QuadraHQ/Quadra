@@ -67,8 +67,6 @@ macro_rules! adwaita_icon {
 }
 
 static ADWAITA_HOME: LazyLock<svg::Handle> = adwaita_icon!("go-home-symbolic.svg");
-static ADWAITA_SERVER: LazyLock<svg::Handle> = adwaita_icon!("network-server-symbolic.svg");
-static ADWAITA_SETTINGS: LazyLock<svg::Handle> = adwaita_icon!("emblem-system-symbolic.svg");
 
 macro_rules! symbols {
     ($($symbol:ident => $paths:literal,)*) => {
@@ -89,14 +87,14 @@ macro_rules! symbols {
             match symbol {
                 $(Symbol::$symbol => $symbol.clone(),)*
                 Symbol::Home => ADWAITA_HOME.clone(),
-                Symbol::Server => ADWAITA_SERVER.clone(),
-                Symbol::Settings => ADWAITA_SETTINGS.clone(),
             }
         }
     };
 }
 
 symbols! {
+    Server => r#"<path fill="currentColor" stroke="none" fill-rule="evenodd" d="M2 1.0h12v3.25H2zM8.5 2.10h1v1.05h-1zM10.25 2.10h1v1.05h-1zM12.0 2.10h1v1.05h-1zM2 4.75h12v3.25H2zM8.5 5.85h1v1.05h-1zM10.25 5.85h1v1.05h-1zM12.0 5.85h1v1.05h-1zM2 8.5h12v3.25H2zM8.5 9.60h1v1.05h-1zM10.25 9.60h1v1.05h-1zM12.0 9.60h1v1.05h-1z"/><path d="M8 11.75v2M4.5 14.5h7"/>"#,
+    Settings => r#"<path d="M13.03 6.03 L14.89 6.77 L14.89 9.23 L13.03 9.97 L12.95 10.16 L13.74 12.00 L12.00 13.74 L10.16 12.95 L9.97 13.03 L9.23 14.89 L6.77 14.89 L6.03 13.03 L5.84 12.95 L4.00 13.74 L2.26 12.00 L3.05 10.16 L2.97 9.97 L1.11 9.23 L1.11 6.77 L2.97 6.03 L3.05 5.84 L2.26 4.00 L4.00 2.26 L5.84 3.05 L6.03 2.97 L6.77 1.11 L9.23 1.11 L9.97 2.97 L10.16 3.05 L12.00 2.26 L13.74 4.00 L12.95 5.84Z"/><circle cx="8" cy="8" r="2.3"/>"#,
     Play => r#"<path d="M4.5 2.75v10.5L13 8z" fill="currentColor"/>"#,
     Stop => r#"<rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="currentColor"/>"#,
     Download => r#"<path d="M8 2v8M4.5 6.75 8 10.25l3.5-3.5M2.5 13.5h11"/>"#,

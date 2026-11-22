@@ -2,12 +2,12 @@
   --name: "Monochrome";
   --window: #000000;
   --title-bar: rgba(0, 0, 0, 0.86);
-  --card: rgba(30, 30, 30, 0.75);
+  --card: rgba(30, 30, 30, 0.4);
   --dialog: #121212;
   --field: rgba(0, 0, 0, 0.45);
   --raised: #1c1c1c;
   --hovered: #262626;
-  --pressed: rgba(240, 240, 240, 0.12);
+  --pressed: #1d1d1d;
   --border: #1e1e1e;
   --strong-border: #2f2f2f;
   --shade: rgba(0, 0, 0, 0.7);

@@ -12,7 +12,11 @@ use iced::{
 
 const HEIGHT: f32 = 22.0;
 const KNOB_INSET: f32 = 2.0;
+const OUTLINED_SIZE: Size = Size::new(32.0, 15.0);
+const OUTLINED_KNOB: Size = Size::new(13.0, 9.0);
+const OUTLINED_INSET: f32 = 3.0;
 const SLIDING_TIME: f32 = 0.15;
+const DISABLED_OPACITY: f32 = 0.45;
 const LONGEST_STEP: f32 = 0.05;
 const SLIDING_FRAME: Duration = Duration::from_millis(8);
 
@@ -91,6 +95,72 @@ fn colour_of(background: Background) -> Color {
     }
 }
 
+impl Switch<'_> {
+    fn is_outlined(&self) -> bool {
+        self.look.radius == 0.0
+    }
+
+    fn drawn_size(&self) -> Size {
+        if self.is_outlined() {
+            OUTLINED_SIZE
+        } else {
+            Size::new(HEIGHT * 2.0, HEIGHT)
+        }
+    }
+
+    fn draw_outlined(
+        &self,
+        renderer: &mut Renderer,
+        bounds: Rectangle,
+        position: f32,
+        is_hovered: bool,
+    ) {
+        use iced::advanced::Renderer as _;
+        let look = self.look;
+        let resting = if is_hovered { look.text } else { look.dimmed };
+        let edge = mixed(resting, look.accent_text, position);
+        let fill = Color {
+            a: look.pressed.a * position,
+            ..look.pressed
+        };
+        let fade = |color: Color| {
+            if self.on_toggle.is_some() {
+                color
+            } else {
+                Color {
+                    a: color.a * DISABLED_OPACITY,
+                    ..color
+                }
+            }
+        };
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds,
+                border: Border {
+                    color: fade(edge),
+                    width: 1.0,
+                    radius: 0.0.into(),
+                },
+                ..renderer::Quad::default()
+            },
+            fade(fill),
+        );
+        let travel = bounds.width - OUTLINED_KNOB.width - OUTLINED_INSET * 2.0;
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: Rectangle {
+                    x: bounds.x + OUTLINED_INSET + travel * position,
+                    y: bounds.y + (bounds.height - OUTLINED_KNOB.height) / 2.0,
+                    width: OUTLINED_KNOB.width,
+                    height: OUTLINED_KNOB.height,
+                },
+                ..renderer::Quad::default()
+            },
+            fade(edge),
+        );
+    }
+}
+
 impl Widget<Message, Theme, Renderer> for Switch<'_> {
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<Slide>()
@@ -104,7 +174,8 @@ impl Widget<Message, Theme, Renderer> for Switch<'_> {
     }
 
     fn size(&self) -> Size<Length> {
-        Size::new(Length::Fixed(HEIGHT * 2.0), Length::Fixed(HEIGHT))
+        let size = self.drawn_size();
+        Size::new(Length::Fixed(size.width), Length::Fixed(size.height))
     }
 
     fn layout(
@@ -113,10 +184,11 @@ impl Widget<Message, Theme, Renderer> for Switch<'_> {
         _renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
+        let size = self.drawn_size();
         layout::Node::new(limits.resolve(
-            Length::Fixed(HEIGHT * 2.0),
-            Length::Fixed(HEIGHT),
-            Size::new(HEIGHT * 2.0, HEIGHT),
+            Length::Fixed(size.width),
+            Length::Fixed(size.height),
+            size,
         ))
     }
 
@@ -184,6 +256,10 @@ impl Widget<Message, Theme, Renderer> for Switch<'_> {
         let position = eased(tree.state.downcast_ref::<Slide>().position);
         let bounds = layout.bounds();
         let is_hovered = cursor.is_over(bounds);
+        if self.is_outlined() {
+            self.draw_outlined(renderer, bounds, position, is_hovered);
+            return;
+        }
         let painted = style::switch(self.look);
         let status = |is_toggled| match (self.on_toggle.is_some(), is_hovered) {
             (false, _) => toggler::Status::Disabled { is_toggled },

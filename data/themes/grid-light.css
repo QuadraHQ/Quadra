@@ -2,12 +2,12 @@
   --name: "Grid Light";
   --window: #f3f5f8;
   --title-bar: rgba(243, 245, 248, 0.86);
-  --card: rgba(255, 255, 255, 0.94);
+  --card: rgba(255, 255, 255, 0.6);
   --dialog: #ffffff;
   --field: rgba(255, 255, 255, 0.9);
   --raised: #e7ecf2;
   --hovered: #dde4ed;
-  --pressed: rgba(16, 20, 27, 0.12);
+  --pressed: #d8dadd;
   --border: #d3dae4;
   --strong-border: #b9c3d0;
   --shade: rgba(16, 20, 27, 0.4);

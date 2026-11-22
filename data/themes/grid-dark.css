@@ -2,12 +2,12 @@
   --name: "Grid Dark";
   --window: #10141b;
   --title-bar: rgba(16, 20, 27, 0.86);
-  --card: rgba(24, 33, 44, 0.94);
+  --card: rgba(30, 30, 30, 0.4);
   --dialog: #18212c;
   --field: rgba(0, 0, 0, 0.45);
   --raised: #202b38;
   --hovered: #2a3747;
-  --pressed: rgba(240, 240, 240, 0.12);
+  --pressed: #2b2e35;
   --border: #263343;
   --strong-border: #344458;
   --shade: rgba(0, 0, 0, 0.7);
