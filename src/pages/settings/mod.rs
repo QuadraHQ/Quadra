@@ -71,7 +71,7 @@ pub fn settings_page(state: &AppState) -> gtk::Widget {
         &advanced_content,
         Some("advanced"),
         "Advanced",
-        "preferences-dev-symbolic",
+        "applications-engineering-symbolic",
     );
 
     let advanced_page = stack.page(&advanced_content);
