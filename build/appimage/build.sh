@@ -21,21 +21,21 @@ download_tool linuxdeploy-x86_64.AppImage \
 download_tool linuxdeploy-plugin-gtk.sh \
     https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh
 
-cargo build --release --manifest-path ../Cargo.toml
+cargo build --release --manifest-path ../../Cargo.toml
 
 export PATH="$tools:$PATH"
 export DEPLOY_GTK_VERSION=4
 
 icon_files=()
-for icon in ../data/icons/hicolor/*/apps/org.quadrahq.Quadra.png; do
+for icon in ../../data/icons/hicolor/*/apps/org.quadrahq.Quadra.png; do
     icon_files+=(--icon-file "$icon")
 done
 
 rm -rf "$appdir"
 linuxdeploy-x86_64.AppImage \
     --appdir "$appdir" \
-    --executable ../target/release/quadra \
-    --desktop-file ../data/org.quadrahq.Quadra.desktop \
+    --executable ../../target/release/quadra \
+    --desktop-file ../../data/org.quadrahq.Quadra.desktop \
     "${icon_files[@]}" \
     --plugin gtk
 

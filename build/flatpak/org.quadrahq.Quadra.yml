@@ -75,12 +75,12 @@ modules:
       - install -Dm755 target/release/quadra -t /app/bin/
       - install -Dm644 LICENSE -t /app/share/licenses/quadra/
       - mkdir -p /app/share/icons && cp -r data/icons/hicolor /app/share/icons/
-      - install -Dm644 flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/
+      - install -Dm644 build/flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/
       - install -Dm644 data/org.quadrahq.Quadra.xml -t /app/share/mime/packages/
-      - install -Dm644 flatpak/org.quadrahq.Quadra.metainfo.xml -t /app/share/metainfo/
+      - install -Dm644 build/flatpak/org.quadrahq.Quadra.metainfo.xml -t /app/share/metainfo/
     sources:
       - type: dir
-        path: ..
+        path: ../..
         skip:
           - target
           - build-dir
