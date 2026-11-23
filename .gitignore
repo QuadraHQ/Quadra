@@ -6,6 +6,6 @@ result
 
 AppDir
 *.AppImage
-/appimage/tools
-/tarball/staging
-/tarball/*.tar.gz
+/build/appimage/tools
+/build/tarball/staging
+/build/tarball/*.tar.gz

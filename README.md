@@ -59,16 +59,16 @@ cargo build
 **Build Flatpak:**
 
 ```
-cd flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install build-dir org.quadrahq.Quadra.yml
+cd build/flatpak && flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install build-dir org.quadrahq.Quadra.yml
 ```
 
 **Build AppImage:**
 
 ```
-./appimage/build.sh
+./build/appimage/build.sh
 ```
 
-The AppImage is written to `appimage/Quadra-x86_64.AppImage`.
+The AppImage is written to `build/appimage/Quadra-x86_64.AppImage`.
 
 **Nix:**
 
