@@ -41,4 +41,9 @@ linuxdeploy-x86_64.AppImage \
 
 sed -i '/^export GTK_THEME=/d; /^export GDK_BACKEND=/d' "$gtk_hook"
 
+bundled_icons="$appdir/usr/share/icons/Adwaita"
+mkdir -p "$bundled_icons"
+cp -r /usr/share/icons/Adwaita/{index.theme,scalable,symbolic} "$bundled_icons/"
+gtk4-update-icon-cache --force --quiet "$bundled_icons"
+
 linuxdeploy-x86_64.AppImage --appdir "$appdir" --output appimage

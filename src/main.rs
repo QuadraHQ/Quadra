@@ -70,6 +70,8 @@ fn follow_theme(state: &AppState) {
     utils::register_bundled_fonts();
 
     let display = gtk::gdk::Display::default().unwrap();
+    gtk::Settings::for_display(&display).set_gtk_icon_theme_name(Some("Adwaita"));
+
     let theme = gtk::CssProvider::new();
     gtk::style_context_add_provider_for_display(
         &display,
