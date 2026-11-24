@@ -47,6 +47,13 @@ jobs:
     with:
       release: true
 
+  gentoo:
+    name: Gentoo
+    needs: version
+    uses: ./.github/workflows/gentoo.yml
+    with:
+      release: true
+
   flatpak:
     name: Flatpak
     needs: version
@@ -58,7 +65,7 @@ jobs:
 
   release:
     name: Create release
-    needs: [version, appimage, tarball, flatpak]
+    needs: [version, appimage, tarball, gentoo, flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,7 +96,8 @@ jobs:
           cp "$(find artifacts -type f -name '*.AppImage' | head -n1)" "release-files/Quadra-$TAG-x86_64.AppImage"
           cp "$(find artifacts -type f -name '*.flatpak' | head -n1)" "release-files/Quadra-$TAG-x86_64.flatpak"
           cp "$(find artifacts -type f -name '*.tar.gz' | head -n1)" "release-files/Quadra-$TAG-x86_64.tar.gz"
-          (cd release-files && sha256sum Quadra-* > SHA256SUMS)
+          cp "$(find artifacts -type f -name '*.ebuild' | head -n1)" "release-files/quadra-${TAG#v}.ebuild"
+          (cd release-files && sha256sum Quadra-* quadra-* > SHA256SUMS)
           ls -la release-files
           cat release-files/SHA256SUMS
 

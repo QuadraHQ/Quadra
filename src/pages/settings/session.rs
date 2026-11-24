@@ -28,6 +28,7 @@ pub fn session_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&playtime_row);
     group.add(&location_row);
     group.add(&cpu_core_limit_row(state));
+    group.add(&video_memory_row(state));
     group
 }
 
@@ -41,6 +42,29 @@ fn cpu_core_limit_row(state: &AppState) -> adw::SpinRow {
         .bind_property("cpu-core-limit", &row, "value")
         .transform_to(|_, cores: u32| Some(f64::from(cores)))
         .transform_from(|_, cores: f64| Some(cores as u32))
+        .bidirectional()
+        .sync_create()
+        .build();
+
+    row
+}
+
+/// Most a row offers, in megabytes: far past any consumer card.
+const MAX_VIDEO_MEMORY_MB: f64 = 65536.0;
+const VIDEO_MEMORY_STEP_MB: f64 = 256.0;
+
+fn video_memory_row(state: &AppState) -> adw::SpinRow {
+    let row = adw::SpinRow::with_range(0.0, MAX_VIDEO_MEMORY_MB, VIDEO_MEMORY_STEP_MB);
+    row.set_title("Video memory (MB)");
+    row.set_subtitle(
+        "Tells Roblox how much video memory you have. 0 detects it. \
+         Raise it if textures look blurry on an integrated GPU",
+    );
+
+    state
+        .bind_property("video-memory-mb", &row, "value")
+        .transform_to(|_, megabytes: u32| Some(f64::from(megabytes)))
+        .transform_from(|_, megabytes: f64| Some(megabytes as u32))
         .bidirectional()
         .sync_create()
         .build();

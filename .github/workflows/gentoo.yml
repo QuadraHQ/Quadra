@@ -1,0 +1,32 @@
+name: Gentoo
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
+
+concurrency:
+  group: gentoo-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ebuild:
+    name: Build ebuild
+    if: ${{ inputs.release || !startsWith(github.event.head_commit.message, 'release:') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build ebuild
+        run: ./build/gentoo/build.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: quadra.ebuild
+          path: build/gentoo/quadra-*.ebuild
+          if-no-files-found: error

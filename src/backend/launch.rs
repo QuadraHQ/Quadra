@@ -247,6 +247,11 @@ fn end_when_quadra_ends(command: &mut Command) {
     }
 }
 
+/// Zero asks Rosemary to detect it.
+fn video_memory_value(megabytes: u32) -> Option<String> {
+    (megabytes > 0).then(|| megabytes.to_string())
+}
+
 fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec<(String, String)> {
     let mut environment: Vec<(&str, String)> = Vec::new();
 
@@ -265,6 +270,10 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
             "ROSEMARY_METAL_PRESENTATION_MODE",
             presentation_mode.to_owned(),
         ));
+    }
+
+    if let Some(megabytes) = video_memory_value(state.video_memory_mb()) {
+        environment.push(("ROSEMARY_VIDEO_MEMORY_MB", megabytes));
     }
 
     if state.mangohud() {
@@ -395,6 +404,12 @@ mod tests {
     fn only_a_hidden_menu_bar_sets_the_rosemary_menu() {
         assert_eq!(menu_value(true), None);
         assert_eq!(menu_value(false), Some("none"));
+    }
+
+    #[test]
+    fn only_a_chosen_video_memory_is_sent_to_rosemary() {
+        assert_eq!(video_memory_value(0), None);
+        assert_eq!(video_memory_value(2048).as_deref(), Some("2048"));
     }
 
     #[test]
