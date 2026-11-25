@@ -31,7 +31,7 @@
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/servers-menu.png</image>
-      <caption>Joining by region and rejoining past servers</caption>
+      <caption>Joining by link and rejoining past servers</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/QuadraHQ/Quadra/main/assets/screenshots/settings-menu.png</image>
@@ -55,6 +55,20 @@
     <display_length compare="ge">768</display_length>
   </supports>
   <releases>
+    <release version="0.52.0" date="2026-11-25">
+      <description>
+        <ul>
+          <li>Added an option to open Roblox web pages in a separate window (Flatpak)</li>
+          <li>Fixed Google and Apple sign-in not returning to Roblox</li>
+          <li>Added automatic SteamVR detection (AppImage, tarball and source builds)</li>
+          <li>Fixed SteamVR staying on the waiting screen with the OpenGL renderer</li>
+          <li>Fixed the SteamVR view being cut off at the window's height</li>
+          <li>Added HTC Vive wand controls</li>
+          <li>Turned off preferred server regions and server location notifications for now</li>
+          <li>Updated bundled Rosemary to 0.5.0-quadra.5</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.51.0" date="2026-11-24">
       <description>
         <ul>
