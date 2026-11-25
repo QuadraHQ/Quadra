@@ -71,8 +71,9 @@ modules:
     build-commands:
       - |
         export RUSTFLAGS="$RUSTFLAGS -C link-arg=-Wl,-rpath,/app/lib64 -C link-arg=-Wl,-rpath,/app/lib"
-        cargo --offline build --release --locked
+        cargo --offline build --release --locked --workspace
       - install -Dm755 target/release/quadra -t /app/bin/
+      - install -Dm755 target/release/quadra-web-window -t /app/bin/
       - install -Dm644 LICENSE -t /app/share/licenses/quadra/
       - mkdir -p /app/share/icons && cp -r data/icons/hicolor /app/share/icons/
       - install -Dm644 build/flatpak/org.quadrahq.Quadra.desktop -t /app/share/applications/

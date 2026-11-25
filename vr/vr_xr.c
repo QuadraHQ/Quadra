@@ -11,6 +11,7 @@ extern float sqrtf(float);
 #define VR_XR_IMAGES 8
 #define GL_FRAMEBUFFER_SRGB 0x8DB9
 #define GL_SCISSOR_TEST 0x0C11
+#define GL_VIEWPORT 0x0BA2
 #define GL_COLOR_WRITEMASK 0x0C23
 #define GL_READ_FRAMEBUFFER 0x8CA8
 #define GL_DRAW_FRAMEBUFFER 0x8CA9
@@ -47,39 +48,51 @@ static unsigned int copy_framebuffer;
 typedef struct {
     const char *name, *label;
     int type, slot;
-    const char *touch, *index, *simple;
+    const char *touch, *index, *simple, *vive;
 } VrXrInputAction;
 static const VrXrInputAction input_actions[] = {
     {"left_x", "Left X", XR_ACTION_TYPE_BOOLEAN_INPUT, 24,
-     "/user/hand/left/input/x/click", "/user/hand/left/input/a/click", 0},
+     "/user/hand/left/input/x/click", "/user/hand/left/input/a/click", 0, 0},
     {"left_y", "Left Y", XR_ACTION_TYPE_BOOLEAN_INPUT, 25,
-     "/user/hand/left/input/y/click", "/user/hand/left/input/b/click", 0},
+     "/user/hand/left/input/y/click", "/user/hand/left/input/b/click", 0, 0},
     {"left_thumbstick_click", "Left Thumbstick Click", XR_ACTION_TYPE_BOOLEAN_INPUT, 0,
-     "/user/hand/left/input/thumbstick/click", "/user/hand/left/input/thumbstick/click", 0},
+     "/user/hand/left/input/thumbstick/click", "/user/hand/left/input/thumbstick/click", 0,
+     "/user/hand/left/input/trackpad/click"},
     {"left_menu", "Menu", XR_ACTION_TYPE_BOOLEAN_INPUT, 26,
-     "/user/hand/left/input/menu/click", 0, "/user/hand/left/input/menu/click"},
+     "/user/hand/left/input/menu/click", 0, "/user/hand/left/input/menu/click",
+     "/user/hand/left/input/menu/click"},
     {"right_a", "Right A", XR_ACTION_TYPE_BOOLEAN_INPUT, 22,
-     "/user/hand/right/input/a/click", "/user/hand/right/input/a/click", 0},
+     "/user/hand/right/input/a/click", "/user/hand/right/input/a/click", 0, 0},
     {"right_b", "Right B", XR_ACTION_TYPE_BOOLEAN_INPUT, 23,
-     "/user/hand/right/input/b/click", "/user/hand/right/input/b/click", 0},
+     "/user/hand/right/input/b/click", "/user/hand/right/input/b/click", 0,
+     "/user/hand/right/input/menu/click"},
     {"right_thumbstick_click", "Right Thumbstick Click", XR_ACTION_TYPE_BOOLEAN_INPUT, 9,
-     "/user/hand/right/input/thumbstick/click", "/user/hand/right/input/thumbstick/click", 0},
+     "/user/hand/right/input/thumbstick/click", "/user/hand/right/input/thumbstick/click", 0,
+     "/user/hand/right/input/trackpad/click"},
     {"left_trigger", "Left Trigger", XR_ACTION_TYPE_FLOAT_INPUT, 3,
-     "/user/hand/left/input/trigger/value", "/user/hand/left/input/trigger/value", "/user/hand/left/input/select/click"},
+     "/user/hand/left/input/trigger/value", "/user/hand/left/input/trigger/value", "/user/hand/left/input/select/click",
+     "/user/hand/left/input/trigger/value"},
     {"left_grip", "Left Grip", XR_ACTION_TYPE_FLOAT_INPUT, 4,
-     "/user/hand/left/input/squeeze/value", "/user/hand/left/input/squeeze/value", 0},
+     "/user/hand/left/input/squeeze/value", "/user/hand/left/input/squeeze/value", 0,
+     "/user/hand/left/input/squeeze/click"},
     {"left_thumbstick_x", "Left Thumbstick X", XR_ACTION_TYPE_FLOAT_INPUT, 1,
-     "/user/hand/left/input/thumbstick/x", "/user/hand/left/input/thumbstick/x", 0},
+     "/user/hand/left/input/thumbstick/x", "/user/hand/left/input/thumbstick/x", 0,
+     "/user/hand/left/input/trackpad/x"},
     {"left_thumbstick_y", "Left Thumbstick Y", XR_ACTION_TYPE_FLOAT_INPUT, 2,
-     "/user/hand/left/input/thumbstick/y", "/user/hand/left/input/thumbstick/y", 0},
+     "/user/hand/left/input/thumbstick/y", "/user/hand/left/input/thumbstick/y", 0,
+     "/user/hand/left/input/trackpad/y"},
     {"right_trigger", "Right Trigger", XR_ACTION_TYPE_FLOAT_INPUT, 12,
-     "/user/hand/right/input/trigger/value", "/user/hand/right/input/trigger/value", "/user/hand/right/input/select/click"},
+     "/user/hand/right/input/trigger/value", "/user/hand/right/input/trigger/value", "/user/hand/right/input/select/click",
+     "/user/hand/right/input/trigger/value"},
     {"right_grip", "Right Grip", XR_ACTION_TYPE_FLOAT_INPUT, 13,
-     "/user/hand/right/input/squeeze/value", "/user/hand/right/input/squeeze/value", 0},
+     "/user/hand/right/input/squeeze/value", "/user/hand/right/input/squeeze/value", 0,
+     "/user/hand/right/input/squeeze/click"},
     {"right_thumbstick_x", "Right Thumbstick X", XR_ACTION_TYPE_FLOAT_INPUT, 10,
-     "/user/hand/right/input/thumbstick/x", "/user/hand/right/input/thumbstick/x", 0},
+     "/user/hand/right/input/thumbstick/x", "/user/hand/right/input/thumbstick/x", 0,
+     "/user/hand/right/input/trackpad/x"},
     {"right_thumbstick_y", "Right Thumbstick Y", XR_ACTION_TYPE_FLOAT_INPUT, 11,
-     "/user/hand/right/input/thumbstick/y", "/user/hand/right/input/thumbstick/y", 0},
+     "/user/hand/right/input/thumbstick/y", "/user/hand/right/input/thumbstick/y", 0,
+     "/user/hand/right/input/trackpad/y"},
 };
 #define VR_XR_INPUT_ACTIONS (int)(sizeof input_actions / sizeof *input_actions)
 /* Hand position comes from the grip pose and orientation from the aim pose,
@@ -150,6 +163,7 @@ static void (*glGetBooleanv_)(unsigned int, unsigned char *);
 static unsigned char (*glIsEnabled_)(unsigned int);
 static void (*glEnable_)(unsigned int);
 static void (*glDisable_)(unsigned int);
+static void (*glViewport_)(int, int, int, int);
 static void (*glColorMask_)(unsigned char, unsigned char, unsigned char, unsigned char);
 
 static void vr_xr_log(const char *what, XrResult result) {
@@ -180,7 +194,8 @@ static int vr_xr_load_gl(void) {
 #define GL(name) (*(void **)&name##_ = vr_host->gl(#name))
     return GL(glGenFramebuffers) && GL(glBindFramebuffer) && GL(glFramebufferTexture2D) &&
            GL(glBlitFramebuffer) && GL(glGetIntegerv) && GL(glGetBooleanv) && GL(glIsEnabled) &&
-           GL(glEnable) && GL(glDisable) && GL(glColorMask);
+           GL(glEnable) && GL(glDisable) && GL(glColorMask) &&
+           GL(glViewport);
 #undef GL
 }
 
@@ -277,7 +292,8 @@ static void vr_xr_suggest(const char *profile, int column) {
     uint32_t count = 0;
     for (int index = 0; index < VR_XR_INPUT_ACTIONS; ++index) {
         const VrXrInputAction *input = &input_actions[index];
-        XrPath path = vr_xr_path(column == 0 ? input->touch : column == 1 ? input->index : input->simple);
+        XrPath path = vr_xr_path(column == 0 ? input->touch : column == 1 ? input->index :
+                                  column == 2 ? input->simple : input->vive);
         if (path) bindings[count++] = (XrActionSuggestedBinding){actions[index], path};
     }
     for (int index = 0; index < 4; ++index)
@@ -327,6 +343,7 @@ static void vr_xr_controllers(void) {
     vr_xr_suggest("/interaction_profiles/oculus/touch_controller", 0);
     vr_xr_suggest("/interaction_profiles/valve/index_controller", 1);
     vr_xr_suggest("/interaction_profiles/khr/simple_controller", 2);
+    vr_xr_suggest("/interaction_profiles/htc/vive_controller", 3);
     XrSessionActionSetsAttachInfo attach = {XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO, 0, 1, &action_set};
     if ((result = xrAttachSessionActionSets_(session, &attach)) != XR_SUCCESS) {
         vr_xr_log("attach controller actions", result);
@@ -423,7 +440,7 @@ static int vr_xr_session(void *display, void *context, void *(*get_proc_address)
              stage_space ? "stage space available" : "no stage space");
     vr_host->log(line);
     snprintf(line, sizeof line, "[Quadra VR] Controllers: %s\n",
-             action_set ? "Touch, Index and generic profiles bound" : "unavailable");
+             action_set ? "Touch, Index, Vive and generic profiles bound" : "unavailable");
     vr_host->log(line);
     return 1;
 }
@@ -789,8 +806,7 @@ static void vr_xr_copy(const unsigned int framebuffer[2], int width, int height)
     glGetIntegerv_(GL_READ_FRAMEBUFFER_BINDING, &read);
     glGetIntegerv_(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
     glGetBooleanv_(GL_COLOR_WRITEMASK, mask);
-    unsigned char scissor = glIsEnabled_(GL_SCISSOR_TEST), srgb = glIsEnabled_(GL_FRAMEBUFFER_SRGB);
-    if (scissor) glDisable_(GL_SCISSOR_TEST);
+    unsigned char srgb = glIsEnabled_(GL_FRAMEBUFFER_SRGB);
     if (srgb) glDisable_(GL_FRAMEBUFFER_SRGB);
     glColorMask_(1, 1, 1, 1);
     for (int eye = 0; eye < 2; ++eye) {
@@ -814,7 +830,26 @@ static void vr_xr_copy(const unsigned int framebuffer[2], int width, int height)
     glBindFramebuffer_(GL_DRAW_FRAMEBUFFER, (unsigned int)draw);
     glColorMask_(mask[0], mask[1], mask[2], mask[3]);
     if (srgb) glEnable_(GL_FRAMEBUFFER_SRGB);
-    if (scissor) glEnable_(GL_SCISSOR_TEST);
+}
+
+/* SteamVR takes the eye images with the game's own GL state, so a viewport or
+ * scissor still sized for the window cuts them off in the headset. */
+typedef struct {
+    int viewport[4];
+    unsigned char scissor;
+} VrXrDrawArea;
+
+static VrXrDrawArea vr_xr_draw_on_whole_eye(void) {
+    VrXrDrawArea area = {{0, 0, 0, 0}, glIsEnabled_(GL_SCISSOR_TEST)};
+    glGetIntegerv_(GL_VIEWPORT, area.viewport);
+    if (area.scissor) glDisable_(GL_SCISSOR_TEST);
+    glViewport_(0, 0, eye_width, eye_height);
+    return area;
+}
+
+static void vr_xr_restore_draw_area(const VrXrDrawArea *area) {
+    glViewport_(area->viewport[0], area->viewport[1], area->viewport[2], area->viewport[3]);
+    if (area->scissor) glEnable_(GL_SCISSOR_TEST);
 }
 
 void vr_xr_end_frame(const unsigned int framebuffer[2], int width, int height) {
@@ -824,7 +859,9 @@ void vr_xr_end_frame(const unsigned int framebuffer[2], int width, int height) {
     XrCompositionLayerProjection projection = {XR_TYPE_COMPOSITION_LAYER_PROJECTION, 0, 0, base_space, 2, views};
     const XrCompositionLayerBaseHeader *layers[] = {(const XrCompositionLayerBaseHeader *)&projection};
     int submit = frame_state.shouldRender && views_located && framebuffer[0] && framebuffer[1];
+    VrXrDrawArea area;
     if (submit) {
+        area = vr_xr_draw_on_whole_eye();
         vr_xr_copy(framebuffer, width, height);
         /* Roblox draws with the head pose its game step took from VRService
          * during the previous frame, so a frame's image matches the views
@@ -845,6 +882,7 @@ void vr_xr_end_frame(const unsigned int framebuffer[2], int width, int height) {
     XrFrameEndInfo end = {XR_TYPE_FRAME_END_INFO, 0, frame_state.predictedDisplayTime,
                           XR_ENVIRONMENT_BLEND_MODE_OPAQUE, submit ? 1u : 0u, submit ? layers : 0};
     XrResult result = xrEndFrame_(session, &end);
+    if (submit) vr_xr_restore_draw_area(&area);
     if (result < 0) {
         static int warned;
         if (warned++ < 8) vr_xr_log("end frame", result);

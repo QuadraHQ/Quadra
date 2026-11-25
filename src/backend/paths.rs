@@ -89,6 +89,10 @@ pub fn fast_flags_file() -> PathBuf {
         .join("ClientAppSettings.json")
 }
 
+pub fn web_window_directory() -> PathBuf {
+    quadra_data_directory().join("web-window")
+}
+
 pub fn logs_directory() -> PathBuf {
     quadra_data_directory().join("logs")
 }

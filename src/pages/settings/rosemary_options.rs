@@ -1,6 +1,7 @@
 use super::bound_rows::{choice_row, switch_row};
 use super::controller_access::controller_access_row;
 use super::mangohud::mangohud_row;
+use crate::backend;
 use crate::state::{
     AppState, CommandKey, PresentationMode, Renderer, SwapInterval, TitleBar,
     USE_MONITOR_REFRESH_RATE,
@@ -104,11 +105,24 @@ pub fn input_group(state: &AppState) -> adw::PreferencesGroup {
     group.add(&command_key_row);
     group.add(&ctrl_for_edit_shortcuts_row);
     group.add(&plain_ctrl_click_row);
+    group.add(&web_window_row(state));
     if let Some(controller_access_row) = controller_access_row() {
         group.add(&controller_access_row);
     }
 
     group
+}
+
+fn web_window_row(state: &AppState) -> adw::SwitchRow {
+    let row = switch_row(state, "web-window", "Open web pages in a separate window");
+    let is_installed = backend::web_window_is_installed();
+    row.set_sensitive(is_installed);
+    row.set_subtitle(if is_installed {
+        "Try this if Roblox's web pages are blank or freeze. Works with Quadra's Rosemary."
+    } else {
+        "This build of Quadra doesn't include the web page window."
+    });
+    row
 }
 
 pub fn refresh_rate_row(state: &AppState) -> adw::ActionRow {

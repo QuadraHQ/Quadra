@@ -16,12 +16,12 @@ use std::cell::RefCell;
 use std::fs::{self, File};
 use std::path::PathBuf;
 
-pub const VERSION: &str = "v0.5.0-quadra.4";
+pub const VERSION: &str = "v0.5.0-quadra.5";
 
 const SUPPORTED_ARCHITECTURE: &str = "x86_64";
-const ARCHIVE_NAME: &str = "rosemary-steam-tool-0.5.0-quadra.4-x86_64.tar.gz";
-const ARCHIVE_URL: &str = "https://github.com/QuadraHQ/rosemary-fork/releases/download/v0.5.0-quadra.4/rosemary-steam-tool-0.5.0-quadra.4-x86_64.tar.gz";
-const ARCHIVE_SHA256: &str = "ee3a44863b17ffc366fed4b0f88e8623c6e7dafe444966df5009bdbf2e0b9aaf";
+const ARCHIVE_NAME: &str = "rosemary-steam-tool-0.5.0-quadra.5-x86_64.tar.gz";
+const ARCHIVE_URL: &str = "https://github.com/QuadraHQ/rosemary-fork/releases/download/v0.5.0-quadra.5/rosemary-steam-tool-0.5.0-quadra.5-x86_64.tar.gz";
+const ARCHIVE_SHA256: &str = "944c4d73c7bdc011fa7c74c398ee12210ee56e0d839e1cfbb5c1d21532a716b1";
 const EXECUTABLE_INSIDE_ARCHIVE: &str = "Rosemary/bin/rosemary";
 
 thread_local! {

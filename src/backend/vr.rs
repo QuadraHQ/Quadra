@@ -1,4 +1,4 @@
-use super::paths;
+use super::{paths, steamvr};
 use crate::state::{AppState, FastFlagValue, FastFlags};
 use crate::utils::is_running_in_flatpak;
 use serde::Deserialize;
@@ -25,6 +25,7 @@ const RUNTIMES_WITHOUT_ACTIVE_MANIFEST: [&str; 4] = [
 const ACTIVE_RUNTIME_MANIFEST: &str = "openxr/1/active_runtime.json";
 const SYSTEM_ACTIVE_RUNTIME_MANIFEST: &str = "/etc/openxr/1/active_runtime.json";
 const DEFAULT_XDG_CONFIG_DIRS: &str = "/etc/xdg";
+const STEAMVR_RUNTIME_NAME: &str = "SteamVR";
 const OPENXR_LOADER: &str = "libopenxr_loader.so.1";
 const SANDBOX_RUNTIME_MANIFEST_NAME: &str = "openxr_runtime.json";
 const RUNTIME_MANIFEST_FORMAT_VERSION: &str = "1.0.0";
@@ -136,6 +137,10 @@ impl VrSession {
         self.mesa_egl_vendor.is_some()
     }
 
+    pub fn needs_vulkan(&self) -> bool {
+        self.runs_on_zink() || hands_frames_over_with_vulkan(&self.runtime.name)
+    }
+
     pub fn description(&self) -> String {
         let shown_on = if self.settings.mirror {
             "mirrored in the game window"
@@ -154,6 +159,10 @@ impl VrSession {
             self.settings.render_scale
         )
     }
+}
+
+fn hands_frames_over_with_vulkan(runtime_name: &str) -> bool {
+    runtime_name == STEAMVR_RUNTIME_NAME
 }
 
 pub fn with_opengl_renderer(flags: FastFlags) -> FastFlags {
@@ -218,7 +227,7 @@ fn check_requirements(rosemary: &Path) -> Result<OpenXrRuntime, String> {
         );
     }
     active_runtime()
-        .ok_or_else(|| "No OpenXR runtime found. Install and start WiVRn or Monado.".to_owned())
+        .ok_or_else(|| "No VR runtime found. Install SteamVR, WiVRn or Monado.".to_owned())
 }
 
 fn write_library() -> std::io::Result<PathBuf> {
@@ -323,17 +332,43 @@ fn openxr_loader_is_installed() -> bool {
 }
 
 fn active_runtime() -> Option<OpenXrRuntime> {
-    runtime_manifest_candidates()
-        .into_iter()
-        .find_map(|candidate| usable_runtime(&candidate))
+    in_order_of_preference(
+        chosen_runtime_manifest(),
+        steamvr::is_running(),
+        steamvr::runtime_manifests(),
+        configured_runtime_manifests(),
+    )
+    .into_iter()
+    .find_map(|candidate| usable_runtime(&candidate))
 }
 
-fn runtime_manifest_candidates() -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
-    if let Some(chosen) = std::env::var_os("XR_RUNTIME_JSON").filter(|value| !value.is_empty()) {
-        candidates.push(PathBuf::from(chosen));
-    }
-    candidates.push(gtk::glib::user_config_dir().join(ACTIVE_RUNTIME_MANIFEST));
+fn chosen_runtime_manifest() -> Option<PathBuf> {
+    std::env::var_os("XR_RUNTIME_JSON")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+fn in_order_of_preference(
+    chosen: Option<PathBuf>,
+    steamvr_is_running: bool,
+    steamvr: Vec<PathBuf>,
+    configured: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    let (running, installed) = if steamvr_is_running {
+        (steamvr, Vec::new())
+    } else {
+        (Vec::new(), steamvr)
+    };
+    chosen
+        .into_iter()
+        .chain(running)
+        .chain(configured)
+        .chain(installed)
+        .collect()
+}
+
+fn configured_runtime_manifests() -> Vec<PathBuf> {
+    let mut candidates = vec![gtk::glib::user_config_dir().join(ACTIVE_RUNTIME_MANIFEST)];
     let config_directories = std::env::var("XDG_CONFIG_DIRS")
         .ok()
         .filter(|directories| !directories.is_empty())
@@ -412,4 +447,36 @@ fn mesa_egl_vendor() -> Option<PathBuf> {
         vendors.sort();
         vendors.into_iter().next()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_steamvr_needs_vulkan_drivers_to_show_opengl_frames() {
+        assert!(hands_frames_over_with_vulkan("SteamVR"));
+        assert!(!hands_frames_over_with_vulkan("WiVRn"));
+    }
+
+    #[test]
+    fn a_running_steamvr_comes_before_the_configured_runtime() {
+        let order = |running| {
+            in_order_of_preference(
+                Some(PathBuf::from("chosen")),
+                running,
+                vec![PathBuf::from("steamvr")],
+                vec![PathBuf::from("configured")],
+            )
+        };
+
+        assert_eq!(
+            order(true),
+            ["chosen", "steamvr", "configured"].map(PathBuf::from)
+        );
+        assert_eq!(
+            order(false),
+            ["chosen", "configured", "steamvr"].map(PathBuf::from)
+        );
+    }
 }

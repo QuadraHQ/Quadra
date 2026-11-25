@@ -18,15 +18,19 @@ use region_row::preferred_region_row;
 pub fn servers_page(state: &AppState) -> gtk::Widget {
     let join_availability = JoinAvailability::follow(state);
 
-    let joining_group = adw::PreferencesGroup::builder()
-        .title("Joining")
-        .description(
+    let joining_group = adw::PreferencesGroup::builder().title("Joining").build();
+    let region_row = preferred_region_row(state);
+    if backend::ROVALRA_IS_ENABLED {
+        joining_group.set_description(Some(
             "With a preferred region, games started from this page join a server there, \
              picked from RoValra's server list (apis.rovalra.com). RoValra sees the game and \
              the region, not your account.",
-        )
-        .build();
-    joining_group.add(&preferred_region_row(state));
+        ));
+    } else {
+        region_row.set_sensitive(false);
+        region_row.set_subtitle("Unavailable for now");
+    }
+    joining_group.add(&region_row);
     joining_group.add(&join_by_link_row(state, &join_availability));
 
     let content = gtk::Box::builder()

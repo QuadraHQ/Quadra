@@ -1,6 +1,7 @@
 use super::launch_request::StudioTarget;
 use super::runners::Runner;
 use super::vr::{self, VrSession};
+use super::web_window::{RunningWebWindow, WebWindow};
 use super::{
     cpu_limit, fast_flags, live_log, mods, paths, prefix, release_channel, roblox, telemetry,
 };
@@ -63,8 +64,19 @@ pub fn start_roblox(
         command.args([PROTOCOL_STRING_ARGUMENT, launch_uri]);
     }
     command.envs(rosemary_environment(state, vr_session));
+    let web_window = state
+        .web_window()
+        .then(|| WebWindow::for_prefix(prefix::directory_for(&state.prefix()).as_deref()))
+        .flatten();
 
-    run(state, Client::Player, runner, command, vr.map(vr_log_line))
+    run(
+        state,
+        Client::Player,
+        runner,
+        command,
+        vr.map(vr_log_line),
+        web_window,
+    )
 }
 
 pub fn start_studio(
@@ -78,7 +90,7 @@ pub fn start_studio(
         .args(studio_arguments(state, target))
         .envs(rosemary_environment(state, None));
 
-    run(state, Client::Studio, runner, command, None)
+    run(state, Client::Studio, runner, command, None, None)
 }
 
 fn run(
@@ -87,6 +99,7 @@ fn run(
     runner: &Runner,
     mut command: Command,
     first_log_line: Option<String>,
+    web_window: Option<WebWindow>,
 ) -> anyhow::Result<()> {
     fs::create_dir_all(paths::logs_directory())?;
     let log_path = paths::logs_directory().join(LOG_FILE);
@@ -95,6 +108,8 @@ fn run(
         writeln!(log, "{first_log_line}")?;
     }
     let log_reader = File::open(&log_path)?;
+    let web_window =
+        web_window.and_then(|web_window| start_web_window(web_window, &mut command, &mut log));
 
     command
         .stdin(Stdio::null())
@@ -123,6 +138,7 @@ fn run(
     let (exit_sender, exit_receiver) = async_channel::bounded(1);
     std::thread::spawn(move || {
         let exited_cleanly = child.wait().is_ok_and(|status| status.success());
+        drop(web_window);
         roblox_exited.store(true, Ordering::Release);
         let _ = exit_sender.send_blocking(exited_cleanly);
     });
@@ -145,6 +161,36 @@ fn run(
     Ok(())
 }
 
+fn start_web_window(
+    web_window: WebWindow,
+    roblox: &mut Command,
+    log: &mut File,
+) -> Option<RunningWebWindow> {
+    let mut command = web_window.command();
+    let started = log.try_clone().and_then(|output| {
+        command
+            .stdin(Stdio::null())
+            .stdout(output.try_clone()?)
+            .stderr(output);
+        end_when_quadra_ends(&mut command);
+        command.spawn()
+    });
+    match started {
+        Ok(process) => {
+            let (name, value) = web_window.rosemary_environment();
+            roblox.env(name, value);
+            Some(web_window.running(process))
+        }
+        Err(error) => {
+            let _ = writeln!(
+                log,
+                "Quadra couldn't start the web page window, so pages stay in Roblox: {error}"
+            );
+            None
+        }
+    }
+}
+
 fn report_mods_set_aside(state: &AppState, crashed: bool) {
     let set_aside = mods::finish_session(crashed);
     if !set_aside.is_empty() {
@@ -154,6 +200,43 @@ fn report_mods_set_aside(state: &AppState, crashed: bool) {
             set_aside.join(", ")
         ));
     }
+}
+
+pub fn hand_to_running_roblox(client: Client, link: &str) -> anyhow::Result<()> {
+    RUNNING_ROBLOX.with_borrow(|running_roblox| {
+        let running_roblox = running_roblox.as_ref().context("Roblox isn't running.")?;
+        let mut handover = second_launch(
+            &running_roblox.rosemary,
+            &roblox::app_path(client),
+            running_roblox.prefix_directory.as_deref(),
+            link,
+        );
+        let mut handover = handover
+            .spawn()
+            .context("Couldn't pass the sign-in to Roblox")?;
+        std::thread::spawn(move || handover.wait());
+        Ok(())
+    })
+}
+
+fn second_launch(
+    rosemary: &Path,
+    app: &Path,
+    prefix_directory: Option<&Path>,
+    link: &str,
+) -> Command {
+    let mut command = Command::new(rosemary);
+    command
+        .arg(app)
+        .arg(link)
+        .env_remove(GIO_MODULES_VARIABLE)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    if let Some(prefix_directory) = prefix_directory {
+        command.env("ROSEMARY_PREFIX", prefix_directory);
+    }
+    command
 }
 
 pub fn stop_roblox() {
@@ -320,7 +403,7 @@ fn rosemary_environment(state: &AppState, vr_session: Option<&VrSession>) -> Vec
     );
 
     if let Some(vr_session) = vr_session {
-        if vr_session.runs_on_zink() {
+        if vr_session.needs_vulkan() {
             environment.retain(|(name, _)| name != VULKAN_DRIVERS_VARIABLE);
         }
         environment.extend(vr_session.environment());
@@ -410,6 +493,24 @@ mod tests {
     fn only_a_chosen_video_memory_is_sent_to_rosemary() {
         assert_eq!(video_memory_value(0), None);
         assert_eq!(video_memory_value(2048).as_deref(), Some("2048"));
+    }
+
+    #[test]
+    fn a_link_for_running_roblox_launches_its_app_again_in_the_same_prefix() {
+        let command = second_launch(
+            Path::new("/rosemary"),
+            Path::new("/RobloxPlayer.app"),
+            Some(Path::new("/prefix")),
+            "roblox://single-sign-on/login",
+        );
+
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            ["/RobloxPlayer.app", "roblox://single-sign-on/login"]
+        );
+        assert!(command.get_envs().any(|(name, value)| {
+            name == "ROSEMARY_PREFIX" && value == Some("/prefix".as_ref())
+        }));
     }
 
     #[test]

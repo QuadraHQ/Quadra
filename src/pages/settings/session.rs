@@ -1,4 +1,5 @@
 use super::bound_rows::switch_row;
+use crate::backend;
 use crate::state::AppState;
 use adw::prelude::*;
 
@@ -15,10 +16,13 @@ pub fn session_group(state: &AppState) -> adw::PreferencesGroup {
     playtime_row.set_subtitle("Show your total Roblox playtime on the home page");
 
     let location_row = switch_row(state, "notify-server-location", "Notify of server location");
-    location_row.set_subtitle(
+    location_row.set_sensitive(backend::ROVALRA_IS_ENABLED);
+    location_row.set_subtitle(if backend::ROVALRA_IS_ENABLED {
         "Looks up where your server is through RoValra and shows a notification. \
-         Only the server's address is sent",
-    );
+         Only the server's address is sent"
+    } else {
+        "Unavailable for now"
+    });
 
     let group = adw::PreferencesGroup::builder()
         .title("While playing")

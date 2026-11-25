@@ -116,6 +116,9 @@ impl Quadra {
     }
 
     pub fn launch_directly(&self, request: LaunchRequest) {
+        if backend::finish_sign_in(&self.state, &request) {
+            return;
+        }
         if self.state.running() || self.state.busy() {
             self.show(Page::Home);
             return;

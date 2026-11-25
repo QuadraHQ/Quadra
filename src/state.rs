@@ -39,7 +39,7 @@ pub const QUADRA_PREFIX: &str = "Quadra";
 pub const ROSEMARY_DEFAULT_PREFIX: &str = "Rosemary default";
 
 const SAVE_DELAY_AFTER_LAST_CHANGE: Duration = Duration::from_millis(500);
-const SAVED_PROPERTIES: [&str; 42] = [
+const SAVED_PROPERTIES: [&str; 43] = [
     "launch-mode",
     "run-in-background",
     "discord-rich-presence",
@@ -80,6 +80,7 @@ const SAVED_PROPERTIES: [&str; 42] = [
     "cpu-core-limit",
     "video-memory-mb",
     "block-telemetry",
+    "web-window",
     "theme",
     "advanced-settings-visible",
 ];
@@ -183,6 +184,7 @@ struct SavedSettings {
     cpu_core_limit: u32,
     video_memory_mb: u32,
     block_telemetry: bool,
+    web_window: bool,
     theme: Theme,
     advanced_settings_visible: bool,
 }
@@ -232,6 +234,7 @@ impl Default for SavedSettings {
             cpu_core_limit: 0,
             video_memory_mb: 0,
             block_telemetry: false,
+            web_window: false,
             theme: Theme::default(),
             advanced_settings_visible: false,
         }
@@ -356,6 +359,8 @@ mod imp {
         signed_in: Cell<bool>,
         #[property(get, set)]
         block_telemetry: Cell<bool>,
+        #[property(get, set)]
+        web_window: Cell<bool>,
         #[property(get, set)]
         advanced_settings_visible: Cell<bool>,
         #[property(get, set)]
@@ -494,6 +499,7 @@ impl AppState {
             .property("cpu-core-limit", settings.cpu_core_limit)
             .property("video-memory-mb", settings.video_memory_mb)
             .property("block-telemetry", settings.block_telemetry)
+            .property("web-window", settings.web_window)
             .property(
                 "advanced-settings-visible",
                 settings.advanced_settings_visible,
@@ -702,6 +708,7 @@ impl AppState {
             cpu_core_limit: self.cpu_core_limit(),
             video_memory_mb: self.video_memory_mb(),
             block_telemetry: self.block_telemetry(),
+            web_window: self.web_window(),
             theme: self.theme(),
             advanced_settings_visible: self.advanced_settings_visible(),
         };

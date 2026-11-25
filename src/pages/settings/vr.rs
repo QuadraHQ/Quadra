@@ -23,7 +23,7 @@ pub fn vr_section(state: &AppState) -> gtk::Box {
         .title("VR")
         .description(
             "Plays Roblox on a headset through this computer's OpenXR runtime, \
-             like WiVRn or Monado. VR uses Roblox's OpenGL renderer.",
+             like SteamVR, WiVRn or Monado. VR uses Roblox's OpenGL renderer.",
         )
         .build();
     group.add(&vr_row);

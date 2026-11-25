@@ -25,7 +25,9 @@ pub fn initialize(state: &AppState) {
                 GameEvent::Joining { job_id, .. } => {
                     CURRENT_JOB_ID.replace(Some(job_id));
                 }
-                GameEvent::Connected { server_ip } if state.notify_server_location() => {
+                GameEvent::Connected { server_ip }
+                    if super::ROVALRA_IS_ENABLED && state.notify_server_location() =>
+                {
                     look_up(state, &server_ip);
                 }
                 GameEvent::Connected { .. }

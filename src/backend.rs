@@ -34,10 +34,12 @@ mod roblox;
 mod runners;
 mod server_history;
 mod server_location;
+mod steamvr;
 mod telemetry;
 mod updater;
 mod vr;
 mod vr_access;
+mod web_window;
 
 pub use butter_access::missing as missing_butter_access;
 pub use controller_access::{
@@ -51,6 +53,8 @@ pub use launch_request::{LaunchRequest, StudioTarget};
 pub use mods::{disabled_units as disabled_mods, enable_unit as enable_mod, folder as mods_folder};
 pub use quadra_rosemary::VERSION as QUADRA_ROSEMARY_VERSION;
 pub use vr_access::missing as missing_vr_access;
+
+pub const ROVALRA_IS_ENABLED: bool = false;
 
 use crate::state::{AppState, Client, QUADRA_PREFIX, QUADRA_RUNNER, Regions};
 use crate::utils::is_executable_file;
@@ -269,9 +273,23 @@ pub fn launch(state: &AppState, request: LaunchRequest) {
     }
 }
 
+pub fn finish_sign_in(state: &AppState, request: &LaunchRequest) -> bool {
+    let client = request.client();
+    let Some(link) = request.sign_in_link() else {
+        return false;
+    };
+    if !state.running() || state.running_client() != client {
+        return false;
+    }
+    if let Err(error) = launch::hand_to_running_roblox(client, link) {
+        state.report_error(&format!("{error:#}"));
+    }
+    true
+}
+
 pub fn join_game(state: &AppState, place_id: u64) {
     let region_key = state.preferred_region();
-    let destination = if region_key.is_empty() {
+    let destination = if !ROVALRA_IS_ENABLED || region_key.is_empty() {
         Destination::AnyServer { place_id }
     } else {
         Destination::ServerInRegion {
@@ -295,7 +313,7 @@ pub fn rejoin_server(state: &AppState, place_id: u64, job_id: &str) {
 }
 
 pub fn load_regions(state: &AppState) {
-    if !state.regions().0.is_empty() {
+    if !ROVALRA_IS_ENABLED || !state.regions().0.is_empty() {
         return;
     }
 
@@ -478,6 +496,10 @@ pub fn set_handler_enabled(state: &AppState, handler: Handler, enabled: bool) {
     if let Err(error) = result {
         state.report_error(&format!("{error:#}"));
     }
+}
+
+pub fn web_window_is_installed() -> bool {
+    web_window::is_installed()
 }
 
 pub fn mangohud_is_installed() -> bool {
