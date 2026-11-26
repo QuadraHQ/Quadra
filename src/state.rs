@@ -153,6 +153,9 @@ struct SavedSettings {
     title_bar: TitleBar,
     show_menu_bar: bool,
     command_key: CommandKey,
+    // Renamed when the default turned on: files saved before then hold the old
+    // default under `ctrl_for_edit_shortcuts`, which is no longer read.
+    #[serde(rename = "ctrl_edit_shortcuts")]
     ctrl_for_edit_shortcuts: bool,
     plain_ctrl_click: bool,
     opened_before: bool,
@@ -208,7 +211,7 @@ impl Default for SavedSettings {
             title_bar: TitleBar::default(),
             show_menu_bar: true,
             command_key: CommandKey::default(),
-            ctrl_for_edit_shortcuts: false,
+            ctrl_for_edit_shortcuts: true,
             plain_ctrl_click: true,
             opened_before: false,
             environment_variables: EnvironmentVariables::default(),
@@ -882,6 +885,18 @@ mod tests {
         assert_eq!(settings.vr_render_scale, DEFAULT_VR_RENDER_SCALE);
         assert!(settings.custom_mods);
         assert!(settings.show_playtime);
+        assert!(settings.ctrl_for_edit_shortcuts);
+    }
+
+    #[test]
+    fn ctrl_shortcuts_turn_on_for_settings_saved_with_the_old_default() {
+        let (settings, problem) = parse_settings("ctrl_for_edit_shortcuts = false\n");
+        assert!(problem.is_none());
+        assert!(settings.ctrl_for_edit_shortcuts);
+
+        let (settings, problem) = parse_settings("ctrl_edit_shortcuts = false\n");
+        assert!(problem.is_none());
+        assert!(!settings.ctrl_for_edit_shortcuts);
     }
 
     #[test]
