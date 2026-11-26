@@ -10,7 +10,7 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::net::Ipv4Addr;
 
-const GEOLOCATION_URL: &str = "https://apis.rovalra.com/v1/geolocation";
+const GEOLOCATION_URL: &str = "https://ipinfo.io";
 const NOTIFICATION_ID: &str = "server-location";
 const MAX_PART_LENGTH: usize = 64;
 
@@ -25,9 +25,7 @@ pub fn initialize(state: &AppState) {
                 GameEvent::Joining { job_id, .. } => {
                     CURRENT_JOB_ID.replace(Some(job_id));
                 }
-                GameEvent::Connected { server_ip }
-                    if super::ROVALRA_IS_ENABLED && state.notify_server_location() =>
-                {
+                GameEvent::Connected { server_ip } if state.notify_server_location() => {
                     look_up(state, &server_ip);
                 }
                 GameEvent::Connected { .. }
@@ -62,22 +60,25 @@ fn look_up(state: &AppState, server_ip: &str) {
 
 fn fetch_location(address: Ipv4Addr) -> anyhow::Result<String> {
     let response: Value = api_agent()
-        .get(GEOLOCATION_URL)
-        .query("ip", address.to_string())
+        .get(format!("{GEOLOCATION_URL}/{address}/json"))
         .call()
         .and_then(|mut response| response.body_mut().read_json())
         .context("The location lookup failed")?;
 
-    let parts: Vec<String> = ["city", "region", "country"]
+    location_in(&response).with_context(|| format!("ipinfo.io doesn't know where {address} is"))
+}
+
+/// "City, Region, Country" from an ipinfo.io answer, with whichever of the
+/// three it has. A city that shares its region's name is written once.
+fn location_in(response: &Value) -> Option<String> {
+    let mut parts: Vec<String> = ["city", "region", "country"]
         .iter()
-        .filter_map(|part| response["location"][part].as_str())
+        .filter_map(|part| response[*part].as_str())
         .filter(|part| !part.is_empty())
         .map(|part| part.chars().take(MAX_PART_LENGTH).collect())
         .collect();
-    if parts.is_empty() {
-        anyhow::bail!("RoValra doesn't know where {address} is");
-    }
-    Ok(parts.join(", "))
+    parts.dedup();
+    (!parts.is_empty()).then(|| parts.join(", "))
 }
 
 fn notify(location: &str) {
@@ -104,7 +105,27 @@ fn is_public(address: &Ipv4Addr) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::is_public;
+    use super::{is_public, location_in};
+    use serde_json::json;
+
+    #[test]
+    fn a_location_is_read_from_an_ipinfo_answer() {
+        let location = |response| location_in(&response);
+        assert_eq!(
+            location(json!({"city": "Chicago", "region": "Illinois", "country": "US"})).as_deref(),
+            Some("Chicago, Illinois, US")
+        );
+        assert_eq!(
+            location(json!({"city": "Singapore", "region": "Singapore", "country": "SG"}))
+                .as_deref(),
+            Some("Singapore, SG")
+        );
+        assert_eq!(
+            location(json!({"city": "", "country": "DE"})).as_deref(),
+            Some("DE")
+        );
+        assert_eq!(location(json!({"error": "rate limited"})), None);
+    }
 
     #[test]
     fn only_public_addresses_are_looked_up() {
