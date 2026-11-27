@@ -121,7 +121,8 @@ pub fn path_for_display(path: &std::path::Path) -> String {
 }
 
 pub fn is_running_in_flatpak() -> bool {
-    std::path::Path::new("/.flatpak-info").exists()
+    cfg!(debug_assertions) && std::env::var_os("QUADRA_PRETEND_FLATPAK").is_some()
+        || std::path::Path::new("/.flatpak-info").exists()
 }
 
 pub fn files_under(path: &std::path::Path) -> std::io::Result<Vec<PathBuf>> {
