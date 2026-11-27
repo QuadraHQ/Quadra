@@ -257,159 +257,114 @@ impl SavedSettings {
 const LOG_CLEARED: &str = "log-cleared";
 const LOG_APPENDED: &str = "log-appended";
 
+macro_rules! app_state_properties {
+    (
+        read_write { $($field:ident: $value:ty $(= $default:expr)?,)* }
+        read_only { $($read_only_field:ident: $read_only_value:ty,)* }
+        internal { $($internal_field:ident: $internal_value:ty,)* }
+    ) => {
+        #[derive(Default, glib::Properties)]
+        #[properties(wrapper_type = super::AppState)]
+        pub struct AppState {
+            $(
+                #[property(get, set $(, builder($default))?)]
+                $field: RefCell<$value>,
+            )*
+            $(
+                #[property(get)]
+                pub $read_only_field: RefCell<$read_only_value>,
+            )*
+            $(pub $internal_field: $internal_value,)*
+        }
+    };
+}
+
 mod imp {
     use super::*;
     use glib::subclass::Signal;
-    use std::cell::{Cell, RefCell};
+    use std::cell::RefCell;
     use std::sync::OnceLock;
 
-    #[derive(Default, glib::Properties)]
-    #[properties(wrapper_type = super::AppState)]
-    pub struct AppState {
-        #[property(get, set, builder(LaunchMode::default()))]
-        launch_mode: Cell<LaunchMode>,
-        #[property(get, set)]
-        run_in_background: Cell<bool>,
-        #[property(get, set)]
-        discord_rich_presence: Cell<bool>,
-        #[property(get, set, builder(Runtime::default()))]
-        runtime: Cell<Runtime>,
-        #[property(get, set)]
-        runner: RefCell<String>,
-        #[property(get, set)]
-        custom_runner_path: RefCell<String>,
-        #[property(get, set)]
-        available_runners: RefCell<Vec<String>>,
-        #[property(get, set)]
-        prefix: RefCell<String>,
-        #[property(get, set)]
-        available_prefixes: RefCell<Vec<String>>,
-        #[property(get, set)]
-        darwin_base_installed: Cell<bool>,
-        #[property(get, set)]
-        newer_darwin_base: RefCell<String>,
-        #[property(get, set)]
-        newer_quadra_rosemary: RefCell<String>,
-        #[property(get, set, builder(Renderer::default()))]
-        renderer: Cell<Renderer>,
-        #[property(get, set)]
-        mangohud: Cell<bool>,
-        #[property(get, set)]
-        refresh_rate: Cell<u32>,
-        #[property(get, set, builder(PresentationMode::default()))]
-        presentation_mode: Cell<PresentationMode>,
-        #[property(get, set, builder(SwapInterval::default()))]
-        opengl_swap_interval: Cell<SwapInterval>,
-        #[property(get, set, builder(TitleBar::default()))]
-        title_bar: Cell<TitleBar>,
-        #[property(get, set)]
-        show_menu_bar: Cell<bool>,
-        #[property(get, set, builder(CommandKey::default()))]
-        command_key: Cell<CommandKey>,
-        #[property(get, set)]
-        ctrl_for_edit_shortcuts: Cell<bool>,
-        #[property(get, set)]
-        plain_ctrl_click: Cell<bool>,
-        #[property(get, set)]
-        environment_variables: RefCell<EnvironmentVariables>,
-        #[property(get, set)]
-        launch_wrapper: RefCell<String>,
-        #[property(get, set)]
-        fast_flags: RefCell<FastFlags>,
-        #[property(get, set)]
-        preferred_region: RefCell<String>,
-        #[property(get, set)]
-        regions: RefCell<Regions>,
-        #[property(get, set)]
-        server_history: RefCell<ServerHistory>,
-        #[property(get, set)]
-        vr: Cell<bool>,
-        #[property(get, set)]
-        vr_mirror: Cell<bool>,
-        #[property(get, set)]
-        vr_render_scale: Cell<u32>,
-        #[property(get, set)]
-        vr_zink: Cell<bool>,
-        #[property(get, set, builder(DeathSound::default()))]
-        death_sound: Cell<DeathSound>,
-        #[property(get, set)]
-        custom_death_sound: RefCell<String>,
-        #[property(get, set)]
-        old_character_sounds: Cell<bool>,
-        #[property(get, set, builder(CursorStyle::default()))]
-        cursor_style: Cell<CursorStyle>,
-        #[property(get, set)]
-        custom_cursor: RefCell<String>,
-        #[property(get, set)]
-        custom_font: RefCell<String>,
-        #[property(get, set)]
-        custom_mods: Cell<bool>,
-        #[property(get, set)]
-        hide_launcher_while_playing: Cell<bool>,
-        #[property(get, set)]
-        open_after_exit: Cell<bool>,
-        #[property(get, set)]
-        show_playtime: Cell<bool>,
-        #[property(get, set)]
-        playtime_seconds: Cell<u64>,
-        #[property(get, set)]
-        notify_server_location: Cell<bool>,
-        #[property(get, set)]
-        cpu_core_limit: Cell<u32>,
-        #[property(get, set)]
-        video_memory_mb: Cell<u32>,
-        #[property(get, set)]
-        signed_in: Cell<bool>,
-        #[property(get, set)]
-        block_telemetry: Cell<bool>,
-        #[property(get, set)]
-        web_window: Cell<bool>,
-        #[property(get, set)]
-        advanced_settings_visible: Cell<bool>,
-        #[property(get, set)]
-        available_update: RefCell<String>,
-        #[property(get, set)]
-        update_status: RefCell<String>,
-        #[property(get, set)]
-        vr_status: RefCell<String>,
-        #[property(get, set)]
-        first_launch: Cell<bool>,
-        #[property(get, set)]
-        roblox_version: RefCell<String>,
-        #[property(get, set)]
-        studio_version: RefCell<String>,
-        #[property(get, set, builder(Client::default()))]
-        selected_client: Cell<Client>,
-        #[property(get, set, builder(Client::default()))]
-        running_client: Cell<Client>,
-        #[property(get, set)]
-        busy: Cell<bool>,
-        #[property(get, set)]
-        task_description: RefCell<String>,
-        #[property(get, set)]
-        task_progress: Cell<f64>,
-        #[property(get, set)]
-        error_message: RefCell<String>,
-        #[property(get, set)]
-        running: Cell<bool>,
-        #[property(get, set)]
-        roblox_graphics_started: Cell<bool>,
-        #[property(get, set)]
-        stopping: Cell<bool>,
-        #[property(get, set)]
-        roblox_installed: Cell<bool>,
-        #[property(get, set)]
-        studio_installed: Cell<bool>,
-        #[property(get, set)]
-        rosemary_installed: Cell<bool>,
-        #[property(get)]
-        pub can_play: Cell<bool>,
-        #[property(get)]
-        pub can_open_studio: Cell<bool>,
-        pub pending_save: RefCell<Option<glib::SourceId>>,
-        pub log: RefCell<String>,
-        #[property(get, set, builder(Theme::default()))]
-        theme: Cell<Theme>,
+    app_state_properties! {
+        read_write {
+            launch_mode: LaunchMode = LaunchMode::default(),
+            run_in_background: bool,
+            discord_rich_presence: bool,
+            runtime: Runtime = Runtime::default(),
+            runner: String,
+            custom_runner_path: String,
+            available_runners: Vec<String>,
+            prefix: String,
+            available_prefixes: Vec<String>,
+            darwin_base_installed: bool,
+            newer_darwin_base: String,
+            newer_quadra_rosemary: String,
+            renderer: Renderer = Renderer::default(),
+            mangohud: bool,
+            refresh_rate: u32,
+            presentation_mode: PresentationMode = PresentationMode::default(),
+            opengl_swap_interval: SwapInterval = SwapInterval::default(),
+            title_bar: TitleBar = TitleBar::default(),
+            show_menu_bar: bool,
+            command_key: CommandKey = CommandKey::default(),
+            ctrl_for_edit_shortcuts: bool,
+            plain_ctrl_click: bool,
+            environment_variables: EnvironmentVariables,
+            launch_wrapper: String,
+            fast_flags: FastFlags,
+            preferred_region: String,
+            regions: Regions,
+            server_history: ServerHistory,
+            vr: bool,
+            vr_mirror: bool,
+            vr_render_scale: u32,
+            vr_zink: bool,
+            death_sound: DeathSound = DeathSound::default(),
+            custom_death_sound: String,
+            old_character_sounds: bool,
+            cursor_style: CursorStyle = CursorStyle::default(),
+            custom_cursor: String,
+            custom_font: String,
+            custom_mods: bool,
+            hide_launcher_while_playing: bool,
+            open_after_exit: bool,
+            show_playtime: bool,
+            playtime_seconds: u64,
+            notify_server_location: bool,
+            cpu_core_limit: u32,
+            video_memory_mb: u32,
+            signed_in: bool,
+            block_telemetry: bool,
+            web_window: bool,
+            advanced_settings_visible: bool,
+            available_update: String,
+            update_status: String,
+            vr_status: String,
+            first_launch: bool,
+            roblox_version: String,
+            studio_version: String,
+            selected_client: Client = Client::default(),
+            running_client: Client = Client::default(),
+            busy: bool,
+            task_description: String,
+            task_progress: f64,
+            error_message: String,
+            running: bool,
+            roblox_graphics_started: bool,
+            stopping: bool,
+            roblox_installed: bool,
+            studio_installed: bool,
+            rosemary_installed: bool,
+            theme: Theme = Theme::default(),
+        }
+        read_only {
+            can_play: bool,
+            can_open_studio: bool,
+        }
+        internal {
+            pending_save: RefCell<Option<glib::SourceId>>,
+            log: RefCell<String>,
+        }
     }
 
     #[glib::object_subclass]
